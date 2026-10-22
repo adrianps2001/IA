@@ -160,7 +160,7 @@ local function hatch(players: { Player }, bloodMoon: boolean): (Player?, Genes.G
 	return chosen, genes
 end
 
-local function awardResults(players: { Player }, result: ChaseService.ChaseResult)
+local function awardResults(players: { Player }, result: ChaseService.ChaseResult, chosen: Player)
 	local genes = result.Genes
 	-- Si el ganador se fue justo al acabar, la criatura cuenta como escapada.
 	local winner = if result.Winner and result.Winner.Parent and genes then result.Winner else nil
@@ -182,7 +182,7 @@ local function awardResults(players: { Player }, result: ChaseService.ChaseResul
 	for _, partner in result.Partners do
 		table.insert(partnerKeys, tostring(partner.UserId))
 	end
-	local rewards = Rewards.compute(participants, if winner then tostring(winner.UserId) else nil, partnerKeys)
+	local rewards = Rewards.compute(participants, if winner then tostring(winner.UserId) else nil, partnerKeys, tostring(chosen.UserId))
 
 	if winner and genes then
 		DataService.addStat(winner, "Wins", 1)
@@ -203,6 +203,10 @@ local function awardResults(players: { Player }, result: ChaseService.ChaseResul
 		elseif reward.Copy and genes then
 			NestService.giveCreature(player, Genes.commonCopy(genes, rng), "Copy")
 			AnnouncementService.player(player, "Tu aliado ganó: recibes tu parte del polvo y una copia común.", "quest")
+		end
+		if reward.ChosenEgg then
+			NestService.giveChosenEgg(player)
+			AnnouncementService.player(player, "El huevo te eligió: te deja un Huevo del Elegido en la incubadora.", "rare")
 		end
 		DataService.addDust(player, reward.Dust)
 		if not reward.Creature then
@@ -286,7 +290,7 @@ local function playRound()
 	local results = Testing.duration(Config.Round.ResultsTime)
 	setPhase("Results", results)
 	setMood("Incubation")
-	awardResults(readyPlayers(), result)
+	awardResults(readyPlayers(), result, chosen)
 	waitPhase(results)
 end
 

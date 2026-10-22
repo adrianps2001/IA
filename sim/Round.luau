@@ -81,6 +81,7 @@ export type BotResult = {
 	Dust: number,
 	Genes: Genes.GeneSet?,
 	Copy: Genes.GeneSet?,
+	ChosenEgg: boolean,
 	Deposited: number,
 	Affinity: number,
 	LuckyBlocks: number,
@@ -766,7 +767,7 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 			table.insert(partnerKeys, key)
 		end
 	end
-	local rewards = Rewards.compute(participants, if winner then winner.Key else nil, partnerKeys)
+	local rewards = Rewards.compute(participants, if winner then winner.Key else nil, partnerKeys, chosen.Key)
 	if winner then
 		event(t - chaseStart, string.format("🏆 %s se queda la criatura %s", winner.Bot.Name, Rarity.Info[rarity].DisplayName))
 	else
@@ -781,6 +782,7 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 			Dust = reward.Dust,
 			Genes = if reward.Creature then genes else nil,
 			Copy = if reward.Copy then Genes.commonCopy(genes, rng) else nil,
+			ChosenEgg = reward.ChosenEgg,
 			Deposited = a.Deposited,
 			Affinity = a.Affinity,
 			LuckyBlocks = a.LuckyBlocks,

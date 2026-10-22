@@ -38,6 +38,7 @@ type Player = {
 	EggsHatched: number,
 	Bred: number,
 	Released: number,
+	ChosenEggs: number,
 	DustFromRelease: number,
 	CoinsOnDecor: number,
 	DustOnDecor: number,
@@ -122,6 +123,7 @@ function Meta.run(params: Params)
 				EggsHatched = 0,
 				Bred = 0,
 				Released = 0,
+				ChosenEggs = 0,
 				DustFromRelease = 0,
 				CoinsOnDecor = 0,
 				DustOnDecor = 0,
@@ -393,6 +395,11 @@ function Meta.run(params: Params)
 						if result.Copy then
 							table.insert(profile.Creatures, Creature.new(newId(), result.Copy, "Copy", t))
 						end
+						if result.ChosenEgg then
+							local range = Config.EggRanges.Chosen
+							addEgg(p, "Chosen", Config.Incubator.PersonalEggSeconds, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName, nil, t)
+							p.ChosenEggs += 1
+						end
 						questProgress(p, "DepositHeat", result.Deposited)
 						questProgress(p, "LuckyBlock", result.LuckyBlocks)
 						questProgress(p, "Steal", result.Steals)
@@ -499,6 +506,7 @@ function Meta.run(params: Params)
 			EggsHatched = p.EggsHatched,
 			Bred = p.Bred,
 			Released = p.Released,
+			ChosenEggs = p.ChosenEggs,
 			DustFromRelease = p.DustFromRelease,
 			CoinsOnDecor = p.CoinsOnDecor,
 			DustOnDecor = p.DustOnDecor,

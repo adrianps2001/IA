@@ -258,6 +258,16 @@ local function addEgg(
 	DataService.markChanged(player)
 end
 
+-- Premio al elegido que pierde la criatura (Rewards). Entra aunque la incubadora esté llena,
+-- como el huevo de racha.
+function NestService.giveChosenEgg(player: Player)
+	if not DataService.get(player) then
+		return
+	end
+	local range = Config.EggRanges.Chosen
+	addEgg(player, "Chosen", Config.Incubator.PersonalEggSeconds, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName)
+end
+
 local function buyPersonalEgg(player: Player)
 	local profile = DataService.get(player)
 	if not profile then
@@ -300,7 +310,7 @@ local function collectEggs(player: Player)
 					string.format("¡Ha nacido %s (%s)!", Creature.name(creature), Rarity.Info[creature.Rarity].DisplayName),
 					"rare"
 				)
-				if egg.Kind == "Personal" or egg.Kind == "Streak" or egg.Kind == "Season" then
+				if egg.Kind ~= "Breed" then
 					QuestService.progress(player, "HatchPersonal", 1)
 				end
 			end

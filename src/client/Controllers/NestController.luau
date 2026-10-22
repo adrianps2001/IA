@@ -213,7 +213,7 @@ local function renderIncubator()
 	local offset = serverNowOffset()
 	for index, egg in profile.Incubator do
 		local r = row(44, index)
-		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada" }
+		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada", Chosen = "Huevo del Elegido" }
 		UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(0.6, -12, 1, -12), Text = "🥚 " .. (names[egg.Kind] or egg.Kind), TextXAlignment = Enum.TextXAlignment.Left }, r)
 		local t = UI.label({ Position = UDim2.new(0.6, 0, 0, 6), Size = UDim2.new(0.4, -12, 1, -12), TextXAlignment = Enum.TextXAlignment.Right }, r)
 		timeLabels[t] = egg.ReadyAt - offset

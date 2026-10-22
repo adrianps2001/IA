@@ -99,6 +99,9 @@ Config.Consolation = {
 	PerStealAttempt = 15,
 	MaxStealAttempts = 5,
 	WinnerBonusDust = 25,
+	-- El elegido que pierde la criatura: polvo extra y un Huevo del Elegido en la incubadora.
+	ChosenBonusDust = 50,
+	ChosenEgg = true,
 }
 
 Config.Nest = {
@@ -223,6 +226,7 @@ Config.EggRanges = {
 	Personal = { Min = "Common", Max = "Epic" },
 	Streak = { Min = "Rare", Max = "Legendary" },
 	Season = { Min = "Rare", Max = "Legendary" },
+	Chosen = { Min = "Rare", Max = "Epic" }, -- premio al elegido que pierde
 }
 
 Config.ServerLuck = { Seconds = 15 * 60, Luck = 2 }

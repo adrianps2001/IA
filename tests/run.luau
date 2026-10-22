@@ -465,6 +465,22 @@ test("Decoraciones: catálogo, aspecto y datos guardados", function()
 	expect(#PlayerData.reconcile({}, 0).Decorations == 0)
 end)
 
+test("Rewards: premio al elegido que pierde", function()
+	local participants: { Rewards.Participant } = {
+		{ Key = "gana", Affinity = 500, StealAttempts = 2 },
+		{ Key = "elegido", Affinity = 800, StealAttempts = 0 },
+		{ Key = "otro", Affinity = 800, StealAttempts = 0 },
+	}
+	local r = Rewards.compute(participants, "gana", {}, "elegido")
+	expect(r.elegido.ChosenEgg and not r.otro.ChosenEgg and not r.gana.ChosenEgg)
+	expect(r.elegido.Dust == r.otro.Dust + Config.Consolation.ChosenBonusDust)
+	-- Si el elegido gana, no hay premio extra: ya tiene la criatura.
+	local own = Rewards.compute(participants, "elegido", {}, "elegido")
+	expect(own.elegido.Creature and not own.elegido.ChosenEgg)
+	-- Si la criatura escapa, el elegido también recibe su huevo.
+	expect(Rewards.compute(participants, nil, {}, "elegido").elegido.ChosenEgg)
+end)
+
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))
 if failed > 0 then
 	error("hay pruebas fallidas")

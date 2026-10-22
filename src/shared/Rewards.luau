@@ -15,12 +15,15 @@ export type Reward = {
 	Dust: number,
 	Creature: boolean, -- se lleva la criatura de la ronda
 	Copy: boolean, -- recibe una copia común (aliado del ganador)
+	ChosenEgg: boolean, -- fue el elegido y perdió la criatura: Huevo del Elegido
 }
 
 local Rewards = {}
 
 -- winnerKey es nil si la criatura escapó. partnerKeys son los aliados del ganador.
-function Rewards.compute(participants: { Participant }, winnerKey: string?, partnerKeys: { string }): { [string]: Reward }
+-- chosenKey es a quien eligió el huevo: si no acaba ganando, recibe un premio de consolación
+-- especial (ser elegido siempre tiene que sentirse bien, aunque te la roben).
+function Rewards.compute(participants: { Participant }, winnerKey: string?, partnerKeys: { string }, chosenKey: string?): { [string]: Reward }
 	local result: { [string]: Reward } = {}
 	local winnerDust = 0
 	for _, p in participants do
@@ -30,7 +33,7 @@ function Rewards.compute(participants: { Participant }, winnerKey: string?, part
 	end
 
 	for _, p in participants do
-		local reward: Reward = { Dust = 0, Creature = false, Copy = false }
+		local reward: Reward = { Dust = 0, Creature = false, Copy = false, ChosenEgg = false }
 		if p.Key == winnerKey then
 			reward.Dust = winnerDust
 			reward.Creature = true
@@ -39,6 +42,10 @@ function Rewards.compute(participants: { Participant }, winnerKey: string?, part
 			if winnerKey and table.find(partnerKeys, p.Key) then
 				reward.Dust += math.floor(winnerDust * Config.Deal.DustShare)
 				reward.Copy = true
+			end
+			if p.Key == chosenKey then
+				reward.Dust += Config.Consolation.ChosenBonusDust
+				reward.ChosenEgg = Config.Consolation.ChosenEgg
 			end
 		end
 		result[p.Key] = reward

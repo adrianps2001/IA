@@ -26,7 +26,7 @@ El mapa (bosque, huevo y 16 nidos) se genera por código al arrancar el servidor
 | Eclosión | 30 s | El huevo tiembla y un foco recorre a los jugadores como una ruleta. Probabilidad = Afinidad / total, con un **mínimo del 2 %** que sube un 2 % por cada ronda sin ser elegido (hasta un 12 %: "suerte acumulada"). |
 | Persecución | 3 min (5 con Luna de Sangre) | El elegido lleva la criatura a su nido, con 10 s de inmunidad y 4 s de ventaja. Para robarla hay que mantener **E** 1,5 s junto al portador (2,25 s si está en su nido). Tras un robo hay 3 s de inmunidad y quien la pierde queda **aturdido** 2 s. Dentro de un nido ajeno se va al 60 % de velocidad. El portador tiene **esprint** (Shift), **relevo** a un aliado (Q) y **puerta del nido** 10 s (R). Aguantar **25 s seguidos** en tu nido **asegura** la criatura. |
 | Prórroga | hasta 45 s | Si al acabar el tiempo el portador no está en su nido, gana el primero que meta la criatura en el suyo. |
-| Resultados | 15 s | Se la queda quien la aseguró o la tenía en su nido. El resto recibe **Polvo de cáscara** de consuelo. |
+| Resultados | 15 s | Se la queda quien la aseguró o la tenía en su nido. El resto recibe **Polvo de cáscara** de consuelo, y el elegido que la perdió, un **Huevo del Elegido**. |
 
 **Tratos (T):** puedes ofrecer un trato a otro jugador. Si uno de los dos gana, el otro se lleva el 30 % de su polvo y una copia común de la criatura. Robarle a un aliado cuenta como traición y suma al título "Traidor".
 
@@ -128,7 +128,7 @@ Implementado:
 - Elección con mínimo del 2 %.
 - Persecución con robo, inmunidad, esprint, relevo, puerta del nido y Escudo de Cáscara, más las mecánicas añadidas con el simulador: prórroga, asegurar, territorio, aturdimiento y ventaja del elegido (configurables en `Config.Chase`).
 - Tratos y traiciones, con títulos Leal/Traidor.
-- Consuelo con Polvo de cáscara.
+- Consuelo con Polvo de cáscara, y premio al elegido que pierde la criatura: polvo extra y un Huevo del Elegido (Rara a Épica).
 - Nido con producción, también sin conexión (tope de 8 h).
 - 60 genes, 6 rarezas y cría con mutación.
 - Incubadora y huevos personales.
@@ -150,7 +150,7 @@ Pendiente (siguientes fases del roadmap):
 - Emotes de reacción.
 - Selector de gen para la Ofrenda Dorada (el servidor ya la admite).
 - Más sumideros de Monedas: pase de temporada y cosméticos.
-- Emparejamiento por nivel o premio al elegido que pierde (los novatos casi nunca ganan la persecución).
+- Emparejamiento por nivel (los novatos casi nunca ganan la persecución).
 - Sonido.
 - Tutorial guiado.
 - Pase de temporada.
