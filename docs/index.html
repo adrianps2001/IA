@@ -315,29 +315,31 @@ flowchart LR
 </div>
 <div id="file-docs" hidden>
   <article data-path="default.project.json" data-where="Configuración de Rojo"><p>Mapa de carpetas → DataModel. También fija propiedades globales: <code>StreamingEnabled</code> y la hora inicial de <code>Lighting</code>. <span data-loc="default.project.json">39</span> líneas.</p></article>
-  <article data-path="src/shared/Config.luau" data-where="ReplicatedStorage.Shared.Config · ModuleScript"><p>Todos los números ajustables: tiempos de fase, capacidad de la bolsa, precios, probabilidades, IDs de la tienda. Cambiar el equilibrio del juego es tocar este archivo. <span data-loc="src/shared/Config.luau">193</span> líneas.</p></article>
+  <article data-path="src/shared/Config.luau" data-where="ReplicatedStorage.Shared.Config · ModuleScript"><p>Todos los números ajustables: tiempos de fase, capacidad de la bolsa, precios, probabilidades, IDs de la tienda. Cambiar el equilibrio del juego es tocar este archivo. <span data-loc="src/shared/Config.luau">217</span> líneas.</p></article>
   <article data-path="src/shared/Rarity.luau" data-where="ReplicatedStorage.Shared.Rarity · ModuleScript (lógica pura)"><p>Las 6 rarezas con su peso, color y producción, y la tirada con suerte. <span data-loc="src/shared/Rarity.luau">88</span> líneas.</p></article>
   <article data-path="src/shared/Genes.luau" data-where="ReplicatedStorage.Shared.Genes · ModuleScript (lógica pura)"><p>Catálogo de 60 genes, ofrendas, generación de genes y herencia en la cría. <span data-loc="src/shared/Genes.luau">242</span> líneas.</p></article>
   <article data-path="src/shared/Creature.luau" data-where="ReplicatedStorage.Shared.Creature · ModuleScript (lógica pura)"><p>Qué es una criatura en datos: nombre, rareza derivada y Monedas por segundo. <span data-loc="src/shared/Creature.luau">76</span> líneas.</p></article>
   <article data-path="src/shared/Election.luau" data-where="ReplicatedStorage.Shared.Election · ModuleScript (lógica pura)"><p>La Elección: reparto de probabilidades con mínimo garantizado y sorteo. <span data-loc="src/shared/Election.luau">91</span> líneas.</p></article>
-  <article data-path="src/shared/Economy.luau" data-where="ReplicatedStorage.Shared.Economy · ModuleScript (lógica pura)"><p>Fórmulas: costes de mejoras, capacidad, velocidades, consolación, umbrales de la barra, ganancias sin conexión. <span data-loc="src/shared/Economy.luau">118</span> líneas.</p></article>
+  <article data-path="src/shared/Economy.luau" data-where="ReplicatedStorage.Shared.Economy · ModuleScript (lógica pura)"><p>Fórmulas: costes de mejoras, capacidad, velocidades, consolación, umbrales de la barra, ganancias sin conexión. <span data-loc="src/shared/Economy.luau">167</span> líneas.</p></article>
   <article data-path="src/shared/Quests.luau" data-where="ReplicatedStorage.Shared.Quests · ModuleScript (lógica pura)"><p>Misiones diarias iguales para todo el mundo cada día y la racha de 7 días. <span data-loc="src/shared/Quests.luau">102</span> líneas.</p></article>
-  <article data-path="src/shared/PlayerData.luau" data-where="ReplicatedStorage.Shared.PlayerData · ModuleScript (lógica pura)"><p>Forma de los datos guardados y su reparación al cargar. <span data-loc="src/shared/PlayerData.luau">170</span> líneas.</p></article>
-  <article data-path="src/shared/Remotes.luau" data-where="ReplicatedStorage.Shared.Remotes · ModuleScript"><p>Lista única de RemoteEvents y RemoteFunctions; el servidor los crea y el cliente los espera. <span data-loc="src/shared/Remotes.luau">65</span> líneas.</p></article>
+  <article data-path="src/shared/PlayerData.luau" data-where="ReplicatedStorage.Shared.PlayerData · ModuleScript (lógica pura)"><p>Forma de los datos guardados y su reparación al cargar. <span data-loc="src/shared/PlayerData.luau">180</span> líneas.</p></article>
+  <article data-path="src/shared/Remotes.luau" data-where="ReplicatedStorage.Shared.Remotes · ModuleScript"><p>Lista única de RemoteEvents y RemoteFunctions; el servidor los crea y el cliente los espera. <span data-loc="src/shared/Remotes.luau">68</span> líneas.</p></article>
   <article data-path="src/shared/RoundState.luau" data-where="ReplicatedStorage.Shared.RoundState · ModuleScript"><p>Estado de la ronda (fase, tiempo, barra, portador…) como atributos replicados. <span data-loc="src/shared/RoundState.luau">53</span> líneas.</p></article>
   <article data-path="src/shared/ChaseRules.luau" data-where="ReplicatedStorage.Shared.ChaseRules · ModuleScript (lógica pura)"><p>Reglas de la persecución que comparten servidor y simulador: validar un robo, defensa en casa, asegurar y prórroga. <span data-loc="src/shared/ChaseRules.luau">50</span> líneas.</p></article>
   <article data-path="src/shared/Rewards.luau" data-where="ReplicatedStorage.Shared.Rewards · ModuleScript (lógica pura)"><p>Reparto de premios al final de la ronda: criatura, polvo, copia para aliados. <span data-loc="src/shared/Rewards.luau">42</span> líneas.</p></article>
   <article data-path="src/shared/MapLayout.luau" data-where="ReplicatedStorage.Shared.MapLayout · ModuleScript (lógica pura)"><p>Geometría del mapa (nidos, zonas, géiseres, anillos) sin Roblox: la usan MapService, HeatService y el simulador. <span data-loc="src/shared/MapLayout.luau">74</span> líneas.</p></article>
+  <article data-path="src/shared/Decorations.luau" data-where="ReplicatedStorage.Shared.Decorations · ModuleScript (datos puros)"><p>Aspecto de las 12 decoraciones del nido: piezas con forma, tamaño, posición y color. Los precios están en Config. <span data-loc="src/shared/Decorations.luau">102</span> líneas.</p></article>
+  <article data-path="src/shared/DecorationModel.luau" data-where="ReplicatedStorage.Shared.DecorationModel · ModuleScript"><p>Convierte los datos de una decoración en Parts sin colisión dentro del nido. <span data-loc="src/shared/DecorationModel.luau">43</span> líneas.</p></article>
   <article data-path="src/shared/CreatureModel.luau" data-where="ReplicatedStorage.Shared.CreatureModel · ModuleScript"><p>Construye el modelo 3D de una criatura a partir de sus genes con piezas simples. <span data-loc="src/shared/CreatureModel.luau">181</span> líneas.</p></article>
   <article data-path="src/shared/Testing.luau" data-where="ReplicatedStorage.Shared.Testing · ModuleScript"><p>Modo de prueba: activa el piloto automático y la depuración y acorta las fases, pero solo dentro de Studio. <span data-loc="src/shared/Testing.luau">22</span> líneas.</p></article>
   <article data-path="src/server/init.server.luau" data-where="ServerScriptService.Server · Script"><p>Arranque del servidor: carga los servicios y llama a <code>init()</code> y luego a <code>start()</code>. <span data-loc="src/server/init.server.luau">21</span> líneas.</p></article>
-  <article data-path="src/server/Services/DataService.luau" data-where="Server.Services.DataService · ModuleScript"><p>Carga y guarda perfiles con bloqueo de sesión, autosave y la vista de datos para la interfaz. <span data-loc="src/server/Services/DataService.luau">398</span> líneas.</p></article>
+  <article data-path="src/server/Services/DataService.luau" data-where="Server.Services.DataService · ModuleScript"><p>Carga y guarda perfiles con bloqueo de sesión, autosave y la vista de datos para la interfaz. <span data-loc="src/server/Services/DataService.luau">419</span> líneas.</p></article>
   <article data-path="src/server/Services/MapService.luau" data-where="Server.Services.MapService · ModuleScript"><p>Genera el Bosque de Brasas: suelo, huevo, 16 nidos, zonas, puente y árboles. <span data-loc="src/server/Services/MapService.luau">337</span> líneas.</p></article>
   <article data-path="src/server/Services/RoundService.luau" data-where="Server.Services.RoundService · ModuleScript"><p>El director de orquesta: fases, Elección, premios y ambiente visual. <span data-loc="src/server/Services/RoundService.luau">291</span> líneas.</p></article>
   <article data-path="src/server/Services/HeatService.luau" data-where="Server.Services.HeatService · ModuleScript"><p>Fuentes de Calor, bolsa, depósito en el huevo, empujones, géiseres y ofrendas. <span data-loc="src/server/Services/HeatService.luau">481</span> líneas.</p></article>
   <article data-path="src/server/Services/EggService.luau" data-where="Server.Services.EggService · ModuleScript"><p>Barra del servidor, umbrales, ofrendas acumuladas y tirada de la criatura. <span data-loc="src/server/Services/EggService.luau">143</span> líneas.</p></article>
   <article data-path="src/server/Services/ChaseService.luau" data-where="Server.Services.ChaseService · ModuleScript"><p>Portador, robo validado, inmunidad, esprint, relevo, puerta, tratos y traiciones. <span data-loc="src/server/Services/ChaseService.luau">579</span> líneas.</p></article>
-  <article data-path="src/server/Services/NestService.luau" data-where="Server.Services.NestService · ModuleScript"><p>Nidos: asignación, criaturas expuestas, producción, incubadora, cría, mejoras y Nueva generación. <span data-loc="src/server/Services/NestService.luau">417</span> líneas.</p></article>
+  <article data-path="src/server/Services/NestService.luau" data-where="Server.Services.NestService · ModuleScript"><p>Nidos: asignación, criaturas expuestas, producción, incubadora, cría, mejoras y Nueva generación. <span data-loc="src/server/Services/NestService.luau">522</span> líneas.</p></article>
   <article data-path="src/server/Services/QuestService.luau" data-where="Server.Services.QuestService · ModuleScript"><p>Progreso de misiones, premios y racha. <span data-loc="src/server/Services/QuestService.luau">51</span> líneas.</p></article>
   <article data-path="src/server/Services/MonetizationService.luau" data-where="Server.Services.MonetizationService · ModuleScript"><p>Pases, suscripción y recibos de compra idempotentes. <span data-loc="src/server/Services/MonetizationService.luau">117</span> líneas.</p></article>
   <article data-path="src/server/Services/AnnouncementService.luau" data-where="Server.Services.AnnouncementService · ModuleScript"><p>Avisos para el servidor, para un jugador y para todos los servidores. <span data-loc="src/server/Services/AnnouncementService.luau">47</span> líneas.</p></article>
@@ -348,19 +350,19 @@ flowchart LR
   <article data-path="src/client/Controllers/HUDController.luau" data-where="Client.Controllers.HUDController · ModuleScript"><p>Barra superior, monedas, bolsa, avisos y la flecha (haz de luz) hacia el objetivo. <span data-loc="src/client/Controllers/HUDController.luau">311</span> líneas.</p></article>
   <article data-path="src/client/Controllers/HatchController.luau" data-where="Client.Controllers.HatchController · ModuleScript"><p>El espectáculo de 30 s: huevo que tiembla, ruleta con foco y revelación. <span data-loc="src/client/Controllers/HatchController.luau">187</span> líneas.</p></article>
   <article data-path="src/client/Controllers/ChaseController.luau" data-where="Client.Controllers.ChaseController · ModuleScript"><p>Botones del portador, ventana de tratos y ocultar los prompts de tu propio personaje. <span data-loc="src/client/Controllers/ChaseController.luau">123</span> líneas.</p></article>
-  <article data-path="src/client/Controllers/NestController.luau" data-where="Client.Controllers.NestController · ModuleScript"><p>Panel del nido con pestañas: criaturas y cría, incubadora, mejoras, misiones y tienda. <span data-loc="src/client/Controllers/NestController.luau">355</span> líneas.</p></article>
+  <article data-path="src/client/Controllers/NestController.luau" data-where="Client.Controllers.NestController · ModuleScript"><p>Panel del nido con pestañas: criaturas y cría, incubadora, mejoras, misiones y tienda. <span data-loc="src/client/Controllers/NestController.luau">441</span> líneas.</p></article>
   <article data-path="src/client/Controllers/EffectsController.luau" data-where="Client.Controllers.EffectsController · ModuleScript"><p>Latido del huevo y criaturas arcoíris, solo en local. <span data-loc="src/client/Controllers/EffectsController.luau">50</span> líneas.</p></article>
   <article data-path="src/client/Controllers/DebugController.luau" data-where="Client.Controllers.DebugController · ModuleScript"><p>Panel de depuración con F7, solo en Studio. <span data-loc="src/client/Controllers/DebugController.luau">47</span> líneas.</p></article>
   <article data-path="src/client/Controllers/AutopilotController.luau" data-where="Client.Controllers.AutopilotController · ModuleScript"><p>Piloto automático para probar en Studio: el jugador juega solo con los prompts y remotos reales. F8 lo activa o desactiva. <span data-loc="src/client/Controllers/AutopilotController.luau">289</span> líneas.</p></article>
   <article data-path="sim/run.luau" data-where="Fuera de Roblox · simulador"><p>Punto de entrada del simulador: partida narrada, repetición, lote de partidas y semanas de economía. <span data-loc="sim/run.luau">183</span> líneas.</p></article>
   <article data-path="sim/Round.luau" data-where="Fuera de Roblox · simulador"><p>Una ronda completa con bots en el mapa a escala, con las reglas reales del juego. <span data-loc="sim/Round.luau">802</span> líneas.</p></article>
-  <article data-path="sim/Meta.luau" data-where="Fuera de Roblox · simulador"><p>Semanas de juego: sesiones, nido, mejoras, cría, misiones y Nueva generación. <span data-loc="sim/Meta.luau">430</span> líneas.</p></article>
+  <article data-path="sim/Meta.luau" data-where="Fuera de Roblox · simulador"><p>Semanas de juego: sesiones, nido, mejoras, cría, misiones y Nueva generación. <span data-loc="sim/Meta.luau">483</span> líneas.</p></article>
   <article data-path="sim/Archetypes.luau" data-where="Fuera de Roblox · simulador"><p>Los 6 tipos de jugador que imitan los bots. <span data-loc="sim/Archetypes.luau">139</span> líneas.</p></article>
   <article data-path="sim/Rng.luau" data-where="Fuera de Roblox · simulador"><p>Generador aleatorio con semilla: simulaciones reproducibles. <span data-loc="sim/Rng.luau">33</span> líneas.</p></article>
   <article data-path="tools/Json.luau" data-where="Fuera de Roblox · herramienta"><p>Codificador JSON para el luau de la terminal. <span data-loc="tools/Json.luau">57</span> líneas.</p></article>
-  <article data-path="tools/sim_report.py" data-where="Fuera de Roblox · herramienta (Python)"><p>Lanza el simulador antes/después en paralelo y genera <code>docs/simulacion.html</code>. <span data-loc="tools/sim_report.py">228</span> líneas.</p></article>
+  <article data-path="tools/sim_report.py" data-where="Fuera de Roblox · herramienta (Python)"><p>Lanza el simulador antes/después en paralelo y genera <code>docs/simulacion.html</code>. <span data-loc="tools/sim_report.py">235</span> líneas.</p></article>
   <article data-path="docs/PRUEBAS.md" data-where="Documentación"><p>Cómo probar el juego en Studio con varios jugadores y lista de comprobación por fase. <span data-loc="docs/PRUEBAS.md">71</span> líneas.</p></article>
-  <article data-path="tests/run.luau" data-where="Fuera de Roblox · se ejecuta con luau"><p>33 tests de la lógica pura. <span data-loc="tests/run.luau">381</span> líneas.</p></article>
+  <article data-path="tests/run.luau" data-where="Fuera de Roblox · se ejecuta con luau"><p>Tests de la lógica pura. <span data-loc="tests/run.luau">428</span> líneas.</p></article>
   <article data-path="tools/export_data.luau" data-where="Fuera de Roblox · herramienta"><p>Exporta Config, genes y rarezas en JSON para esta web. <span data-loc="tools/export_data.luau">50</span> líneas.</p></article>
   <article data-path="tools/build_docs.py" data-where="Fuera de Roblox · herramienta (Python)"><p>Rellena esta web con fragmentos de código y datos reales; la CI comprueba que está al día. <span data-loc="tools/build_docs.py">106</span> líneas.</p></article>
   <article data-path=".github/workflows/ci.yml" data-where="GitHub Actions"><p>En cada push: tests, análisis de tipos, comprobación de la web y compilación con Rojo. <span data-loc=".github/workflows/ci.yml">42</span> líneas.</p></article>
@@ -963,7 +965,7 @@ end</code></pre>
 <section class="topic" id="p4-economy">
 <h3><span class="num">4.6</span> Economy.luau · todas las fórmulas</h3>
 <p>Aquí están las cuentas que deciden cuánto cuesta y cuánto da cada cosa. Al ser funciones puras, los tests comprueban, por ejemplo, que la bolsa va de 100 a 1.000 o que el nido va de 6 a 40 ranuras.</p>
-<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.upgradeCost" data-lines="21-28"><code class="language-lua">-- Coste del siguiente nivel, o nil si ya está al máximo. El nivel 0 es el inicial.
+<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.upgradeCost" data-lines="22-29"><code class="language-lua">-- Coste del siguiente nivel, o nil si ya está al máximo. El nivel 0 es el inicial.
 function Economy.upgradeCost(name: UpgradeName, currentLevel: number): number?
 	local def = (Config.Upgrades :: any)[name]
 	if not def or currentLevel &gt;= def.MaxLevel then
@@ -989,7 +991,7 @@ end</code></pre>
   </div>
   <p class="speed"></p>
 </div>
-<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.walkSpeed" data-lines="39-54"><code class="language-lua">-- atHome: el portador está dentro de su nido; intruding: está dentro de un nido ajeno
+<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.walkSpeed" data-lines="40-55"><code class="language-lua">-- atHome: el portador está dentro de su nido; intruding: está dentro de un nido ajeno
 -- durante la persecución (ver Config.Chase).
 function Economy.walkSpeed(bootsLevel: number, isCarrier: boolean, isSprinting: boolean, atHome: boolean?, intruding: boolean?): number
 	local boots = math.clamp(bootsLevel, 0, Config.Movement.BootsMaxLevel) * Config.Movement.BootsPerLevel
@@ -1007,14 +1009,14 @@ function Economy.walkSpeed(bootsLevel: number, isCarrier: boolean, isSprinting: 
 end</code></pre>
 <p>El portador va un 10 % más lento y las botas dan como mucho +10 %. Así ninguna mejora rompe la persecución: un portador con botas al máximo sigue siendo alcanzable. Hay dos excepciones de <b>territorio</b>: dentro de su propio nido, el portador va a velocidad normal (<code>atHome</code>), y quien entra en un nido ajeno durante la persecución va al 60 % (<code>intruding</code>).</p>
 <p><b>Precios.</b> <code>Config.PriceScale</code> escala todos los precios en Monedas (mejoras, cría y Nueva generación), y <code>Config.Nest.OfflineRate</code> decide qué parte de la producción se cobra sin conexión (25 %). Son los dos mandos principales de la economía.</p>
-<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.consolationDust" data-lines="113-118"><code class="language-lua">-- Polvo de cáscara de consolación según Afinidad e intentos de robo (GDD 5.5).
+<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.consolationDust" data-lines="168-173"><code class="language-lua">-- Polvo de cáscara de consolación según Afinidad e intentos de robo (GDD 5.5).
 function Economy.consolationDust(affinity: number, stealAttempts: number): number
 	local c = Config.Consolation
 	local attempts = math.clamp(stealAttempts, 0, c.MaxStealAttempts)
 	return math.floor(c.Base + math.max(affinity, 0) * c.PerAffinity + attempts * c.PerStealAttempt)
 end</code></pre>
 <p>La <b>consolación</b> premia participar: depositar Calor y atreverse a robar. Los intentos tienen tope para que no compense pulsar sin parar.</p>
-<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.thresholdFor" data-lines="124-137"><code class="language-lua">-- Rareza mínima y suerte según el llenado de la barra del servidor.
+<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.thresholdFor" data-lines="179-192"><code class="language-lua">-- Rareza mínima y suerte según el llenado de la barra del servidor.
 function Economy.thresholdFor(fraction: number): (Rarity.RarityName, number, number)
 	local minRarity: Rarity.RarityName = "Common"
 	local luck = 1
@@ -1034,7 +1036,7 @@ end</code></pre>
   <div class="bar-track" style="position:relative;height:26px"><div class="bar-fill" style="background:linear-gradient(90deg,#ffb15a,#ff6a2a)"></div></div>
   <p class="out"></p>
 </div>
-<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.offlineEarnings" data-lines="99-103"><code class="language-lua">-- Producción acumulada sin conexión, con tope de horas (GDD 5.6).
+<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.offlineEarnings" data-lines="100-104"><code class="language-lua">-- Producción acumulada sin conexión, con tope de horas (GDD 5.6).
 function Economy.offlineEarnings(incomePerSecond: number, secondsAway: number): number
 	local capped = math.clamp(secondsAway, 0, Config.Nest.OfflineCapHours * 3600)
 	return math.floor(incomePerSecond * capped * Config.Nest.OfflineRate)
@@ -1105,7 +1107,7 @@ end</code></pre>
 
 <section class="topic" id="p4-playerdata">
 <h3><span class="num">4.8</span> PlayerData.luau · qué se guarda de cada jugador</h3>
-<pre class="code" data-file="src/shared/PlayerData.luau" data-from="export type Profile = {" data-to="^}" data-lines="18-32"><code class="language-lua">export type Profile = {
+<pre class="code" data-file="src/shared/PlayerData.luau" data-from="export type Profile = {" data-to="^}" data-lines="18-33"><code class="language-lua">export type Profile = {
 	Version: number,
 	Coins: number,
 	Dust: number,
@@ -1119,6 +1121,7 @@ end</code></pre>
 	Receipts: { string },
 	LastBreed: { string }?,
 	Funnel: { [string]: boolean },
+	Decorations: { string }, -- ids de Config.Decorations compradas
 }</code></pre>
 <p>Un ejemplo de perfil guardado (resumido):</p>
 <pre class="plain lua-plain"><code class="language-json">{
@@ -1133,7 +1136,7 @@ end</code></pre>
   "Receipts": [ "compra-123", … ], "LastSeen": 1792693000
 }</code></pre>
 <p><code>reconcile</code> se ejecuta <b>cada vez que se carga</b> un perfil. Parte de un perfil por defecto y copia solo lo que es válido de lo guardado: números que sean números, criaturas con genes que existan, misiones bien formadas… Además, la rareza se <b>recalcula</b> siempre desde los genes. Así, si un día cambias la rareza de un gen, todas las criaturas guardadas se actualizan solas, y un dato corrupto nunca rompe el juego.</p>
-<pre class="code" data-file="src/shared/PlayerData.luau" data-fn="PlayerData.reconcile" data-lines="79-171"><code class="language-lua">-- Rellena campos que falten y descarta datos corruptos sin perder lo válido.
+<pre class="code" data-file="src/shared/PlayerData.luau" data-fn="PlayerData.reconcile" data-lines="82-182"><code class="language-lua">-- Rellena campos que falten y descarta datos corruptos sin perder lo válido.
 function PlayerData.reconcile(raw: any, now: number): Profile
 	local profile = PlayerData.default(now)
 	if type(raw) ~= "table" then
@@ -1224,6 +1227,14 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 		end
 	end
 
+	if type(raw.Decorations) == "table" then
+		for _, id in raw.Decorations do
+			if type(id) == "string" and not table.find(profile.Decorations, id) then
+				table.insert(profile.Decorations, id)
+			end
+		end
+	end
+
 	return profile
 end</code></pre>
 </section>
@@ -1298,7 +1309,7 @@ end</code></pre>
 <section class="topic" id="p4-remotes">
 <h3><span class="num">4.9</span> Remotes.luau y RoundState.luau · los canales de comunicación</h3>
 <p>Todos los remotos están en una sola lista. El mismo módulo hace dos cosas según dónde se ejecute: en el servidor (<code>RunService:IsServer()</code>) los <b>crea</b> y en el cliente <b>espera</b> a que existan. <code>Remotes.event("Nombre")</code> falla en el acto si te equivocas al escribir el nombre, en vez de quedarse esperando para siempre.</p>
-<pre class="code" data-file="src/shared/Remotes.luau" data-from="local EVENTS = {" data-to="^}" data-lines="8-27"><code class="language-lua">local EVENTS = {
+<pre class="code" data-file="src/shared/Remotes.luau" data-from="local EVENTS = {" data-to="^}" data-lines="8-30"><code class="language-lua">local EVENTS = {
 	-- servidor -&gt; cliente
 	"HatchSequence", -- espectáculo de eclosión y Elección
 	"Announcement", -- avisos para todo el servidor (umbrales, Míticas, Secretas)
@@ -1316,6 +1327,9 @@ end</code></pre>
 	"RequestCollectEggs",
 	"RequestRebirth",
 	"SetGoldenOffering",
+	"RequestRelease", -- liberar 1 o 2 criaturas seleccionadas
+	"RequestReleaseStored", -- liberar las guardadas de rareza baja
+	"RequestBuyDecoration",
 	"DebugCommand", -- solo Studio (Config.Testing.DebugTools)
 }</code></pre>
 <p><code>RoundState</code> guarda el estado de la ronda como <b>atributos</b> de una carpeta: <code>Phase</code>, <code>PhaseEndsAt</code>, <code>Bar</code>, <code>BarGoal</code>, <code>MinRarity</code>, <code>CarrierUserId</code>… El cliente no necesita mensajes para cada cambio: lee el atributo o escucha <code>RoundState.changed("Bar")</code>. El temporizador usa <code>workspace:GetServerTimeNow()</code>, un reloj que el servidor y los clientes comparten, así la cuenta atrás es igual en todas las pantallas.</p>
@@ -2461,7 +2475,7 @@ end</code></pre>
 <section class="topic" id="p4-nest">
 <h3><span class="num">4.18</span> NestService · el nido y la progresión</h3>
 <p>Al cargar un perfil, el jugador recibe un nido libre (atributo <code>NestIndex</code>), aparece dentro de él y cobra lo que produjo mientras no estaba. Si es su primera vez, recibe una criatura común de regalo para que el nido no empiece vacío.</p>
-<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="onLoaded" data-lines="372-398"><code class="language-lua">local function onLoaded(player: Player, profile: Profile)
+<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="onLoaded" data-lines="480-506"><code class="language-lua">local function onLoaded(player: Player, profile: Profile)
 	assignNest(player)
 	for name, level in profile.Upgrades do
 		player:SetAttribute("Upgrade_" .. name, level)
@@ -2488,7 +2502,7 @@ end</code></pre>
 	end)
 	NestService.refreshDisplay(player)
 end</code></pre>
-<pre class="code" data-file="src/server/Services/NestService.luau" data-from="-- Producción por segundo." data-to="end)" data-lines="441-460"><code class="language-lua">-- Producción por segundo. Solo actualiza el atributo; la vista completa se envía
+<pre class="code" data-file="src/server/Services/NestService.luau" data-from="-- Producción por segundo." data-to="end)" data-lines="552-571"><code class="language-lua">-- Producción por segundo. Solo actualiza el atributo; la vista completa se envía
 -- cuando cambia algo estructural.
 task.spawn(function()
 	local tick = 0
@@ -2509,7 +2523,7 @@ task.spawn(function()
 	end
 end)</code></pre>
 <p>Cada segundo se suma la producción. Para no saturar la red, ese bucle solo actualiza el atributo <code>Coins</code>, que es un único número. La vista completa del panel se reenvía cada 10 s o cuando cambia algo importante.</p>
-<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="NestService.refreshDisplay" data-lines="96-143"><code class="language-lua">-- Muestra en el nido las criaturas que producen (hasta 12 modelos).
+<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="NestService.refreshDisplay" data-lines="98-165"><code class="language-lua">-- Muestra en el nido las criaturas que producen (hasta 12 modelos).
 function NestService.refreshDisplay(player: Player)
 	local profile = DataService.get(player)
 	local nest = NestService.nestOf(player)
@@ -2524,12 +2538,32 @@ function NestService.refreshDisplay(player: Player)
 	end
 	local signature = table.concat(ids, ",")
 
+	local beauty = Economy.beauty(profile.Decorations)
 	nest.Sign.Text = string.format(
-		"Nido de %s\n%d criaturas · %d/s",
+		"Nido de %s\n%d criaturas · %d/s%s",
 		player.DisplayName,
 		#profile.Creatures,
-		math.floor(DataService.incomePerSecond(player))
+		math.floor(DataService.incomePerSecond(player)),
+		if beauty &gt; 0 then string.format(" · ✨%d", beauty) else ""
 	)
+
+	local decorSignature = table.concat(profile.Decorations, ",")
+	local decor = decorated[player]
+	if not decor or decor.Signature ~= decorSignature then
+		if decor then
+			decor.Folder:Destroy()
+		end
+		local decorFolder = Instance.new("Folder")
+		decorFolder.Name = "Decorations"
+		decorFolder.Parent = nest.Model
+		decorated[player] = { Signature = decorSignature, Folder = decorFolder }
+		for _, id in profile.Decorations do
+			local model = DecorationModel.build(id, nest.Origin)
+			if model then
+				model.Parent = decorFolder
+			end
+		end
+	end
 
 	local current = displays[player]
 	if current and current.Signature == signature then
@@ -2558,7 +2592,7 @@ function NestService.refreshDisplay(player: Player)
 
 end</code></pre>
 <p>El nido muestra físicamente las 12 mejores criaturas. Para no reconstruir los modelos sin necesidad, se calcula una <b>firma</b> (los Id de las criaturas expuestas unidos con comas). Si no cambia, solo se actualiza el cartel.</p>
-<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="NestService.isInsideOwnNest" data-lines="63-71"><code class="language-lua">function NestService.isInsideOwnNest(player: Player): boolean
+<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="NestService.isInsideOwnNest" data-lines="65-73"><code class="language-lua">function NestService.isInsideOwnNest(player: Player): boolean
 	local nest = NestService.nestOf(player)
 	local character = player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -2569,7 +2603,7 @@ end</code></pre>
 end</code></pre>
 <p><code>PointToObjectSpace</code> convierte la posición del jugador a coordenadas del nido. Así basta con comprobar si está dentro de un cuadrado alineado, sin importar cómo esté girado el nido.</p>
 <h4>Incubadora y cría</h4>
-<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="startBreed" data-lines="291-318"><code class="language-lua">local function startBreed(player: Player, idA: string, idB: string, free: boolean): boolean
+<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="startBreed" data-lines="318-345"><code class="language-lua">local function startBreed(player: Player, idA: string, idB: string, free: boolean): boolean
 	local profile = DataService.get(player)
 	if not profile or idA == idB then
 		return false
@@ -2598,7 +2632,7 @@ end</code></pre>
 	return true
 end</code></pre>
 <p>La cría calcula los genes del hijo <b>en el momento de empezar</b> y los guarda en el huevo. Esperar no cambia el resultado, y el huevo tarda de 10 minutos a 4 horas según la rareza de los padres. Son las "citas de vuelta" del GDD: motivos para volver al juego más tarde.</p>
-<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="collectEggs" data-lines="253-289"><code class="language-lua">local function collectEggs(player: Player)
+<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="collectEggs" data-lines="280-316"><code class="language-lua">local function collectEggs(player: Player)
 	local profile = DataService.get(player)
 	if not profile then
 		return
@@ -2636,7 +2670,7 @@ end</code></pre>
 	DataService.markChanged(player)
 end</code></pre>
 <h4>Mejoras y Nueva generación</h4>
-<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="upgrade" data-lines="322-342"><code class="language-lua">local function upgrade(player: Player, name: any)
+<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="upgrade" data-lines="430-450"><code class="language-lua">local function upgrade(player: Player, name: any)
 	local profile = DataService.get(player)
 	if not profile or type(name) ~= "string" or profile.Upgrades[name] == nil then
 		return
@@ -2657,7 +2691,7 @@ end</code></pre>
 	DataService.markChanged(player)
 	NestService.refreshDisplay(player)
 end</code></pre>
-<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="rebirth" data-lines="344-368"><code class="language-lua">local function rebirth(player: Player)
+<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="rebirth" data-lines="452-476"><code class="language-lua">local function rebirth(player: Player)
 	local profile = DataService.get(player)
 	if not profile then
 		return
@@ -2683,6 +2717,55 @@ end</code></pre>
 	AnnouncementService.server(string.format("¡%s ha empezado la Generación %d!", player.DisplayName, profile.Generation), "rare")
 end</code></pre>
 <p>La <b>Nueva generación</b> (rebirth) pide <span data-cfg="Rebirth.CreaturesNeeded"></span> criaturas y una cantidad de Monedas que crece con cada generación. A cambio vacía el nido y da +<span data-cfg="Rebirth.MultiplierPerGeneration"></span> de multiplicador de producción para siempre. Es la meta larga de los jugadores dedicados.</p>
+<h4>Liberar criaturas y decorar: los sumideros</h4>
+<p>El simulador mostró dos problemas a final de mes: nidos con más de 250 criaturas (casi todas comunes guardadas que no producen) y Monedas y polvo sin nada en qué gastarlos. La solución tiene dos partes. La primera es <b>liberar</b> criaturas a cambio de polvo. Se puede hacer una a una, o con el botón "liberar guardadas", que elige así:</p>
+<pre class="code" data-file="src/shared/Economy.luau" data-fn="Economy.bulkReleaseIds" data-lines="122-139"><code class="language-lua">-- Criaturas que libera "liberar guardadas": las que no producen (fuera de las `slots`
+-- mejores) de rareza baja, empezando por las peores y sin bajar de KeepAtLeast en total.
+function Economy.bulkReleaseIds(creatures: { Creature.Creature }, slots: number): { string }
+	local sorted = Creature.sortByIncome(creatures)
+	local maxTier = Rarity.tier(Config.Release.BulkMaxRarity :: Rarity.RarityName)
+	local allowed = math.max(#sorted - Config.Release.KeepAtLeast, 0)
+	local ids = {}
+	for index = #sorted, slots + 1, -1 do
+		if #ids &gt;= allowed then
+			break
+		end
+		local creature = sorted[index]
+		if Rarity.tier(creature.Rarity) &lt;= maxTier and Economy.releaseDust(creature.Rarity) then
+			table.insert(ids, creature.Id)
+		end
+	end
+	return ids
+end</code></pre>
+<p>Recorre la lista de peor a mejor y se para antes de llegar a las que están en el nido produciendo. Solo toca rarezas bajas (<code>Config.Release.BulkMaxRarity</code>) y nunca deja menos de <code>KeepAtLeast</code> criaturas, que es lo que pide la Nueva generación. Las Secretas no se pueden liberar. El botón pide una segunda pulsación para confirmar.</p>
+<p>La segunda es la <b>decoración del nido</b>: 12 piezas de <code>Config.Decorations</code>, 8 de Monedas (de 25 mil a 500 millones) y 4 de polvo. Son solo estéticas. No colisionan, así que no cambian la persecución, y suman "Belleza" en el cartel del nido. Se conservan en la Nueva generación.</p>
+<pre class="code" data-file="src/server/Services/NestService.luau" data-fn="buyDecoration" data-lines="401-426"><code class="language-lua">local function buyDecoration(player: Player, id: any)
+	local profile = DataService.get(player)
+	local def = Economy.decoration(id)
+	if not profile or not def or not Config.Sinks.Decorations then
+		return
+	end
+	if table.find(profile.Decorations, def.Id) then
+		AnnouncementService.player(player, "Ya tienes esa decoración.")
+		return
+	end
+	local cost = Economy.decorationCost(def)
+	local balance = if def.Currency == "Coins" then profile.Coins else profile.Dust
+	if balance &lt; cost then
+		AnnouncementService.player(player, if def.Currency == "Coins" then "No tienes Monedas suficientes." else "Te falta Polvo de cáscara.")
+		return
+	end
+	if def.Currency == "Coins" then
+		DataService.addCoins(player, -cost)
+	else
+		DataService.addDust(player, -cost)
+	end
+	table.insert(profile.Decorations, def.Id)
+	DataService.markChanged(player)
+	NestService.refreshDisplay(player)
+	AnnouncementService.player(player, string.format("¡%s colocada en tu nido!", def.Name), "rare")
+end</code></pre>
+<p>El aspecto de cada pieza son datos (<code>Decorations.luau</code>: forma, tamaño, posición en la parcela, color y material) y <code>DecorationModel</code> los convierte en Parts. Así, añadir una decoración nueva es añadir una línea al catálogo y otra a la tabla de piezas, sin código nuevo. Los dos sumideros se pueden apagar con <code>Config.Sinks</code>; el informe del simulador los apaga en la columna "antes" para comparar.</p>
 </section>
 
 <section class="topic" id="p4-quest-service">
@@ -3083,7 +3166,7 @@ end</code></pre>
 <section class="topic" id="p4-nest-client">
 <h3><span class="num">4.26</span> NestController · el panel del nido</h3>
 <p>Un panel con cinco pestañas que se vuelve a dibujar entero (<code>render</code>) cada vez que llega una vista nueva del perfil. Es un patrón sencillo, parecido a React: los datos entran y la interfaz se reconstruye a partir de ellos.</p>
-<pre class="code" data-file="src/client/Controllers/NestController.luau" data-fn="renderCreatures" data-lines="51-123"><code class="language-lua">local function renderCreatures()
+<pre class="code" data-file="src/client/Controllers/NestController.luau" data-fn="renderCreatures" data-lines="52-174"><code class="language-lua">local function renderCreatures()
 	if #profile.Creatures == 0 then
 		UI.label({ Size = UDim2.new(1, 0, 0, 40), Text = "Aún no tienes criaturas. ¡Gana una persecución!" }, content)
 	end
@@ -3125,6 +3208,7 @@ end</code></pre>
 					table.remove(selected, 1)
 				end
 			end
+			confirmRelease = ""
 			render()
 		end)
 	end
@@ -3149,15 +3233,64 @@ end</code></pre>
 		end
 		breedText = string.format("Criar (%s 🪙 · %s)", UI.formatNumber(Economy.breedCost(best)), UI.formatTime(Economy.breedSeconds(best)))
 	end
-	UI.button({ Size = UDim2.new(1, 0, 1, 0), Text = breedText, BackgroundColor3 = if #selected == 2 then UI.Colors.Good else UI.Colors.PanelLight }, footer, function()
+	UI.button({ Size = UDim2.new(0.6, -4, 1, 0), Text = breedText, BackgroundColor3 = if #selected == 2 then UI.Colors.Good else UI.Colors.PanelLight }, footer, function()
 		if #selected == 2 then
 			Remotes.event("RequestBreed"):FireServer(selected[1], selected[2])
 			table.clear(selected)
 		end
 	end)
+
+	-- Liberar: las seleccionadas, o si no hay ninguna, las guardadas de rareza baja.
+	-- Siempre pide una segunda pulsación para confirmar.
+	local releaseKey: string, releaseText: string, canRelease: boolean
+	if #selected &gt; 0 then
+		local dust = 0
+		canRelease = true
+		for _, creature in profile.Creatures do
+			if table.find(selected, creature.Id) then
+				if creature.ReleaseDust then
+					dust += creature.ReleaseDust
+				else
+					canRelease = false
+				end
+			end
+		end
+		releaseKey = "sel:" .. table.concat(selected, ",")
+		releaseText = if canRelease then string.format("🕊️ Liberar (+%d ✨)", dust) else "🔒 No se puede liberar"
+	else
+		local stored = profile.StoredRelease or { Count = 0, Dust = 0 }
+		canRelease = stored.Count &gt; 0
+		releaseKey = "stored"
+		releaseText = if canRelease then string.format("🕊️ Liberar %d guardadas (+%d ✨)", stored.Count, stored.Dust) else "🕊️ Nada que liberar"
+	end
+	local confirming = canRelease and confirmRelease == releaseKey
+	UI.button({
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.new(0.4, -4, 1, 0),
+		Text = if confirming then "¿Seguro? Pulsa otra vez" else releaseText,
+		BackgroundColor3 = if confirming then UI.Colors.Bad elseif canRelease then UI.Colors.PanelLight else UI.Colors.Panel,
+	}, footer, function()
+		if not canRelease then
+			return
+		end
+		if confirmRelease ~= releaseKey then
+			confirmRelease = releaseKey
+			render()
+			return
+		end
+		confirmRelease = ""
+		if #selected &gt; 0 then
+			Remotes.event("RequestRelease"):FireServer(table.clone(selected))
+			table.clear(selected)
+		else
+			Remotes.event("RequestReleaseStored"):FireServer()
+		end
+		render()
+	end)
 end</code></pre>
 <p>Para criar se seleccionan dos criaturas y el botón muestra el coste y el tiempo, calculados con las mismas funciones de <code>Economy</code> que usa el servidor. El cliente solo envía los dos Id; el servidor vuelve a comprobarlo todo.</p>
-<pre class="code" data-file="src/client/Controllers/NestController.luau" data-fn="oddsText" data-lines="209-219"><code class="language-lua">local function oddsText(range: { Min: string, Max: string }): string
+<pre class="code" data-file="src/client/Controllers/NestController.luau" data-fn="oddsText" data-lines="291-301"><code class="language-lua">local function oddsText(range: { Min: string, Max: string }): string
 	local parts = {}
 	local chances = Rarity.chances(1, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName)
 	for _, name in Rarity.Order do
@@ -3219,8 +3352,8 @@ end</code></pre>
 
 <section class="topic" id="p4-tests">
 <h3><span class="num">4.28</span> Tests, simulador de bots y CI</h3>
-<p><code>tests/run.luau</code> tiene un mini framework de tests de 20 líneas (<code>test</code> y <code>expect</code>) y 33 pruebas sobre la lógica pura. Usa un generador de números fijo (<code>seeded</code>), así las pruebas estadísticas dan siempre el mismo resultado.</p>
-<pre class="code" data-file="tests/run.luau" data-from="test(&quot;Election: mínimo del 2 % y suma 1&quot;" data-to="^end)" data-lines="184-199"><code class="language-lua">test("Election: mínimo del 2 % y suma 1", function()
+<p><code>tests/run.luau</code> tiene un mini framework de tests de 20 líneas (<code>test</code> y <code>expect</code>) y decenas de pruebas sobre la lógica pura. Usa un generador de números fijo (<code>seeded</code>), así las pruebas estadísticas dan siempre el mismo resultado.</p>
+<pre class="code" data-file="tests/run.luau" data-from="test(&quot;Election: mínimo del 2 % y suma 1&quot;" data-to="^end)" data-lines="185-200"><code class="language-lua">test("Election: mínimo del 2 % y suma 1", function()
 	local entries: { Election.Entry } = {
 		{ Key = "rico", Affinity = 10000 },
 		{ Key = "medio", Affinity = 500 },
@@ -3386,8 +3519,7 @@ end</code></pre>
 <h3><span class="num">4.30</span> Qué falta y por dónde seguir</h3>
 <div class="table-wrap"><table>
 <tr><th>Pendiente</th><th>Dónde encajaría</th></tr>
-<tr><td>Liberar criaturas a cambio de polvo (el simulador llega a 250 por jugador)</td><td><code>NestService</code> + botón en <code>NestController</code></td></tr>
-<tr><td>Sumideros de Monedas para el final del mes (decoración, cosméticos)</td><td><code>NestService</code> y tienda</td></tr>
+<tr><td>Más sumideros de Monedas (pase de temporada, cosméticos); la decoración ya existe</td><td><code>Config.Decorations</code> y tienda</td></tr>
 <tr><td>Emparejar servidores por nivel, o dar un premio al elegido aunque pierda (los novatos casi nunca ganan la persecución)</td><td><code>RoundService</code> / <code>Rewards</code></td></tr>
 <tr><td>Huevo Doble, Noche de Saqueo, Huevo del Admin, Huevo Comunitario</td><td><code>RoundService</code> (modificadores como la Luna de Sangre), <code>MemoryStoreService</code> para la barra global</td></tr>
 <tr><td>Grupos ("Bandada") e intercambio de criaturas</td><td>Un nuevo <code>PartyService</code> y <code>TradeService</code> con confirmación doble y bloqueo de sesión</td></tr>
@@ -3406,7 +3538,7 @@ end</code></pre>
 </div>
 </main>
 
-<script id="game-data" type="application/json">{"BiasChance":0.5,"Config":{"BreedSeconds":{"Common":600,"Epic":2700,"Legendary":5400,"Mythic":10800,"Rare":1200,"Secret":14400},"Breeding":{"CostPerTierSquared":2000,"MutationChance":0.1},"Chase":{"CarrierSpeedMultiplier":0.9,"DoorCloseTime":10,"HeadStartSeconds":4,"HomeCarrierFullSpeed":true,"HomeHoldMultiplier":1.5,"ImmunityAfterSteal":3,"IntruderSpeedMultiplier":0.6,"OvertimeSeconds":45,"PassRange":12,"SecureSeconds":25,"ShieldsPerRound":1,"SprintCooldown":8,"SprintDuration":2,"SprintMultiplier":1.4,"StartImmunitySeconds":10,"StealHoldTime":1.5,"StealRange":9,"StunSeconds":2},"ClubSubscriptionId":"","CoinPacks":{"CoinsLarge":120000,"CoinsSmall":5000},"Consolation":{"Base":10,"MaxStealAttempts":5,"PerAffinity":0.05,"PerStealAttempt":15,"WinnerBonusDust":25},"Data":{"AutosaveSeconds":60,"LockTimeoutSeconds":1800,"StoreName":"PlayerData_v1"},"Deal":{"DustShare":0.3,"OfferRange":12},"DevProducts":{"BreedReroll":0,"CoinsLarge":0,"CoinsSmall":0,"GoldenOffering":0,"SeasonEgg":0,"ServerLuck":0,"ShellShield":0},"EggRanges":{"Personal":{"Max":"Epic","Min":"Common"},"Season":{"Max":"Legendary","Min":"Rare"},"Streak":{"Max":"Legendary","Min":"Rare"}},"Election":{"MinChance":0.02,"PityMaxChance":0.12,"PityPerRound":0.02},"Events":{"BloodMoon":{"Hours":1,"MinRarity":"Epic","StartHour":20,"WeekDay":7}},"GamePasses":{"AutoDeposit":0,"BigBag":0,"DoubleCoins":0,"ExtraBreedSlot":0,"FastIncubator":0,"VipNest":0},"Heat":{"BagBaseCapacity":100,"BagCapacityPerLevel":100,"BagGamePassMultiplier":1.5,"BagMaxLevel":10,"BumpCooldown":6,"BumpDropFraction":0.25,"BumpRange":9,"DepositRadius":20,"Ember":{"Amount":5,"Count":60,"Respawn":8},"Firefly":{"Amount":8,"Count":20,"Respawn":12},"Geyser":{"Amount":40,"Cooldown":45,"Count":4,"PlayersNeeded":2,"Window":4},"LuckyBlock":{"Count":10,"Max":50,"Min":1,"Respawn":30}},"Incubator":{"BaseSlots":1,"ExtraSlotPass":1,"FastPassMultiplier":0.5,"MaxLevel":5,"PersonalEggCostDust":100,"PersonalEggSeconds":300,"SpeedPerLevel":0.05},"Movement":{"BaseWalkSpeed":16,"BootsMaxLevel":10,"BootsPerLevel":0.01},"Nest":{"BaseSlots":6,"Count":16,"MaxSlots":40,"OfflineCapHours":8,"OfflineRate":0.25,"SlotsPerLevel":2,"VipExtraSlots":10},"PriceScale":1,"Quests":{"PerDay":3,"RewardDust":50,"StreakDays":7},"Rebirth":{"BaseCoins":100000000,"CreaturesNeeded":40,"MultiplierPerGeneration":0.5},"Round":{"BarGoalBase":6000,"BarGoalMin":1200,"BarGoalPerPlayer":1150,"BloodMoonChaseTime":300,"ChaseTime":180,"HatchTime":30,"IncubationTime":480,"IntermissionTime":15,"MaxPlayers":16,"MinPlayers":1,"ResultsTime":15},"ServerLuck":{"Luck":2,"Seconds":900},"Testing":{"Autopilot":true,"AutopilotOnFirstPlayer":false,"DebugTools":true,"TimeScale":0.35},"Thresholds":[{"Fraction":0.25,"Luck":1.25,"MinRarity":"Rare"},{"Fraction":0.5,"Luck":1.5,"MinRarity":"Rare"},{"Fraction":0.75,"Luck":1.75,"MinRarity":"Epic"},{"Fraction":1,"Luck":2,"MinRarity":"Epic"}],"Upgrades":{"Bag":{"BaseCost":150,"Growth":3.5,"MaxLevel":9},"Boots":{"BaseCost":200,"Growth":3.1,"MaxLevel":10},"Incubator":{"BaseCost":1000,"Growth":7,"MaxLevel":5},"Nest":{"BaseCost":300,"Growth":2.05,"MaxLevel":17},"Sniffer":{"BaseCost":100000,"Growth":1,"MaxLevel":1}}},"GeneBonusPerTier":0.05,"Genes":{"Aura":[{"Color":[255,255,255],"Id":"aura_none","Name":"Sin aura","Rarity":"Common","Slot":"Aura"},{"Color":[200,190,170],"Id":"aura_dust","Name":"Polvo","Rarity":"Common","Slot":"Aura"},{"Color":[90,190,70],"Id":"aura_leaves","Name":"Hojas","Rarity":"Common","Slot":"Aura"},{"Color":[160,220,255],"Id":"aura_bubbles","Name":"Burbujas","Rarity":"Common","Slot":"Aura"},{"Color":[255,230,120],"Id":"aura_sparks","Name":"Chispas","Rarity":"Common","Slot":"Aura"},{"Color":[255,110,30],"Id":"aura_fire","Name":"Fuego","Rarity":"Rare","Slot":"Aura"},{"Color":[180,240,255],"Id":"aura_frost","Name":"Escarcha","Rarity":"Rare","Slot":"Aura"},{"Color":[255,90,140],"Id":"aura_hearts","Name":"Corazones","Rarity":"Rare","Slot":"Aura"},{"Color":[255,255,90],"Id":"aura_lightning","Name":"Rayos","Rarity":"Epic","Slot":"Aura"},{"Color":[50,30,70],"Id":"aura_shadow","Name":"Sombra","Rarity":"Epic","Slot":"Aura"},{"Color":[255,190,40],"Id":"aura_sun","Name":"Solar","Rarity":"Legendary","Slot":"Aura"},{"Color":[120,0,40],"Id":"aura_eclipse","Name":"Eclipse","Rarity":"Mythic","Slot":"Aura"}],"Body":[{"Color":[255,214,150],"Id":"body_round","Name":"Redondito","Rarity":"Common","Slot":"Body"},{"Color":[240,180,120],"Id":"body_chubby","Name":"Gordito","Rarity":"Common","Slot":"Body"},{"Color":[200,230,140],"Id":"body_long","Name":"Alargado","Rarity":"Common","Slot":"Body"},{"Color":[255,190,200],"Id":"body_tiny","Name":"Mini","Rarity":"Common","Slot":"Body"},{"Color":[245,245,235],"Id":"body_fluffy","Name":"Peludo","Rarity":"Common","Slot":"Body"},{"Color":[150,230,255],"Id":"body_crystal","Name":"Cristalino","Rarity":"Rare","Slot":"Body"},{"Color":[255,90,40],"Id":"body_lava","Name":"Lava","Rarity":"Rare","Slot":"Body"},{"Color":[120,255,180],"Id":"body_jelly","Name":"Gelatina","Rarity":"Rare","Slot":"Body"},{"Color":[130,130,140],"Id":"body_stone","Name":"Pétreo","Rarity":"Epic","Slot":"Body"},{"Color":[230,240,255],"Id":"body_cloud","Name":"Nube","Rarity":"Epic","Slot":"Body"},{"Color":[255,240,120],"Id":"body_star","Name":"Estelar","Rarity":"Legendary","Slot":"Body"},{"Color":[40,20,60],"Id":"body_void","Name":"Vacío","Rarity":"Mythic","Slot":"Body"}],"Head":[{"Color":[255,200,60],"Id":"head_beak","Name":"Pico","Rarity":"Common","Slot":"Head"},{"Color":[230,170,140],"Id":"head_ears","Name":"Orejitas","Rarity":"Common","Slot":"Head"},{"Color":[240,230,210],"Id":"head_horn","Name":"Cuernito","Rarity":"Common","Slot":"Head"},{"Color":[255,230,240],"Id":"head_bunny","Name":"Conejo","Rarity":"Common","Slot":"Head"},{"Color":[110,200,90],"Id":"head_frog","Name":"Rana","Rarity":"Common","Slot":"Head"},{"Color":[120,200,255],"Id":"head_feathered","Name":"Plumado","Rarity":"Rare","Slot":"Head"},{"Color":[255,210,60],"Id":"head_crown","Name":"Corona","Rarity":"Rare","Slot":"Head"},{"Color":[200,120,255],"Id":"head_cyclops","Name":"Cíclope","Rarity":"Rare","Slot":"Head"},{"Color":[220,60,60],"Id":"head_dragon","Name":"Dragón","Rarity":"Epic","Slot":"Head"},{"Color":[60,60,70],"Id":"head_mask","Name":"Máscara","Rarity":"Epic","Slot":"Head"},{"Color":[255,255,200],"Id":"head_halo","Name":"Halo","Rarity":"Legendary","Slot":"Head"},{"Color":[120,220,255],"Id":"head_comet","Name":"Cometa","Rarity":"Mythic","Slot":"Head"}],"Mutation":[{"Color":[255,255,255],"Id":"mut_none","Name":"Normal","Rarity":"Common","Slot":"Mutation"},{"Color":[255,255,255],"Id":"mut_big","Name":"Gigante","Rarity":"Common","Slot":"Mutation"},{"Color":[255,255,255],"Id":"mut_small","Name":"Diminuto","Rarity":"Common","Slot":"Mutation"},{"Color":[255,255,220],"Id":"mut_shiny","Name":"Brillante","Rarity":"Common","Slot":"Mutation"},{"Color":[255,255,255],"Id":"mut_twin","Name":"Gemelo","Rarity":"Rare","Slot":"Mutation"},{"Color":[0,0,0],"Id":"mut_inverted","Name":"Invertido","Rarity":"Rare","Slot":"Mutation"},{"Color":[140,255,120],"Id":"mut_glow","Name":"Fosforito","Rarity":"Rare","Slot":"Mutation"},{"Color":[220,230,255],"Id":"mut_ghost","Name":"Fantasma","Rarity":"Epic","Slot":"Mutation"},{"Color":[255,200,40],"Id":"mut_golden","Name":"Dorado","Rarity":"Epic","Slot":"Mutation"},{"Color":[180,150,100],"Id":"mut_ancient","Name":"Ancestral","Rarity":"Legendary","Slot":"Mutation"},{"Color":[80,60,200],"Id":"mut_cosmic","Name":"Cósmico","Rarity":"Mythic","Slot":"Mutation"},{"Color":[255,0,255],"Id":"mut_rainbow","Name":"Arcoíris Eterno","Rarity":"Secret","Slot":"Mutation"}],"Pattern":[{"Color":[255,255,255],"Id":"pattern_plain","Name":"Liso","Rarity":"Common","Slot":"Pattern"},{"Color":[120,80,50],"Id":"pattern_spots","Name":"Moteado","Rarity":"Common","Slot":"Pattern"},{"Color":[60,60,60],"Id":"pattern_stripes","Name":"Rayado","Rarity":"Common","Slot":"Pattern"},{"Color":[255,120,160],"Id":"pattern_dots","Name":"Lunares","Rarity":"Common","Slot":"Pattern"},{"Color":[180,140,90],"Id":"pattern_patch","Name":"Parches","Rarity":"Common","Slot":"Pattern"},{"Color":[240,235,220],"Id":"pattern_bone","Name":"Óseo","Rarity":"Rare","Slot":"Pattern"},{"Color":[255,170,0],"Id":"pattern_zigzag","Name":"Zigzag","Rarity":"Rare","Slot":"Pattern"},{"Color":[60,170,120],"Id":"pattern_scales","Name":"Escamas","Rarity":"Rare","Slot":"Pattern"},{"Color":[90,200,255],"Id":"pattern_runes","Name":"Rúnico","Rarity":"Epic","Slot":"Pattern"},{"Color":[90,40,160],"Id":"pattern_galaxy","Name":"Galaxia","Rarity":"Epic","Slot":"Pattern"},{"Color":[255,200,40],"Id":"pattern_gold","Name":"Dorado","Rarity":"Legendary","Slot":"Pattern"},{"Color":[255,120,255],"Id":"pattern_prism","Name":"Prisma","Rarity":"Mythic","Slot":"Pattern"}]},"Offerings":{"Bone":{"DisplayName":"Hueso","Gene":"pattern_bone","Slot":"Pattern"},"Crystal":{"DisplayName":"Cristal","Gene":"body_crystal","Slot":"Body"},"Feather":{"DisplayName":"Pluma","Gene":"head_feathered","Slot":"Head"}},"Quests":[{"Goal":1,"Kind":"Steal","Text":"Roba la criatura 1 vez"},{"Goal":500,"Kind":"DepositHeat","Text":"Deposita 500 de Calor"},{"Goal":2,"Kind":"Breed","Text":"Cría 2 huevos"},{"Goal":1,"Kind":"HatchPersonal","Text":"Abre 1 huevo personal"},{"Goal":1,"Kind":"WinCreature","Text":"Gana 1 criatura en una persecución"},{"Goal":3,"Kind":"LuckyBlock","Text":"Rompe 3 bloques de suerte"},{"Goal":3,"Kind":"PlayRounds","Text":"Juega 3 rondas completas"}],"Rarities":[{"Color":[170,170,170],"DisplayName":"Común","Income":1,"Name":"Common","Tier":1,"Weight":600000},{"Color":[85,200,95],"DisplayName":"Rara","Income":4,"Name":"Rare","Tier":2,"Weight":280000},{"Color":[70,140,255],"DisplayName":"Épica","Income":15,"Name":"Epic","Tier":3,"Weight":95000},{"Color":[170,85,255],"DisplayName":"Legendaria","Income":60,"Name":"Legendary","Tier":4,"Weight":22000},{"Color":[255,150,40],"DisplayName":"Mítica","Income":250,"Name":"Mythic","Tier":5,"Weight":2999},{"Color":[255,60,60],"DisplayName":"Secreta","Income":2000,"Name":"Secret","Tier":6,"Weight":1}],"SlotNames":{"Aura":"Aura","Body":"Cuerpo","Head":"Cabeza","Mutation":"Mutación","Pattern":"Patrón"},"Slots":["Body","Head","Pattern","Aura","Mutation"],"UpgradeCosts":{"Bag":{"Costs":[150,525,1837,6431,22509,78782,275739,965089,3377813],"DisplayName":"Bolsa"},"Boots":{"Costs":[200,620,1922,5958,18470,57258,177500,550252,1705782,5287924],"DisplayName":"Botas"},"Incubator":{"Costs":[1000,7000,49000,343000,2401000],"DisplayName":"Incubadora"},"Nest":{"Costs":[300,615,1260,2584,5298,10861,22266,45645,93573,191825,393241,806146,1652599,3387828,6945048,14237350,29186568],"DisplayName":"Nido"},"Sniffer":{"Costs":[100000],"DisplayName":"Olfato"}}}</script>
+<script id="game-data" type="application/json">{"BiasChance":0.5,"Config":{"BreedSeconds":{"Common":600,"Epic":2700,"Legendary":5400,"Mythic":10800,"Rare":1200,"Secret":14400},"Breeding":{"CostPerTierSquared":2000,"MutationChance":0.1},"Chase":{"CarrierSpeedMultiplier":0.9,"DoorCloseTime":10,"HeadStartSeconds":4,"HomeCarrierFullSpeed":true,"HomeHoldMultiplier":1.5,"ImmunityAfterSteal":3,"IntruderSpeedMultiplier":0.6,"OvertimeSeconds":45,"PassRange":12,"SecureSeconds":25,"ShieldsPerRound":1,"SprintCooldown":8,"SprintDuration":2,"SprintMultiplier":1.4,"StartImmunitySeconds":10,"StealHoldTime":1.5,"StealRange":9,"StunSeconds":2},"ClubSubscriptionId":"","CoinPacks":{"CoinsLarge":120000,"CoinsSmall":5000},"Consolation":{"Base":10,"MaxStealAttempts":5,"PerAffinity":0.05,"PerStealAttempt":15,"WinnerBonusDust":25},"Data":{"AutosaveSeconds":60,"LockTimeoutSeconds":1800,"StoreName":"PlayerData_v1"},"Deal":{"DustShare":0.3,"OfferRange":12},"Decorations":[{"Beauty":1,"Cost":25000,"Currency":"Coins","Id":"lanterns","Name":"Farolillos"},{"Beauty":2,"Cost":120000,"Currency":"Coins","Id":"flowers","Name":"Macetas de flores"},{"Beauty":3,"Cost":600000,"Currency":"Coins","Id":"rug","Name":"Alfombra mullida"},{"Beauty":5,"Cost":3000000,"Currency":"Coins","Id":"fountain","Name":"Fuente de piedra"},{"Beauty":8,"Cost":12000000,"Currency":"Coins","Id":"crystals","Name":"Cristales de luz"},{"Beauty":12,"Cost":40000000,"Currency":"Coins","Id":"banner","Name":"Estandarte"},{"Beauty":20,"Cost":150000000,"Currency":"Coins","Id":"statue","Name":"Estatua del huevo"},{"Beauty":35,"Cost":500000000,"Currency":"Coins","Id":"aurora","Name":"Aurora del nido"},{"Beauty":2,"Cost":400,"Currency":"Dust","Id":"shells","Name":"Guirnalda de cáscaras"},{"Beauty":4,"Cost":1500,"Currency":"Dust","Id":"dustlamp","Name":"Lámpara de polvo"},{"Beauty":8,"Cost":5000,"Currency":"Dust","Id":"gemtree","Name":"Árbol de gemas"},{"Beauty":15,"Cost":15000,"Currency":"Dust","Id":"throne","Name":"Trono de cáscara"}],"DevProducts":{"BreedReroll":0,"CoinsLarge":0,"CoinsSmall":0,"GoldenOffering":0,"SeasonEgg":0,"ServerLuck":0,"ShellShield":0},"EggRanges":{"Personal":{"Max":"Epic","Min":"Common"},"Season":{"Max":"Legendary","Min":"Rare"},"Streak":{"Max":"Legendary","Min":"Rare"}},"Election":{"MinChance":0.02,"PityMaxChance":0.12,"PityPerRound":0.02},"Events":{"BloodMoon":{"Hours":1,"MinRarity":"Epic","StartHour":20,"WeekDay":7}},"GamePasses":{"AutoDeposit":0,"BigBag":0,"DoubleCoins":0,"ExtraBreedSlot":0,"FastIncubator":0,"VipNest":0},"Heat":{"BagBaseCapacity":100,"BagCapacityPerLevel":100,"BagGamePassMultiplier":1.5,"BagMaxLevel":10,"BumpCooldown":6,"BumpDropFraction":0.25,"BumpRange":9,"DepositRadius":20,"Ember":{"Amount":5,"Count":60,"Respawn":8},"Firefly":{"Amount":8,"Count":20,"Respawn":12},"Geyser":{"Amount":40,"Cooldown":45,"Count":4,"PlayersNeeded":2,"Window":4},"LuckyBlock":{"Count":10,"Max":50,"Min":1,"Respawn":30}},"Incubator":{"BaseSlots":1,"ExtraSlotPass":1,"FastPassMultiplier":0.5,"MaxLevel":5,"PersonalEggCostDust":100,"PersonalEggSeconds":300,"SpeedPerLevel":0.05},"Movement":{"BaseWalkSpeed":16,"BootsMaxLevel":10,"BootsPerLevel":0.01},"Nest":{"BaseSlots":6,"Count":16,"MaxSlots":40,"OfflineCapHours":8,"OfflineRate":0.25,"SlotsPerLevel":2,"VipExtraSlots":10},"PriceScale":1,"Quests":{"PerDay":3,"RewardDust":50,"StreakDays":7},"Rebirth":{"BaseCoins":100000000,"CreaturesNeeded":40,"MultiplierPerGeneration":0.5},"Release":{"BulkMaxRarity":"Common","Dust":{"Common":2,"Epic":30,"Legendary":120,"Mythic":500,"Rare":8},"KeepAtLeast":40},"Round":{"BarGoalBase":6000,"BarGoalMin":1200,"BarGoalPerPlayer":1150,"BloodMoonChaseTime":300,"ChaseTime":180,"HatchTime":30,"IncubationTime":480,"IntermissionTime":15,"MaxPlayers":16,"MinPlayers":1,"ResultsTime":15},"ServerLuck":{"Luck":2,"Seconds":900},"Sinks":{"Decorations":true,"Release":true},"Testing":{"Autopilot":true,"AutopilotOnFirstPlayer":false,"DebugTools":true,"TimeScale":0.35},"Thresholds":[{"Fraction":0.25,"Luck":1.25,"MinRarity":"Rare"},{"Fraction":0.5,"Luck":1.5,"MinRarity":"Rare"},{"Fraction":0.75,"Luck":1.75,"MinRarity":"Epic"},{"Fraction":1,"Luck":2,"MinRarity":"Epic"}],"Upgrades":{"Bag":{"BaseCost":150,"Growth":3.5,"MaxLevel":9},"Boots":{"BaseCost":200,"Growth":3.1,"MaxLevel":10},"Incubator":{"BaseCost":1000,"Growth":7,"MaxLevel":5},"Nest":{"BaseCost":300,"Growth":2.05,"MaxLevel":17},"Sniffer":{"BaseCost":100000,"Growth":1,"MaxLevel":1}}},"GeneBonusPerTier":0.05,"Genes":{"Aura":[{"Color":[255,255,255],"Id":"aura_none","Name":"Sin aura","Rarity":"Common","Slot":"Aura"},{"Color":[200,190,170],"Id":"aura_dust","Name":"Polvo","Rarity":"Common","Slot":"Aura"},{"Color":[90,190,70],"Id":"aura_leaves","Name":"Hojas","Rarity":"Common","Slot":"Aura"},{"Color":[160,220,255],"Id":"aura_bubbles","Name":"Burbujas","Rarity":"Common","Slot":"Aura"},{"Color":[255,230,120],"Id":"aura_sparks","Name":"Chispas","Rarity":"Common","Slot":"Aura"},{"Color":[255,110,30],"Id":"aura_fire","Name":"Fuego","Rarity":"Rare","Slot":"Aura"},{"Color":[180,240,255],"Id":"aura_frost","Name":"Escarcha","Rarity":"Rare","Slot":"Aura"},{"Color":[255,90,140],"Id":"aura_hearts","Name":"Corazones","Rarity":"Rare","Slot":"Aura"},{"Color":[255,255,90],"Id":"aura_lightning","Name":"Rayos","Rarity":"Epic","Slot":"Aura"},{"Color":[50,30,70],"Id":"aura_shadow","Name":"Sombra","Rarity":"Epic","Slot":"Aura"},{"Color":[255,190,40],"Id":"aura_sun","Name":"Solar","Rarity":"Legendary","Slot":"Aura"},{"Color":[120,0,40],"Id":"aura_eclipse","Name":"Eclipse","Rarity":"Mythic","Slot":"Aura"}],"Body":[{"Color":[255,214,150],"Id":"body_round","Name":"Redondito","Rarity":"Common","Slot":"Body"},{"Color":[240,180,120],"Id":"body_chubby","Name":"Gordito","Rarity":"Common","Slot":"Body"},{"Color":[200,230,140],"Id":"body_long","Name":"Alargado","Rarity":"Common","Slot":"Body"},{"Color":[255,190,200],"Id":"body_tiny","Name":"Mini","Rarity":"Common","Slot":"Body"},{"Color":[245,245,235],"Id":"body_fluffy","Name":"Peludo","Rarity":"Common","Slot":"Body"},{"Color":[150,230,255],"Id":"body_crystal","Name":"Cristalino","Rarity":"Rare","Slot":"Body"},{"Color":[255,90,40],"Id":"body_lava","Name":"Lava","Rarity":"Rare","Slot":"Body"},{"Color":[120,255,180],"Id":"body_jelly","Name":"Gelatina","Rarity":"Rare","Slot":"Body"},{"Color":[130,130,140],"Id":"body_stone","Name":"Pétreo","Rarity":"Epic","Slot":"Body"},{"Color":[230,240,255],"Id":"body_cloud","Name":"Nube","Rarity":"Epic","Slot":"Body"},{"Color":[255,240,120],"Id":"body_star","Name":"Estelar","Rarity":"Legendary","Slot":"Body"},{"Color":[40,20,60],"Id":"body_void","Name":"Vacío","Rarity":"Mythic","Slot":"Body"}],"Head":[{"Color":[255,200,60],"Id":"head_beak","Name":"Pico","Rarity":"Common","Slot":"Head"},{"Color":[230,170,140],"Id":"head_ears","Name":"Orejitas","Rarity":"Common","Slot":"Head"},{"Color":[240,230,210],"Id":"head_horn","Name":"Cuernito","Rarity":"Common","Slot":"Head"},{"Color":[255,230,240],"Id":"head_bunny","Name":"Conejo","Rarity":"Common","Slot":"Head"},{"Color":[110,200,90],"Id":"head_frog","Name":"Rana","Rarity":"Common","Slot":"Head"},{"Color":[120,200,255],"Id":"head_feathered","Name":"Plumado","Rarity":"Rare","Slot":"Head"},{"Color":[255,210,60],"Id":"head_crown","Name":"Corona","Rarity":"Rare","Slot":"Head"},{"Color":[200,120,255],"Id":"head_cyclops","Name":"Cíclope","Rarity":"Rare","Slot":"Head"},{"Color":[220,60,60],"Id":"head_dragon","Name":"Dragón","Rarity":"Epic","Slot":"Head"},{"Color":[60,60,70],"Id":"head_mask","Name":"Máscara","Rarity":"Epic","Slot":"Head"},{"Color":[255,255,200],"Id":"head_halo","Name":"Halo","Rarity":"Legendary","Slot":"Head"},{"Color":[120,220,255],"Id":"head_comet","Name":"Cometa","Rarity":"Mythic","Slot":"Head"}],"Mutation":[{"Color":[255,255,255],"Id":"mut_none","Name":"Normal","Rarity":"Common","Slot":"Mutation"},{"Color":[255,255,255],"Id":"mut_big","Name":"Gigante","Rarity":"Common","Slot":"Mutation"},{"Color":[255,255,255],"Id":"mut_small","Name":"Diminuto","Rarity":"Common","Slot":"Mutation"},{"Color":[255,255,220],"Id":"mut_shiny","Name":"Brillante","Rarity":"Common","Slot":"Mutation"},{"Color":[255,255,255],"Id":"mut_twin","Name":"Gemelo","Rarity":"Rare","Slot":"Mutation"},{"Color":[0,0,0],"Id":"mut_inverted","Name":"Invertido","Rarity":"Rare","Slot":"Mutation"},{"Color":[140,255,120],"Id":"mut_glow","Name":"Fosforito","Rarity":"Rare","Slot":"Mutation"},{"Color":[220,230,255],"Id":"mut_ghost","Name":"Fantasma","Rarity":"Epic","Slot":"Mutation"},{"Color":[255,200,40],"Id":"mut_golden","Name":"Dorado","Rarity":"Epic","Slot":"Mutation"},{"Color":[180,150,100],"Id":"mut_ancient","Name":"Ancestral","Rarity":"Legendary","Slot":"Mutation"},{"Color":[80,60,200],"Id":"mut_cosmic","Name":"Cósmico","Rarity":"Mythic","Slot":"Mutation"},{"Color":[255,0,255],"Id":"mut_rainbow","Name":"Arcoíris Eterno","Rarity":"Secret","Slot":"Mutation"}],"Pattern":[{"Color":[255,255,255],"Id":"pattern_plain","Name":"Liso","Rarity":"Common","Slot":"Pattern"},{"Color":[120,80,50],"Id":"pattern_spots","Name":"Moteado","Rarity":"Common","Slot":"Pattern"},{"Color":[60,60,60],"Id":"pattern_stripes","Name":"Rayado","Rarity":"Common","Slot":"Pattern"},{"Color":[255,120,160],"Id":"pattern_dots","Name":"Lunares","Rarity":"Common","Slot":"Pattern"},{"Color":[180,140,90],"Id":"pattern_patch","Name":"Parches","Rarity":"Common","Slot":"Pattern"},{"Color":[240,235,220],"Id":"pattern_bone","Name":"Óseo","Rarity":"Rare","Slot":"Pattern"},{"Color":[255,170,0],"Id":"pattern_zigzag","Name":"Zigzag","Rarity":"Rare","Slot":"Pattern"},{"Color":[60,170,120],"Id":"pattern_scales","Name":"Escamas","Rarity":"Rare","Slot":"Pattern"},{"Color":[90,200,255],"Id":"pattern_runes","Name":"Rúnico","Rarity":"Epic","Slot":"Pattern"},{"Color":[90,40,160],"Id":"pattern_galaxy","Name":"Galaxia","Rarity":"Epic","Slot":"Pattern"},{"Color":[255,200,40],"Id":"pattern_gold","Name":"Dorado","Rarity":"Legendary","Slot":"Pattern"},{"Color":[255,120,255],"Id":"pattern_prism","Name":"Prisma","Rarity":"Mythic","Slot":"Pattern"}]},"Offerings":{"Bone":{"DisplayName":"Hueso","Gene":"pattern_bone","Slot":"Pattern"},"Crystal":{"DisplayName":"Cristal","Gene":"body_crystal","Slot":"Body"},"Feather":{"DisplayName":"Pluma","Gene":"head_feathered","Slot":"Head"}},"Quests":[{"Goal":1,"Kind":"Steal","Text":"Roba la criatura 1 vez"},{"Goal":500,"Kind":"DepositHeat","Text":"Deposita 500 de Calor"},{"Goal":2,"Kind":"Breed","Text":"Cría 2 huevos"},{"Goal":1,"Kind":"HatchPersonal","Text":"Abre 1 huevo personal"},{"Goal":1,"Kind":"WinCreature","Text":"Gana 1 criatura en una persecución"},{"Goal":3,"Kind":"LuckyBlock","Text":"Rompe 3 bloques de suerte"},{"Goal":3,"Kind":"PlayRounds","Text":"Juega 3 rondas completas"}],"Rarities":[{"Color":[170,170,170],"DisplayName":"Común","Income":1,"Name":"Common","Tier":1,"Weight":600000},{"Color":[85,200,95],"DisplayName":"Rara","Income":4,"Name":"Rare","Tier":2,"Weight":280000},{"Color":[70,140,255],"DisplayName":"Épica","Income":15,"Name":"Epic","Tier":3,"Weight":95000},{"Color":[170,85,255],"DisplayName":"Legendaria","Income":60,"Name":"Legendary","Tier":4,"Weight":22000},{"Color":[255,150,40],"DisplayName":"Mítica","Income":250,"Name":"Mythic","Tier":5,"Weight":2999},{"Color":[255,60,60],"DisplayName":"Secreta","Income":2000,"Name":"Secret","Tier":6,"Weight":1}],"SlotNames":{"Aura":"Aura","Body":"Cuerpo","Head":"Cabeza","Mutation":"Mutación","Pattern":"Patrón"},"Slots":["Body","Head","Pattern","Aura","Mutation"],"UpgradeCosts":{"Bag":{"Costs":[150,525,1837,6431,22509,78782,275739,965089,3377813],"DisplayName":"Bolsa"},"Boots":{"Costs":[200,620,1922,5958,18470,57258,177500,550252,1705782,5287924],"DisplayName":"Botas"},"Incubator":{"Costs":[1000,7000,49000,343000,2401000],"DisplayName":"Incubadora"},"Nest":{"Costs":[300,615,1260,2584,5298,10861,22266,45645,93573,191825,393241,806146,1652599,3387828,6945048,14237350,29186568],"DisplayName":"Nido"},"Sniffer":{"Costs":[100000],"DisplayName":"Olfato"}}}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script src="assets/site.js"></script>
 </body>

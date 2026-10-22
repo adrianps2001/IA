@@ -157,6 +157,33 @@ Config.Rebirth = {
 	MultiplierPerGeneration = 0.5,
 }
 
+-- Interruptores de los sumideros (el informe del simulador los apaga para comparar).
+Config.Sinks = { Release = true, Decorations = true }
+
+-- Liberar criaturas a cambio de Polvo de cáscara (sumidero de criaturas sobrantes).
+Config.Release = {
+	Dust = { Common = 2, Rare = 8, Epic = 30, Legendary = 120, Mythic = 500 } :: { [string]: number }, -- las Secretas no se liberan
+	BulkMaxRarity = "Common", -- "liberar guardadas" solo toca esta rareza o menos
+	KeepAtLeast = 40, -- la liberación en bloque nunca baja de aquí (lo que pide la Nueva generación)
+}
+
+-- Decoración del nido: sumidero de Monedas y de Polvo. Solo estética (+ "Belleza" en el
+-- cartel). El aspecto de cada pieza está en Decorations.luau.
+Config.Decorations = {
+	{ Id = "lanterns", Name = "Farolillos", Currency = "Coins", Cost = 25_000, Beauty = 1 },
+	{ Id = "flowers", Name = "Macetas de flores", Currency = "Coins", Cost = 120_000, Beauty = 2 },
+	{ Id = "rug", Name = "Alfombra mullida", Currency = "Coins", Cost = 600_000, Beauty = 3 },
+	{ Id = "fountain", Name = "Fuente de piedra", Currency = "Coins", Cost = 3_000_000, Beauty = 5 },
+	{ Id = "crystals", Name = "Cristales de luz", Currency = "Coins", Cost = 12_000_000, Beauty = 8 },
+	{ Id = "banner", Name = "Estandarte", Currency = "Coins", Cost = 40_000_000, Beauty = 12 },
+	{ Id = "statue", Name = "Estatua del huevo", Currency = "Coins", Cost = 150_000_000, Beauty = 20 },
+	{ Id = "aurora", Name = "Aurora del nido", Currency = "Coins", Cost = 500_000_000, Beauty = 35 },
+	{ Id = "shells", Name = "Guirnalda de cáscaras", Currency = "Dust", Cost = 400, Beauty = 2 },
+	{ Id = "dustlamp", Name = "Lámpara de polvo", Currency = "Dust", Cost = 1_500, Beauty = 4 },
+	{ Id = "gemtree", Name = "Árbol de gemas", Currency = "Dust", Cost = 5_000, Beauty = 8 },
+	{ Id = "throne", Name = "Trono de cáscara", Currency = "Dust", Cost = 15_000, Beauty = 15 },
+}
+
 Config.Quests = {
 	PerDay = 3,
 	RewardDust = 50,

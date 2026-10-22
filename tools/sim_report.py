@@ -48,6 +48,8 @@ BEFORE = {
     "Upgrades.Incubator.Growth": 2,
     "Rebirth.BaseCoins": 1000000,
     "Breeding.CostPerTierSquared": 100,
+    "Sinks.Release": "false",
+    "Sinks.Decorations": "false",
 }
 
 # Por qué se cambió cada valor (se muestra en la tabla del informe).
@@ -71,6 +73,8 @@ WHY = {
     "Upgrades.Nest.Growth": "El nido al máximo pasa de 1 día a 2-4 semanas según el jugador.",
     "Upgrades.Incubator.Growth": "Curva más empinada.",
     "Rebirth.BaseCoins": "La Nueva generación pasa a ser una meta de semanas.",
+    "Sinks.Release": "Liberar criaturas guardadas a cambio de polvo: el nido deja de acumular cientos de comunes.",
+    "Sinks.Decorations": "Decoración del nido (Monedas y Polvo): en qué gastar al final del mes.",
     "Breeding.CostPerTierSquared": "Criar vuelve a ser una decisión (antes era gratis en la práctica).",
 }
 
@@ -162,6 +166,9 @@ def meta_stats(meta):
             "DustFromQuests": mean(p["DustFromQuests"] for p in ps),
             "EggsHatched": mean(p["EggsHatched"] for p in ps),
             "Bred": mean(p["Bred"] for p in ps),
+            "Released": mean(p.get("Released", 0) for p in ps),
+            "CoinsOnDecor": mean(p.get("CoinsOnDecor", 0) for p in ps),
+            "DustOnDecor": mean(p.get("DustOnDecor", 0) for p in ps),
         }
     return {
         "Daily": daily,

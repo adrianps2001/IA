@@ -9,6 +9,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Creature = require(Shared.Creature)
 local CreatureModel = require(Shared.CreatureModel)
+local DecorationModel = require(Shared.DecorationModel)
 local Economy = require(Shared.Economy)
 local Genes = require(Shared.Genes)
 local PlayerData = require(Shared.PlayerData)
@@ -34,6 +35,7 @@ end
 
 local owners: { [number]: Player } = {} -- índice de nido -> dueño
 local displays: { [Player]: { Signature: string, Folder: Folder } } = {}
+local decorated: { [Player]: { Signature: string, Folder: Folder } } = {}
 local doorUsed: { [Player]: boolean } = {}
 
 local function newId(): string
@@ -108,12 +110,32 @@ function NestService.refreshDisplay(player: Player)
 	end
 	local signature = table.concat(ids, ",")
 
+	local beauty = Economy.beauty(profile.Decorations)
 	nest.Sign.Text = string.format(
-		"Nido de %s\n%d criaturas · %d/s",
+		"Nido de %s\n%d criaturas · %d/s%s",
 		player.DisplayName,
 		#profile.Creatures,
-		math.floor(DataService.incomePerSecond(player))
+		math.floor(DataService.incomePerSecond(player)),
+		if beauty > 0 then string.format(" · ✨%d", beauty) else ""
 	)
+
+	local decorSignature = table.concat(profile.Decorations, ",")
+	local decor = decorated[player]
+	if not decor or decor.Signature ~= decorSignature then
+		if decor then
+			decor.Folder:Destroy()
+		end
+		local decorFolder = Instance.new("Folder")
+		decorFolder.Name = "Decorations"
+		decorFolder.Parent = nest.Model
+		decorated[player] = { Signature = decorSignature, Folder = decorFolder }
+		for _, id in profile.Decorations do
+			local model = DecorationModel.build(id, nest.Origin)
+			if model then
+				model.Parent = decorFolder
+			end
+		end
+	end
 
 	local current = displays[player]
 	if current and current.Signature == signature then
@@ -168,6 +190,11 @@ local function releaseNest(player: Player)
 	if display then
 		display.Folder:Destroy()
 		displays[player] = nil
+	end
+	local decor = decorated[player]
+	if decor then
+		decor.Folder:Destroy()
+		decorated[player] = nil
 	end
 	doorUsed[player] = nil
 end
@@ -317,6 +344,87 @@ local function startBreed(player: Player, idA: string, idB: string, free: boolea
 	return true
 end
 
+-- Liberar criaturas y decorar (sumideros de criaturas, Monedas y Polvo) ----------------
+
+local function releaseIds(player: Player, ids: { string }): (number, number)
+	local profile = DataService.get(player)
+	if not profile then
+		return 0, 0
+	end
+	local released, dust = 0, 0
+	for _, id in ids do
+		local creature, index = PlayerData.findCreature(profile, id)
+		local value = creature and Economy.releaseDust(creature.Rarity)
+		if creature and index and value then
+			table.remove(profile.Creatures, index)
+			released += 1
+			dust += value
+		end
+	end
+	if released > 0 then
+		DataService.addDust(player, dust)
+		DataService.addStat(player, "Released", released)
+		DataService.markChanged(player)
+		NestService.refreshDisplay(player)
+		AnnouncementService.player(player, string.format("Has liberado %d criatura%s: +%d de Polvo de cáscara.", released, if released == 1 then "" else "s", dust))
+	end
+	return released, dust
+end
+
+local function release(player: Player, ids: any)
+	if type(ids) ~= "table" or #ids > 2 then
+		return
+	end
+	local clean = {}
+	for _, id in ids do
+		if type(id) == "string" then
+			table.insert(clean, id)
+		end
+	end
+	local released = releaseIds(player, clean)
+	if released == 0 then
+		AnnouncementService.player(player, "Esa criatura no se puede liberar.")
+	end
+end
+
+local function releaseStored(player: Player)
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	local released = releaseIds(player, Economy.bulkReleaseIds(profile.Creatures, DataService.nestSlots(player)))
+	if released == 0 then
+		AnnouncementService.player(player, "No hay criaturas guardadas que liberar.")
+	end
+end
+
+local function buyDecoration(player: Player, id: any)
+	local profile = DataService.get(player)
+	local def = Economy.decoration(id)
+	if not profile or not def or not Config.Sinks.Decorations then
+		return
+	end
+	if table.find(profile.Decorations, def.Id) then
+		AnnouncementService.player(player, "Ya tienes esa decoración.")
+		return
+	end
+	local cost = Economy.decorationCost(def)
+	local balance = if def.Currency == "Coins" then profile.Coins else profile.Dust
+	if balance < cost then
+		AnnouncementService.player(player, if def.Currency == "Coins" then "No tienes Monedas suficientes." else "Te falta Polvo de cáscara.")
+		return
+	end
+	if def.Currency == "Coins" then
+		DataService.addCoins(player, -cost)
+	else
+		DataService.addDust(player, -cost)
+	end
+	table.insert(profile.Decorations, def.Id)
+	DataService.markChanged(player)
+	NestService.refreshDisplay(player)
+	AnnouncementService.player(player, string.format("¡%s colocada en tu nido!", def.Name), "rare")
+end
+
 -- Mejoras y Nueva generación ------------------------------------------------------------
 
 local function upgrade(player: Player, name: any)
@@ -432,6 +540,9 @@ function NestService.start()
 	Remotes.event("RequestCollectEggs").OnServerEvent:Connect(collectEggs)
 	Remotes.event("RequestUpgrade").OnServerEvent:Connect(upgrade)
 	Remotes.event("RequestRebirth").OnServerEvent:Connect(rebirth)
+	Remotes.event("RequestRelease").OnServerEvent:Connect(release)
+	Remotes.event("RequestReleaseStored").OnServerEvent:Connect(releaseStored)
+	Remotes.event("RequestBuyDecoration").OnServerEvent:Connect(buyDecoration)
 	Remotes.event("RequestBreed").OnServerEvent:Connect(function(player, idA, idB)
 		if type(idA) == "string" and type(idB) == "string" then
 			startBreed(player, idA, idB, false)

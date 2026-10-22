@@ -37,6 +37,10 @@ type Player = {
 	CoinsOffline: number,
 	EggsHatched: number,
 	Bred: number,
+	Released: number,
+	DustFromRelease: number,
+	CoinsOnDecor: number,
+	DustOnDecor: number,
 }
 
 local Meta = {}
@@ -117,6 +121,10 @@ function Meta.run(params: Params)
 				CoinsOffline = 0,
 				EggsHatched = 0,
 				Bred = 0,
+				Released = 0,
+				DustFromRelease = 0,
+				CoinsOnDecor = 0,
+				DustOnDecor = 0,
 			})
 		end
 	end
@@ -231,6 +239,43 @@ function Meta.run(params: Params)
 			profile.Dust -= Config.Incubator.PersonalEggCostDust
 			local range = Config.EggRanges.Personal
 			addEgg(p, "Personal", Config.Incubator.PersonalEggSeconds, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName, nil, now)
+		end
+
+		-- Liberar: cuando hay más de 20 guardadas, usa el botón "liberar guardadas".
+		if #profile.Creatures > slots(p) + 20 then
+			local released = {}
+			for _, id in Economy.bulkReleaseIds(profile.Creatures, slots(p)) do
+				released[id] = true
+			end
+			local kept = {}
+			for _, c in profile.Creatures do
+				if released[c.Id] then
+					local dust = Economy.releaseDust(c.Rarity) or 0
+					profile.Dust += dust
+					p.DustFromRelease += dust
+					p.Released += 1
+				else
+					table.insert(kept, c)
+				end
+			end
+			profile.Creatures = kept
+		end
+
+		-- Decorar con lo que sobra: la más barata que no tenga, si cuesta como mucho un cuarto
+		-- de lo que está dispuesto a gastar (de Polvo, si le queda para dos huevos personales).
+		for _, def in if Config.Sinks.Decorations then Config.Decorations else {} do
+			if not table.find(profile.Decorations, def.Id) then
+				local cost = Economy.decorationCost(def)
+				if def.Currency == "Coins" and cost <= profile.Coins * (1 - arch.Reserve) * 0.25 then
+					profile.Coins -= cost
+					p.CoinsOnDecor += cost
+					table.insert(profile.Decorations, def.Id)
+				elseif def.Currency == "Dust" and profile.Dust - cost >= Config.Incubator.PersonalEggCostDust * 2 then
+					profile.Dust -= cost
+					p.DustOnDecor += cost
+					table.insert(profile.Decorations, def.Id)
+				end
+			end
 		end
 	end
 
@@ -364,6 +409,7 @@ function Meta.run(params: Params)
 		local allCoins: number = 0
 		for _, key in keys do
 			local coins, creatures, incomes, generations, dust, wins, winners, bag, nest, best = {}, {}, {}, {}, {}, {}, 0, {}, {}, {}
+			local decor, releasedList = {}, {}
 			local everChosen: number = 0
 			local count: number = 0
 			for _, p in players do
@@ -378,6 +424,8 @@ function Meta.run(params: Params)
 					table.insert(wins, p.Wins)
 					table.insert(bag, profile.Upgrades.Bag)
 					table.insert(nest, profile.Upgrades.Nest)
+					table.insert(decor, #profile.Decorations)
+					table.insert(releasedList, p.Released)
 					local bestTier: number = 1
 					for _, c in profile.Creatures do
 						bestTier = math.max(bestTier, Rarity.tier(c.Rarity))
@@ -413,6 +461,8 @@ function Meta.run(params: Params)
 				BagLevel = mean(bag),
 				NestLevel = mean(nest),
 				BestTier = mean(best),
+				Decorations = mean(decor),
+				Released = mean(releasedList),
 			}
 		end
 		snapshot.TotalCoins = allCoins
@@ -448,6 +498,11 @@ function Meta.run(params: Params)
 			CoinsOffline = p.CoinsOffline,
 			EggsHatched = p.EggsHatched,
 			Bred = p.Bred,
+			Released = p.Released,
+			DustFromRelease = p.DustFromRelease,
+			CoinsOnDecor = p.CoinsOnDecor,
+			DustOnDecor = p.DustOnDecor,
+			Decorations = #profile.Decorations,
 			PactsKept = profile.Stats.PactsKept,
 			PactsBroken = profile.Stats.PactsBroken,
 		})

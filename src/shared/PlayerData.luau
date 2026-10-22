@@ -29,6 +29,7 @@ export type Profile = {
 	Receipts: { string },
 	LastBreed: { string }?,
 	Funnel: { [string]: boolean },
+	Decorations: { string }, -- ids de Config.Decorations compradas
 }
 
 local PlayerData = {}
@@ -45,6 +46,7 @@ PlayerData.StatNames = {
 	"RoundsPlayed",
 	"HeatDeposited",
 	"RoundsSinceChosen", -- para la suerte acumulada de la Elección
+	"Released", -- criaturas liberadas
 }
 
 function PlayerData.default(now: number): Profile
@@ -66,6 +68,7 @@ function PlayerData.default(now: number): Profile
 		Receipts = {},
 		LastBreed = nil,
 		Funnel = {},
+		Decorations = {},
 	}
 end
 
@@ -163,6 +166,14 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 		for key, value in raw.Funnel do
 			if type(key) == "string" and value == true then
 				profile.Funnel[key] = true
+			end
+		end
+	end
+
+	if type(raw.Decorations) == "table" then
+		for _, id in raw.Decorations do
+			if type(id) == "string" and not table.find(profile.Decorations, id) then
+				table.insert(profile.Decorations, id)
 			end
 		end
 	end

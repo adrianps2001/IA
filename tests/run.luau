@@ -4,6 +4,7 @@
 local ChaseRules = require("../src/shared/ChaseRules")
 local Config = require("../src/shared/Config")
 local Creature = require("../src/shared/Creature")
+local Decorations = require("../src/shared/Decorations")
 local Economy = require("../src/shared/Economy")
 local Election = require("../src/shared/Election")
 local Genes = require("../src/shared/Genes")
@@ -414,6 +415,54 @@ test("MapLayout: nidos, entradas y géiseres", function()
 		local d = MapLayout.distance(p, { X = 0, Z = 0 })
 		expect(d >= MapLayout.SourceRing.Min - 1e-6 and d <= MapLayout.SourceRing.Max + 1e-6)
 	end
+end)
+
+test("Economy: liberar criaturas", function()
+	expect(Economy.releaseDust("Common") == Config.Release.Dust.Common)
+	expect(Economy.releaseDust("Secret") == nil, "las Secretas no se liberan")
+	local rng = seeded(21)
+	local creatures = {}
+	for i = 1, 60 do
+		local rarity: Rarity.RarityName = if i <= 5 then "Epic" elseif i == 6 then "Secret" else "Common"
+		table.insert(creatures, Creature.new("c" .. i, Genes.rollSet(rng, rarity), "Test", 0))
+	end
+	local slots = 10
+	local ids = Economy.bulkReleaseIds(creatures, slots)
+	-- Nunca baja del mínimo, nunca toca las que producen y solo libera Comunes.
+	expect(#ids == #creatures - Config.Release.KeepAtLeast, tostring(#ids))
+	local top = Creature.sortByIncome(creatures)
+	local active = {}
+	for i = 1, slots do
+		active[top[i].Id] = true
+	end
+	local byId = {}
+	for _, c in creatures do
+		byId[c.Id] = c
+	end
+	for _, id in ids do
+		expect(not active[id], "liberó una criatura del nido")
+		expect(byId[id].Rarity == "Common")
+	end
+	-- Con pocas criaturas no libera nada.
+	local few = table.move(creatures, 1, 30, 1, {})
+	expect(#Economy.bulkReleaseIds(few, 5) == 0)
+end)
+
+test("Decoraciones: catálogo, aspecto y datos guardados", function()
+	local seen = {}
+	for _, def in Config.Decorations do
+		expect(not seen[def.Id], "id repetido " .. def.Id)
+		seen[def.Id] = true
+		expect(def.Currency == "Coins" or def.Currency == "Dust")
+		expect(Decorations.Pieces[def.Id] ~= nil, "sin aspecto: " .. def.Id)
+		expect(Economy.decoration(def.Id) == def)
+		expect(Economy.decorationCost(def) > 0)
+	end
+	expect(Economy.decoration("nope") == nil)
+	expect(Economy.beauty({ "lanterns", "flowers", "desconocida" }) == 3)
+	local profile = PlayerData.reconcile({ Decorations = { "lanterns", "lanterns", 5, "rug" } }, 0)
+	expect(#profile.Decorations == 2)
+	expect(#PlayerData.reconcile({}, 0).Decorations == 0)
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

@@ -40,6 +40,7 @@ src/shared/                 ReplicatedStorage.Shared (servidor y cliente)
   Election, Economy,        La Elección, fórmulas de economía, misiones diarias,
   Quests, PlayerData        esquema de datos guardados (lógica pura, con tests)
   CreatureModel             Construye el modelo 3D modular de una criatura
+  Decorations, DecorationModel  Decoraciones del nido: datos y construcción
   Remotes, RoundState       Remotos y estado de ronda replicado
   Testing                   Modo de prueba en Studio (Config.Testing)
 src/server/                 ServerScriptService.Server
@@ -58,7 +59,7 @@ src/client/                 StarterPlayerScripts.Client
   Controllers/HUDController     Bolsa, barra, temporizador, flecha de objetivo, avisos
   Controllers/HatchController   Espectáculo de eclosión y ruleta
   Controllers/ChaseController   Botones del portador y ventana de tratos
-  Controllers/NestController    Panel del nido: criaturas, incubadora, mejoras, misiones, tienda
+  Controllers/NestController    Panel del nido: criaturas (cría y liberar), incubadora, mejoras, decorar, misiones, tienda
   Controllers/EffectsController Latido del huevo y criaturas arcoíris
   Controllers/DebugController   Panel de depuración (F7, solo Studio)
   Controllers/AutopilotController Piloto automático para probar en Studio (F8)
@@ -78,7 +79,7 @@ tools/                      export_data.luau, build_docs.py, sim_report.py, Json
 ## Tests y comprobaciones
 
 ```sh
-luau tests/run.luau                    # 33 tests de rarezas, genes, Elección, economía, reglas, misiones y datos
+luau tests/run.luau                    # tests de rarezas, genes, Elección, economía, reglas, misiones y datos
 rojo sourcemap default.project.json -o sourcemap.json
 luau-lsp analyze --flag:LuauSolverV2=true --sourcemap=sourcemap.json \
   --definitions=globalTypes.d.luau src  # análisis de tipos con las APIs de Roblox
@@ -103,6 +104,7 @@ Con él se encontraron problemas serios de equilibrio, que ya están corregidos 
 - **La barra se llenaba siempre a mitad de tiempo**, así que siempre salía Épica como mínimo. Nueva meta `base + por jugador`.
 - **La economía estaba inflada unas 100 veces.** Curvas de precio más empinadas y producción sin conexión al 25 %.
 - **Los novatos casi nunca eran elegidos.** Suerte acumulada.
+- **Cientos de criaturas y Monedas sin uso a final de mes.** Liberar criaturas y decoración del nido.
 
 Los detalles, con gráficas antes/después, están en `docs/simulacion.html`.
 
@@ -137,6 +139,7 @@ Implementado:
 - Pases, productos y suscripción, con probabilidades públicas y comprobación de `PolicyService` para los objetos aleatorios de pago.
 - Embudo de analítica.
 - Ciclo visual de la ronda (atardecer, eclipse y noche).
+- Liberar criaturas a cambio de polvo (una a una o las guardadas) y decoración del nido (12 piezas de Monedas o polvo, solo estéticas). Se pueden apagar con `Config.Sinks`.
 
 Pendiente (siguientes fases del roadmap):
 - Huevo Doble, Noche de Saqueo, Huevo del Admin y Huevo Comunitario.
@@ -146,7 +149,7 @@ Pendiente (siguientes fases del roadmap):
 - Ranking semanal de robos.
 - Emotes de reacción.
 - Selector de gen para la Ofrenda Dorada (el servidor ya la admite).
-- Liberar criaturas a cambio de polvo y más sumideros de Monedas (el simulador muestra acumulación a final de mes).
+- Más sumideros de Monedas: pase de temporada y cosméticos.
 - Emparejamiento por nivel o premio al elegido que pierde (los novatos casi nunca ganan la persecución).
 - Sonido.
 - Tutorial guiado.

@@ -23,6 +23,9 @@ local EVENTS = {
 	"RequestCollectEggs",
 	"RequestRebirth",
 	"SetGoldenOffering",
+	"RequestRelease", -- liberar 1 o 2 criaturas seleccionadas
+	"RequestReleaseStored", -- liberar las guardadas de rareza baja
+	"RequestBuyDecoration",
 	"DebugCommand", -- solo Studio (Config.Testing.DebugTools)
 }
 

@@ -2,6 +2,7 @@
 -- Fórmulas de economía y progresión (GDD 5 y 6). Funciones puras para poder probarlas.
 
 local Config = require("./Config")
+local Creature = require("./Creature")
 local Rarity = require("./Rarity")
 
 export type UpgradeName = "Bag" | "Boots" | "Sniffer" | "Nest" | "Incubator"
@@ -108,6 +109,60 @@ end
 
 function Economy.canRebirth(creatureCount: number, coins: number, generation: number): boolean
 	return creatureCount >= Config.Rebirth.CreaturesNeeded and coins >= Economy.rebirthCoins(generation)
+end
+
+-- Polvo que da liberar una criatura, o nil si esa rareza no se puede liberar.
+function Economy.releaseDust(rarity: Rarity.RarityName): number?
+	if not Config.Sinks.Release then
+		return nil
+	end
+	return Config.Release.Dust[rarity]
+end
+
+-- Criaturas que libera "liberar guardadas": las que no producen (fuera de las `slots`
+-- mejores) de rareza baja, empezando por las peores y sin bajar de KeepAtLeast en total.
+function Economy.bulkReleaseIds(creatures: { Creature.Creature }, slots: number): { string }
+	local sorted = Creature.sortByIncome(creatures)
+	local maxTier = Rarity.tier(Config.Release.BulkMaxRarity :: Rarity.RarityName)
+	local allowed = math.max(#sorted - Config.Release.KeepAtLeast, 0)
+	local ids = {}
+	for index = #sorted, slots + 1, -1 do
+		if #ids >= allowed then
+			break
+		end
+		local creature = sorted[index]
+		if Rarity.tier(creature.Rarity) <= maxTier and Economy.releaseDust(creature.Rarity) then
+			table.insert(ids, creature.Id)
+		end
+	end
+	return ids
+end
+
+export type Decoration = { Id: string, Name: string, Currency: string, Cost: number, Beauty: number }
+
+function Economy.decoration(id: any): Decoration?
+	for _, def in Config.Decorations do
+		if def.Id == id then
+			return def
+		end
+	end
+	return nil
+end
+
+-- Precio real (las de Monedas escalan con PriceScale; las de Polvo no).
+function Economy.decorationCost(def: Decoration): number
+	return if def.Currency == "Coins" then math.floor(def.Cost * Config.PriceScale) else def.Cost
+end
+
+function Economy.beauty(owned: { string }): number
+	local total = 0
+	for _, id in owned do
+		local def = Economy.decoration(id)
+		if def then
+			total += def.Beauty
+		end
+	end
+	return total
 end
 
 -- Polvo de cáscara de consolación según Afinidad e intentos de robo (GDD 5.5).
