@@ -15,6 +15,7 @@ local ChaseService = require(script.Parent.ChaseService)
 local CommunityService = require(script.Parent.CommunityService)
 local DataService = require(script.Parent.DataService)
 local EggService = require(script.Parent.EggService)
+local LeaderboardService = require(script.Parent.LeaderboardService)
 local NestService = require(script.Parent.NestService)
 local RoundService = require(script.Parent.RoundService)
 
@@ -52,6 +53,12 @@ local commands: { [string]: (Player, any) -> () } = {
 	end,
 	LootNight = function()
 		RoundState.set("LootNight", not RoundState.get("LootNight"))
+	end,
+	Leaderboard = function(player)
+		for _ = 1, 3 do
+			LeaderboardService.addSteal(player)
+		end
+		LeaderboardService.flushNow()
 	end,
 	HatchEggs = function(player)
 		local profile = DataService.get(player)

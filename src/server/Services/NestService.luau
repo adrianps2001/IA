@@ -51,6 +51,10 @@ function NestService.nestOf(player: Player): MapService.Nest?
 	return nil
 end
 
+function NestService.ownerOf(index: number): Player?
+	return owners[index]
+end
+
 -- Índice del nido que contiene esa posición (o nil si está fuera de todos).
 function NestService.nestIndexAt(position: Vector3): number?
 	for _, nest in MapService.Nests do

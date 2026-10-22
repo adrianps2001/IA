@@ -9,6 +9,7 @@ local Economy = require("../src/shared/Economy")
 local Election = require("../src/shared/Election")
 local Events = require("../src/shared/Events")
 local Genes = require("../src/shared/Genes")
+local Leaderboard = require("../src/shared/Leaderboard")
 local MapLayout = require("../src/shared/MapLayout")
 local PlayerData = require("../src/shared/PlayerData")
 local Quests = require("../src/shared/Quests")
@@ -594,6 +595,33 @@ test("Trade: doble confirmación y cambio atómico", function()
 	local ok2, sameA, sameB = Trade.apply(t, gone, b)
 	expect(not ok2 and sameA == gone and sameB == b)
 	expect(Trade.value({ a[1] }) == Creature.baseIncome(a[1]))
+end)
+
+test("Leaderboard: semanas, \"me gusta\" y combinación del top", function()
+	-- La semana empieza el lunes 00:00 UTC.
+	local monday = 1792800000 - (1792800000 % 86400) + 2 * 86400 -- lunes 2026-10-26
+	expect(os.date("!*t", monday).wday == 2, "debería ser lunes")
+	expect(Leaderboard.weekKey(monday) ~= Leaderboard.weekKey(monday - 1))
+	expect(Leaderboard.weekKey(monday) == Leaderboard.weekKey(monday + 6 * 86400 + 86399))
+	expect(Leaderboard.previousWeekKey(monday) == Leaderboard.weekKey(monday - 1))
+	expect(Leaderboard.secondsToReset(monday) == 7 * 86400)
+	expect(Leaderboard.secondsToReset(monday - 10) == 10)
+
+	local state = Leaderboard.rollLikes({ Week = "viejo", Given = { 5 } }, "W1")
+	expect(state.Week == "W1" and #state.Given == 0, "la semana nueva empieza de cero")
+	expect(not Leaderboard.canLike(state, 1, 1), "a uno mismo no")
+	expect((Leaderboard.canLike(state, 1, 2)))
+	table.insert(state.Given, 2)
+	expect(not Leaderboard.canLike(state, 1, 2), "una vez por nido y semana")
+	for i = 1, Config.Leaderboard.LikesPerWeek do
+		table.insert(state.Given, 100 + i)
+	end
+	expect(not Leaderboard.canLike(state, 1, 3), "tope semanal")
+
+	local top = Leaderboard.merge({ { UserId = 1, Value = 10 }, { UserId = 2, Value = 8 }, { UserId = 3, Value = 8 } }, { [3] = 5, [4] = 1 }, 3)
+	expect(#top == 3)
+	expect(top[1].UserId == 3 and top[1].Value == 13, "suma lo pendiente")
+	expect(top[2].UserId == 1 and top[3].UserId == 2, "orden estable en empates")
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

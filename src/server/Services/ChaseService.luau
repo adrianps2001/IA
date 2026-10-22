@@ -18,6 +18,7 @@ local RoundState = require(Shared.RoundState)
 
 local AnnouncementService = require(script.Parent.AnnouncementService)
 local DataService = require(script.Parent.DataService)
+local LeaderboardService = require(script.Parent.LeaderboardService)
 local MonetizationService = require(script.Parent.MonetizationService)
 local NestService = require(script.Parent.NestService)
 local QuestService = require(script.Parent.QuestService)
@@ -184,6 +185,7 @@ local function onStealTriggered(thief: Player)
 		AnnouncementService.server(string.format("¡%s le ha robado la criatura a %s!", thief.DisplayName, current.DisplayName), "info")
 	end
 	DataService.addStat(thief, "Steals", 1)
+	LeaderboardService.addSteal(thief)
 	QuestService.progress(thief, "Steal", 1)
 	if Config.Chase.StunSeconds > 0 then
 		stunnedUntil[current] = now + Config.Chase.StunSeconds

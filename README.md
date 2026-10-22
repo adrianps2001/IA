@@ -44,6 +44,7 @@ src/shared/                 ReplicatedStorage.Shared (servidor y cliente)
   Remotes, RoundState       Remotos y estado de ronda replicado
   Events                    Horarios de eventos, reglas del saqueo, criatura comunitaria
   Trade                     Máquina de estados del intercambio (doble confirmación)
+  Leaderboard               Semanas, "me gusta" y top del ranking
   Testing                   Modo de prueba en Studio (Config.Testing)
 src/server/                 ServerScriptService.Server
   Services/DataService      Guardado con bloqueo de sesión, autosave, vista para la UI
@@ -60,6 +61,7 @@ src/server/                 ServerScriptService.Server
   Services/LootService      Noche de Saqueo
   Services/PartyService     Bandadas
   Services/TradeService     Intercambio de criaturas
+  Services/LeaderboardService  Ranking semanal, salón de la fama y cartel
   Services/DebugService     Comandos de depuración (solo Studio)
 src/client/                 StarterPlayerScripts.Client
   Controllers/HUDController     Bolsa, barra, temporizador, flecha de objetivo, avisos
@@ -145,14 +147,14 @@ Implementado:
 - Luna de Sangre, Noche de Saqueo (sábados y domingos, 21-23 UTC; por defecto el ladrón se lleva una copia común y el dueño no pierde nada) y Huevo Comunitario (barra global mensual en MemoryStore con criatura conmemorativa).
 - Anuncios globales de Míticas y Secretas.
 - Pases, productos y suscripción, con probabilidades públicas y comprobación de `PolicyService` para los objetos aleatorios de pago.
+- Ranking semanal de robos y salón de la fama (nidos con más "me gusta"), en un cartel junto al huevo, con un OrderedDataStore por semana.
 - Embudo de analítica.
 - Ciclo visual de la ronda (atardecer, eclipse y noche).
 - Liberar criaturas a cambio de polvo (una a una o las guardadas) y decoración del nido (12 piezas de Monedas o polvo, solo estéticas). Se pueden apagar con `Config.Sinks`.
 
 Pendiente (siguientes fases del roadmap):
 - Huevo Doble (requiere varias persecuciones a la vez) y Huevo del Admin.
-- Visitas y "me gusta" en nidos, y salón de la fama.
-- Ranking semanal de robos.
+- Visitar nidos de otros servidores y títulos semanales para el campeón.
 - Emotes de reacción.
 - Selector de gen para la Ofrenda Dorada (el servidor ya la admite).
 - Más sumideros de Monedas: pase de temporada y cosméticos.

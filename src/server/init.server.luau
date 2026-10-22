@@ -12,6 +12,7 @@ local services = {
 	require(script.Services.CommunityService),
 	require(script.Services.LootService),
 	require(script.Services.TradeService),
+	require(script.Services.LeaderboardService),
 	require(script.Services.EggService),
 	require(script.Services.HeatService),
 	require(script.Services.ChaseService),

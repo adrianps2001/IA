@@ -32,6 +32,7 @@ export type Profile = {
 	Decorations: { string }, -- ids de Config.Decorations compradas
 	Community: CommunityState, -- aportación al Huevo Comunitario del mes
 	Trades: { TradeRecord },
+	Likes: { Week: string, Given: { number } }, -- "me gusta" dados esta semana
 }
 
 export type CommunityState = { Month: string, Heat: number, Claimed: boolean }
@@ -55,6 +56,7 @@ PlayerData.StatNames = {
 	"RoundsSinceChosen", -- para la suerte acumulada de la Elección
 	"Released", -- criaturas liberadas
 	"Trades", -- intercambios completados
+	"LikesReceived", -- "me gusta" recibidos en el nido (total)
 }
 
 function PlayerData.default(now: number): Profile
@@ -79,6 +81,7 @@ function PlayerData.default(now: number): Profile
 		Decorations = {},
 		Community = { Month = "", Heat = 0, Claimed = false },
 		Trades = {},
+		Likes = { Week = "", Given = {} },
 	}
 end
 
@@ -219,6 +222,17 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 				})
 			end
 		end
+	end
+
+	local likes = raw.Likes
+	if type(likes) == "table" and type(likes.Week) == "string" and type(likes.Given) == "table" then
+		local given = {}
+		for _, userId in likes.Given do
+			if type(userId) == "number" then
+				table.insert(given, userId)
+			end
+		end
+		profile.Likes = { Week = likes.Week, Given = given }
 	end
 
 	return profile

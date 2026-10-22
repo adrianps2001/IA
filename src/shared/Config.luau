@@ -206,6 +206,13 @@ Config.Trade = {
 	HistorySize = 20,
 }
 
+-- Ranking semanal de robos y salón de la fama (nidos con más "me gusta" de la semana).
+Config.Leaderboard = {
+	Size = 10, -- puestos que se muestran en el cartel
+	FlushSeconds = 60, -- cada cuánto se envían los totales y se lee el top
+	LikesPerWeek = 20, -- "me gusta" que puede dar cada jugador por semana (1 por nido)
+}
+
 Config.Quests = {
 	PerDay = 3,
 	RewardDust = 50,

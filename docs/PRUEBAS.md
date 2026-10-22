@@ -44,6 +44,7 @@ Panel de depuración (F7):
 | ⏩ Abrir huevos ya | Termina la incubadora |
 | 🌙 Noche de Saqueo on/off | Activa el evento en la ronda actual (o pon `Config.Testing.ForceLootNight = true` para todas) |
 | 🌍 Llenar Huevo Comunitario | Llena la barra global en este servidor y reparte la criatura conmemorativa |
+| 🏆 +3 robos en el ranking | Te suma 3 robos y refresca el cartel del lobby |
 
 ## Lista de comprobación por fase
 
@@ -99,6 +100,12 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots).
 - [ ] Cambiar tu oferta quita el "Listo" de los dos. "Confirmar" solo se activa 3 s después de que los dos estén listos.
 - [ ] Al completarse, las criaturas cambian de nido y aparece en "Últimos intercambios".
 - [ ] Si alguien sale a mitad, el intercambio se cancela sin cambiar nada.
+
+### Ranking y salón de la fama
+- [ ] El cartel junto al claro del huevo muestra "Ladrones de la semana" y "Salón de la fama".
+- [ ] Tras un robo en la persecución (o con 🏆 en F7), el ladrón aparece en el ranking en menos de un minuto.
+- [ ] En la entrada de un nido ajeno aparece "Me gusta ❤" (G); en el tuyo, no deja.
+- [ ] El mismo nido solo admite un "me gusta" tuyo por semana.
 
 ### Nido y datos
 - [ ] Panel del nido: criaturas, incubadora, mejoras, decorar, misiones y tienda.

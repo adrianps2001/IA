@@ -23,6 +23,7 @@ local BUTTONS = {
 	{ "⏩ Abrir huevos ya", "HatchEggs" },
 	{ "🌙 Noche de Saqueo on/off", "LootNight" },
 	{ "🌍 Llenar Huevo Comunitario", "CommunityFill" },
+	{ "🏆 +3 robos en el ranking", "Leaderboard" },
 }
 
 function DebugController.start()
