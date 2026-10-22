@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar Luau, Rojo y luau-lsp
+        run: |
+          mkdir -p "$HOME/bin"
+          curl -sSL -o luau.zip https://github.com/luau-lang/luau/releases/latest/download/luau-ubuntu.zip
+          unzip -q -o luau.zip -d "$HOME/bin"
+          curl -sSL -o rojo.zip https://github.com/rojo-rbx/rojo/releases/download/v7.4.4/rojo-7.4.4-linux-x86_64.zip
+          unzip -q -o rojo.zip -d "$HOME/bin"
+          curl -sSL -o lsp.zip https://github.com/JohnnyMorganz/luau-lsp/releases/download/1.70.1/luau-lsp-linux-x86_64.zip
+          unzip -q -o lsp.zip -d "$HOME/bin"
+          curl -sSL -o globalTypes.d.luau https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/1.70.1/scripts/globalTypes.d.luau
+          chmod +x "$HOME/bin"/*
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+
+      - name: Tests de lógica
+        run: luau tests/run.luau
+
+      - name: Análisis de tipos
+        run: |
+          rojo sourcemap default.project.json -o sourcemap.json
+          output=$(luau-lsp analyze --flag:LuauSolverV2=true --sourcemap=sourcemap.json --definitions=globalTypes.d.luau src 2>&1 | grep -v '^\[' || true)
+          echo "$output"
+          test -z "$output"
+
+      - name: Compilar con Rojo
+        run: rojo build default.project.json -o TheEggChooses.rbxlx

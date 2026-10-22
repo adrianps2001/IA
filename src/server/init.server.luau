@@ -1,0 +1,23 @@
+--!strict
+-- Arranque del servidor: init() de todos los servicios (sin esperas) y luego start().
+
+local services = {
+	require(script.Services.DataService),
+	require(script.Services.AnnouncementService),
+	require(script.Services.MonetizationService),
+	require(script.Services.MapService),
+	require(script.Services.QuestService),
+	require(script.Services.NestService),
+	require(script.Services.EggService),
+	require(script.Services.HeatService),
+	require(script.Services.ChaseService),
+	require(script.Services.RoundService),
+}
+
+for _, service in services do
+	service.init()
+end
+
+for _, service in services do
+	service.start()
+end
