@@ -21,6 +21,8 @@ local DataService = {}
 
 local profiles: { [Player]: Profile } = {}
 local dirty: { [Player]: boolean } = {}
+-- Perfiles ya liberados: un autosave que termine tarde no debe volver a tomar el bloqueo.
+local released: { [Player]: boolean } = {}
 -- Callbacks en tablas (no BindableEvent): un BindableEvent copiaría el perfil y los
 -- cambios hechos por los suscriptores se perderían.
 local loadedCallbacks: { (Player, Profile) -> () } = {}
@@ -39,6 +41,7 @@ local store: DataStore? = nil
 local useMemory = false
 
 local MAX_ATTEMPTS = 5
+local MAX_VIEW_CREATURES = 100
 
 local function key(player: Player): string
 	return "player_" .. player.UserId
@@ -94,18 +97,57 @@ local function write(player: Player, profile: Profile, release: boolean): boolea
 	end
 	local s = store :: DataStore
 	profile.LastSeen = now()
+	local written = false
 	local ok = retry("guardar " .. player.Name, function()
+		written = false
 		return s:UpdateAsync(key(player), function(old: any)
 			if type(old) == "table" and type(old.Lock) == "table" and old.Lock.JobId ~= game.JobId then
 				return nil -- perdimos el bloqueo; no pisar datos de otro servidor
 			end
+			if not release and released[player] then
+				return nil -- ya se guardó al salir; no reabrir la sesión
+			end
+			written = true
 			return {
 				Data = profile,
 				Lock = if release then nil else { JobId = game.JobId, Time = now() },
 			}
 		end)
 	end)
-	return ok
+	return ok and written
+end
+
+-- Devuelve el bloqueo sin cambiar los datos (cuando el jugador se fue antes de terminar de cargar).
+local function releaseLock(player: Player)
+	if useMemory then
+		return
+	end
+	local s = store :: DataStore
+	retry("liberar " .. player.Name, function()
+		return s:UpdateAsync(key(player), function(old: any)
+			if type(old) ~= "table" or type(old.Lock) ~= "table" or old.Lock.JobId ~= game.JobId then
+				return nil
+			end
+			return { Data = old.Data, Lock = nil }
+		end)
+	end)
+end
+
+-- Guarda y libera un perfil una sola vez, aunque se llame desde PlayerRemoving y BindToClose.
+local function release(player: Player)
+	local profile = profiles[player]
+	if not profile or released[player] then
+		return
+	end
+	released[player] = true
+	fire(releasingCallbacks, player, profile)
+	write(player, profile, true)
+	profiles[player] = nil
+	dirty[player] = nil
+	-- Margen para que terminen los autosaves en curso; luego se olvida el jugador.
+	task.delay(Config.Data.AutosaveSeconds * 3, function()
+		released[player] = nil
+	end)
 end
 
 local function updateAttributes(player: Player, profile: Profile)
@@ -159,8 +201,10 @@ local function load(player: Player)
 		raw = data
 	end
 	if not player.Parent then
+		releaseLock(player)
 		return
 	end
+	released[player] = nil
 
 	local profile = PlayerData.reconcile(raw, now())
 	profiles[player] = profile
@@ -191,6 +235,16 @@ end
 
 function DataService.onReleasing(callback: (Player, Profile) -> ())
 	table.insert(releasingCallbacks, callback)
+end
+
+-- Guarda ya (sin soltar el bloqueo). Lo usan las compras para no perder lo pagado si el
+-- servidor se cae antes del siguiente autosave.
+function DataService.saveNow(player: Player): boolean
+	local profile = profiles[player]
+	if not profile then
+		return false
+	end
+	return write(player, profile, false)
 end
 
 function DataService.markChanged(player: Player)
@@ -250,6 +304,10 @@ function DataService.view(player: Player): any
 	local multiplier = Economy.incomeMultiplier(profile.Generation, passFlag(player, "DoubleCoins"), passFlag(player, "Club"))
 	local creatures = {}
 	for index, creature in Creature.sortByIncome(profile.Creatures) do
+		-- Solo las mejores viajan al cliente: un jugador puede acumular cientos de criaturas.
+		if index > MAX_VIEW_CREATURES then
+			break
+		end
 		table.insert(creatures, {
 			Id = creature.Id,
 			Name = Creature.name(creature),
@@ -292,6 +350,7 @@ function DataService.view(player: Player): any
 		IncomePerSecond = DataService.incomePerSecond(player),
 		Slots = slots,
 		Creatures = creatures,
+		TotalCreatures = #profile.Creatures,
 		Upgrades = upgrades,
 		Quests = quests,
 		Streak = profile.Quests.Streak,
@@ -338,16 +397,7 @@ function DataService.start()
 		task.spawn(load, player)
 	end
 
-	Players.PlayerRemoving:Connect(function(player)
-		local profile = profiles[player]
-		if not profile then
-			return
-		end
-		fire(releasingCallbacks, player, profile)
-		write(player, profile, true)
-		profiles[player] = nil
-		dirty[player] = nil
-	end)
+	Players.PlayerRemoving:Connect(release)
 
 	-- Empuja los cambios al cliente agrupados.
 	task.spawn(function()
@@ -376,11 +426,10 @@ function DataService.start()
 
 	game:BindToClose(function()
 		local pending = 0
-		for player, profile in profiles do
+		for player in profiles do
 			pending += 1
 			task.spawn(function()
-				fire(releasingCallbacks, player, profile)
-				write(player, profile, true)
+				release(player)
 				pending -= 1
 			end)
 		end

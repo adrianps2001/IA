@@ -24,7 +24,7 @@ function Economy.upgradeCost(name: UpgradeName, currentLevel: number): number?
 	if not def or currentLevel >= def.MaxLevel then
 		return nil
 	end
-	return math.floor(def.BaseCost * def.Growth ^ currentLevel)
+	return math.floor(def.BaseCost * def.Growth ^ currentLevel * Config.PriceScale)
 end
 
 function Economy.bagCapacity(bagLevel: number, hasBigBagPass: boolean): number
@@ -36,11 +36,16 @@ function Economy.bagCapacity(bagLevel: number, hasBigBagPass: boolean): number
 	return capacity
 end
 
-function Economy.walkSpeed(bootsLevel: number, isCarrier: boolean, isSprinting: boolean): number
+-- atHome: el portador está dentro de su nido; intruding: está dentro de un nido ajeno
+-- durante la persecución (ver Config.Chase).
+function Economy.walkSpeed(bootsLevel: number, isCarrier: boolean, isSprinting: boolean, atHome: boolean?, intruding: boolean?): number
 	local boots = math.clamp(bootsLevel, 0, Config.Movement.BootsMaxLevel) * Config.Movement.BootsPerLevel
 	local speed = Config.Movement.BaseWalkSpeed * (1 + boots)
-	if isCarrier then
+	if isCarrier and not (atHome and Config.Chase.HomeCarrierFullSpeed) then
 		speed *= Config.Chase.CarrierSpeedMultiplier
+	end
+	if intruding then
+		speed *= Config.Chase.IntruderSpeedMultiplier
 	end
 	if isSprinting then
 		speed *= Config.Chase.SprintMultiplier
@@ -77,7 +82,7 @@ end
 
 function Economy.breedCost(parentRarity: Rarity.RarityName): number
 	local tier = Rarity.tier(parentRarity)
-	return 100 * tier * tier
+	return math.floor(Config.Breeding.CostPerTierSquared * tier * tier * Config.PriceScale)
 end
 
 function Economy.incomeMultiplier(generation: number, hasDoubleCoins: boolean, isClubMember: boolean): number
@@ -94,11 +99,11 @@ end
 -- Producción acumulada sin conexión, con tope de horas (GDD 5.6).
 function Economy.offlineEarnings(incomePerSecond: number, secondsAway: number): number
 	local capped = math.clamp(secondsAway, 0, Config.Nest.OfflineCapHours * 3600)
-	return math.floor(incomePerSecond * capped)
+	return math.floor(incomePerSecond * capped * Config.Nest.OfflineRate)
 end
 
 function Economy.rebirthCoins(generation: number): number
-	return Config.Rebirth.BaseCoins * (generation + 1)
+	return math.floor(Config.Rebirth.BaseCoins * (generation + 1) * Config.PriceScale)
 end
 
 function Economy.canRebirth(creatureCount: number, coins: number, generation: number): boolean
@@ -113,7 +118,7 @@ function Economy.consolationDust(affinity: number, stealAttempts: number): numbe
 end
 
 function Economy.barGoal(playerCount: number): number
-	return math.max(Config.Round.BarGoalMin, playerCount * Config.Round.BarGoalPerPlayer)
+	return math.max(Config.Round.BarGoalMin, Config.Round.BarGoalBase + playerCount * Config.Round.BarGoalPerPlayer)
 end
 
 -- Rareza mínima y suerte según el llenado de la barra del servidor.

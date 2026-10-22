@@ -77,7 +77,12 @@ function CreatureModel.build(creature: Creature.Creature, scale: number?): Model
 		bodyColor = Color3.new(1 - bodyColor.R, 1 - bodyColor.G, 1 - bodyColor.B)
 	end
 
-	local bodyPart = part("Body", Enum.PartType.Ball, (BODY_SHAPES[genes.Body] or Vector3.new(3, 3, 3)) * s, bodyColor, model)
+	-- Una pieza Ball siempre es una esfera perfecta; para las formas alargadas se usa un
+	-- bloque con malla esférica, que se estira con el tamaño (igual que el huevo gigante).
+	local bodyPart = part("Body", Enum.PartType.Block, (BODY_SHAPES[genes.Body] or Vector3.new(3, 3, 3)) * s, bodyColor, model)
+	local bodyMesh = Instance.new("SpecialMesh")
+	bodyMesh.MeshType = Enum.MeshType.Sphere
+	bodyMesh.Parent = bodyPart
 	bodyPart.Material = BODY_MATERIALS[genes.Body] or Enum.Material.SmoothPlastic
 	model.PrimaryPart = bodyPart
 

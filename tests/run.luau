@@ -1,14 +1,17 @@
 --!strict
 -- Pruebas de la lógica pura (sin Roblox). Ejecutar con: luau tests/run.luau
 
+local ChaseRules = require("../src/shared/ChaseRules")
 local Config = require("../src/shared/Config")
 local Creature = require("../src/shared/Creature")
 local Economy = require("../src/shared/Economy")
 local Election = require("../src/shared/Election")
 local Genes = require("../src/shared/Genes")
+local MapLayout = require("../src/shared/MapLayout")
 local PlayerData = require("../src/shared/PlayerData")
 local Quests = require("../src/shared/Quests")
 local Rarity = require("../src/shared/Rarity")
+local Rewards = require("../src/shared/Rewards")
 
 local passed, failed = 0, 0
 
@@ -179,7 +182,7 @@ test("Election: proporcional cuando nadie baja del mínimo", function()
 end)
 
 test("Election: mínimo del 2 % y suma 1", function()
-	local entries = {
+	local entries: { Election.Entry } = {
 		{ Key = "rico", Affinity = 10000 },
 		{ Key = "medio", Affinity = 500 },
 		{ Key = "cero1", Affinity = 0 },
@@ -218,7 +221,7 @@ end)
 
 test("Election.pick devuelve a alguien y respeta las frecuencias", function()
 	local rng = seeded(99)
-	local entries = {
+	local entries: { Election.Entry } = {
 		{ Key = "a", Affinity = 900 },
 		{ Key = "b", Affinity = 100 },
 	}
@@ -261,8 +264,9 @@ test("Economy: consolación crece con Afinidad e intentos y tiene tope", functio
 end)
 
 test("Economy: ganancias sin conexión con tope de 8 h", function()
-	expect(Economy.offlineEarnings(10, 60) == 600)
-	expect(Economy.offlineEarnings(1, 24 * 3600) == 8 * 3600)
+	local rate = Config.Nest.OfflineRate
+	expect(Economy.offlineEarnings(10, 60) == math.floor(600 * rate))
+	expect(Economy.offlineEarnings(1, 24 * 3600) == math.floor(8 * 3600 * rate))
 	expect(Economy.offlineEarnings(1, -50) == 0)
 end)
 
@@ -330,6 +334,86 @@ test("PlayerData: recibos acotados", function()
 	end
 	expect(#p.Receipts == PlayerData.MaxReceipts)
 	expect(PlayerData.hasReceipt(p, "60") and not PlayerData.hasReceipt(p, "1"))
+end)
+
+test("Genes.commonCopy solo deja genes comunes y conserva los que ya lo eran", function()
+	local rng = seeded(31)
+	local source = Genes.rollSet(rng, "Legendary")
+	local copy = Genes.commonCopy(source, rng)
+	expect(Genes.isValidSet(copy) and Genes.rarityOf(copy) == "Common")
+	for _, slot in Genes.Slots do
+		local original = Genes.get((source :: any)[slot])
+		if original and original.Rarity == "Common" then
+			expect((copy :: any)[slot] == original.Id)
+		end
+	end
+end)
+
+test("ChaseRules.canSteal valida pulsación, inmunidad y distancia", function()
+	local hold = Config.Chase.StealHoldTime
+	expect(ChaseRules.canSteal(10, nil, 0, 1) == "noHold")
+	expect(ChaseRules.canSteal(10, 10 - hold * 0.5, 0, 1) == "tooShort")
+	expect(ChaseRules.canSteal(10, 10 - hold, 11, 1) == "immune")
+	expect(ChaseRules.canSteal(10, 10 - hold, 0, Config.Chase.StealRange + 10) == "tooFar")
+	expect(ChaseRules.canSteal(10, 10 - hold, 0, 2) == "ok")
+end)
+
+test("ChaseRules: defensa en casa, asegurar y prórroga", function()
+	local hold = Config.Chase.StealHoldTime
+	expect(near(ChaseRules.holdTime(false), hold))
+	expect(near(ChaseRules.holdTime(true), hold * Config.Chase.HomeHoldMultiplier))
+	-- En casa, la pulsación normal no basta si el multiplicador es mayor que 1.
+	if Config.Chase.HomeHoldMultiplier > 1.2 then
+		expect(ChaseRules.canSteal(10, 10 - hold, 0, 2, true) == "tooShort")
+	end
+	expect(ChaseRules.canSteal(10, 10 - ChaseRules.holdTime(true), 0, 2, true) == "ok")
+	if Config.Chase.SecureSeconds > 0 then
+		expect(not ChaseRules.isSecured(Config.Chase.SecureSeconds - 1))
+		expect(ChaseRules.isSecured(Config.Chase.SecureSeconds))
+	end
+	expect(ChaseRules.overtimeWin(true, true) and not ChaseRules.overtimeWin(false, true) and not ChaseRules.overtimeWin(true, false))
+end)
+
+test("Economy: territorio y meta de la barra", function()
+	local base = Economy.walkSpeed(0, false, false)
+	expect(near(Economy.walkSpeed(0, false, false, false, true), base * Config.Chase.IntruderSpeedMultiplier))
+	if Config.Chase.HomeCarrierFullSpeed then
+		expect(near(Economy.walkSpeed(0, true, false, true, false), base))
+	end
+	expect(Economy.barGoal(12) == math.max(Config.Round.BarGoalMin, Config.Round.BarGoalBase + 12 * Config.Round.BarGoalPerPlayer))
+	expect(Economy.barGoal(16) > Economy.barGoal(4))
+end)
+
+test("Rewards: ganador, aliado y consolación", function()
+	local participants = {
+		{ Key = "gana", Affinity = 400, StealAttempts = 1 },
+		{ Key = "aliado", Affinity = 100, StealAttempts = 0 },
+		{ Key = "otro", Affinity = 0, StealAttempts = 3 },
+	}
+	local r = Rewards.compute(participants, "gana", { "aliado" })
+	local winnerDust = Config.Consolation.WinnerBonusDust + Economy.consolationDust(400, 1)
+	expect(r.gana.Creature and r.gana.Dust == winnerDust)
+	expect(r.aliado.Copy and r.aliado.Dust == Economy.consolationDust(100, 0) + math.floor(winnerDust * Config.Deal.DustShare))
+	expect(not r.otro.Copy and not r.otro.Creature and r.otro.Dust == Economy.consolationDust(0, 3))
+	local escaped = Rewards.compute(participants, nil, { "aliado" })
+	expect(not escaped.aliado.Copy and not escaped.gana.Creature)
+end)
+
+test("MapLayout: nidos, entradas y géiseres", function()
+	for index = 1, Config.Nest.Count do
+		local center = MapLayout.nestCenter(index)
+		expect(near(MapLayout.distance(center, { X = 0, Z = 0 }), MapLayout.NestRadius, 1e-6))
+		expect(MapLayout.insideNest(index, center))
+		expect(not MapLayout.insideNest(index, MapLayout.nestEntrance(index)))
+		expect(not MapLayout.insideNest(index, { X = 0, Z = 0 }))
+	end
+	expect(#MapLayout.geyserPositions() == Config.Heat.Geyser.Count)
+	local rng = seeded(8)
+	for _ = 1, 500 do
+		local p = MapLayout.randomInRing(rng, MapLayout.SourceRing.Min, MapLayout.SourceRing.Max)
+		local d = MapLayout.distance(p, { X = 0, Z = 0 })
+		expect(d >= MapLayout.SourceRing.Min - 1e-6 and d <= MapLayout.SourceRing.Max + 1e-6)
+	end
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

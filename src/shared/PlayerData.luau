@@ -36,7 +36,16 @@ local PlayerData = {}
 PlayerData.Version = 1
 PlayerData.MaxReceipts = 50
 
-PlayerData.StatNames = { "Steals", "StealAttempts", "Wins", "PactsKept", "PactsBroken", "RoundsPlayed", "HeatDeposited" }
+PlayerData.StatNames = {
+	"Steals",
+	"StealAttempts",
+	"Wins",
+	"PactsKept",
+	"PactsBroken",
+	"RoundsPlayed",
+	"HeatDeposited",
+	"RoundsSinceChosen", -- para la suerte acumulada de la Elección
+}
 
 function PlayerData.default(now: number): Profile
 	local stats = {}

@@ -254,4 +254,17 @@ function Genes.inherit(a: GeneSet, b: GeneSet, rng: () -> number, mutationChance
 	return child :: any
 end
 
+-- Copia común para el aliado de un trato: conserva los genes comunes de la criatura y
+-- cambia el resto por genes comunes de la misma ranura.
+function Genes.commonCopy(source: GeneSet, rng: () -> number): GeneSet
+	local copy = table.clone(source) :: any
+	for _, slot in Genes.Slots do
+		local gene = Genes.ById[copy[slot]]
+		if not gene or gene.Rarity ~= "Common" then
+			copy[slot] = Genes.rollSlot(slot, rng, "Common")
+		end
+	end
+	return copy
+end
+
 return Genes

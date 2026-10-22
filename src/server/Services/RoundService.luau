@@ -8,11 +8,11 @@ local Players = game:GetService("Players")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Creature = require(Shared.Creature)
-local Economy = require(Shared.Economy)
 local Election = require(Shared.Election)
 local Genes = require(Shared.Genes)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
+local Rewards = require(Shared.Rewards)
 local RoundState = require(Shared.RoundState)
 
 local AnalyticsHelper = require(script.Parent.Parent.Util.Analytics)
@@ -83,25 +83,15 @@ local function waitPhase(duration: number, stopEarly: (() -> boolean)?)
 	end
 end
 
--- Copia común para el aliado de un trato: conserva los genes comunes y sustituye el resto.
-local function commonCopy(source: Genes.GeneSet): Genes.GeneSet
-	local copy = table.clone(source) :: any
-	for _, slot in Genes.Slots do
-		local gene = Genes.get(copy[slot])
-		if not gene or gene.Rarity ~= "Common" then
-			copy[slot] = Genes.rollSlot(slot, rng, "Common")
-		end
-	end
-	return copy
-end
-
 local function runElection(players: { Player }): (Player?, { [string]: number })
 	local entries = {}
 	local byKey: { [string]: Player } = {}
 	for _, player in players do
 		local key = tostring(player.UserId)
 		byKey[key] = player
-		table.insert(entries, { Key = key, Affinity = HeatService.affinity(player) })
+		local profile = DataService.get(player)
+		local waited = if profile then profile.Stats.RoundsSinceChosen or 0 else 0
+		table.insert(entries, { Key = key, Affinity = HeatService.affinity(player), Min = Election.pityMin(waited) })
 	end
 	local chosenKey, chances = Election.pick(entries, Config.Election.MinChance, rng)
 	return if chosenKey then byKey[chosenKey] else nil, chances
@@ -123,6 +113,13 @@ local function hatch(players: { Player }, bloodMoon: boolean): (Player?, Genes.G
 	end
 
 	RoundState.set("ChosenUserId", if chosen then chosen.UserId else 0)
+	-- Suerte acumulada: el elegido vuelve a empezar; los demás suman una ronda de espera.
+	for _, player in players do
+		local profile = DataService.get(player)
+		if profile then
+			profile.Stats.RoundsSinceChosen = if player == chosen then 0 else (profile.Stats.RoundsSinceChosen or 0) + 1
+		end
+	end
 	RoundState.set("CreatureName", Creature.name(preview))
 	RoundState.set("CreatureRarity", preview.Rarity)
 	Remotes.event("HatchSequence"):FireAllClients({
@@ -150,11 +147,30 @@ local function hatch(players: { Player }, bloodMoon: boolean): (Player?, Genes.G
 end
 
 local function awardResults(players: { Player }, result: ChaseService.ChaseResult)
-	local winner = result.Winner
 	local genes = result.Genes
+	-- Si el ganador se fue justo al acabar, la criatura cuenta como escapada.
+	local winner = if result.Winner and result.Winner.Parent and genes then result.Winner else nil
+
+	local participants: { Rewards.Participant } = {}
+	local byKey: { [string]: Player } = {}
+	for _, player in players do
+		if player.Parent then
+			local key = tostring(player.UserId)
+			byKey[key] = player
+			table.insert(participants, {
+				Key = key,
+				Affinity = HeatService.affinity(player),
+				StealAttempts = ChaseService.stealAttempts(player),
+			})
+		end
+	end
+	local partnerKeys = {}
+	for _, partner in result.Partners do
+		table.insert(partnerKeys, tostring(partner.UserId))
+	end
+	local rewards = Rewards.compute(participants, if winner then tostring(winner.UserId) else nil, partnerKeys)
 
 	if winner and genes then
-		NestService.giveCreature(winner, genes, "Hatch")
 		DataService.addStat(winner, "Wins", 1)
 		QuestService.progress(winner, "WinCreature", 1)
 		ChaseService.keepPacts(winner)
@@ -166,29 +182,20 @@ local function awardResults(players: { Player }, result: ChaseService.ChaseResul
 		AnnouncementService.server("La criatura se escapó: nadie la tenía en su nido al acabar el tiempo.", "info")
 	end
 
-	local winnerDust = 0
-	if winner then
-		winnerDust = Config.Consolation.WinnerBonusDust
-			+ Economy.consolationDust(HeatService.affinity(winner), ChaseService.stealAttempts(winner))
-		DataService.addDust(winner, winnerDust)
-	end
-
-	for _, player in players do
-		if player.Parent and player ~= winner then
-			local dust = Economy.consolationDust(HeatService.affinity(player), ChaseService.stealAttempts(player))
-			local isPartner = table.find(result.Partners, player) ~= nil
-			if isPartner and genes then
-				dust += math.floor(winnerDust * Config.Deal.DustShare)
-				NestService.giveCreature(player, commonCopy(genes), "Copy")
-				AnnouncementService.player(player, "Tu aliado ganó: recibes tu parte del polvo y una copia común.", "quest")
-			end
-			DataService.addDust(player, dust)
-			AnnouncementService.player(player, string.format("+%d Polvo de cáscara de consuelo", dust))
+	for key, reward in rewards do
+		local player = byKey[key]
+		if reward.Creature and genes then
+			NestService.giveCreature(player, genes, "Hatch")
+		elseif reward.Copy and genes then
+			NestService.giveCreature(player, Genes.commonCopy(genes, rng), "Copy")
+			AnnouncementService.player(player, "Tu aliado ganó: recibes tu parte del polvo y una copia común.", "quest")
 		end
-		if player.Parent then
-			DataService.addStat(player, "RoundsPlayed", 1)
-			QuestService.progress(player, "PlayRounds", 1)
+		DataService.addDust(player, reward.Dust)
+		if not reward.Creature then
+			AnnouncementService.player(player, string.format("+%d Polvo de cáscara de consuelo", reward.Dust))
 		end
+		DataService.addStat(player, "RoundsPlayed", 1)
+		QuestService.progress(player, "PlayRounds", 1)
 	end
 end
 
@@ -245,7 +252,17 @@ local function playRound()
 	setMood("Chase")
 	AnnouncementService.server(string.format("¡El huevo ha elegido a %s! Tenéis %d minutos para robársela.", chosen.DisplayName, chaseTime // 60), "threshold")
 	ChaseService.begin(chosen, genes)
-	waitPhase(chaseTime)
+	if Config.Chase.HeadStartSeconds > 0 then
+		AnnouncementService.server(string.format("¡%s tiene %d s de ventaja!", chosen.DisplayName, Config.Chase.HeadStartSeconds), "info")
+	end
+	waitPhase(chaseTime, ChaseService.isOver)
+
+	-- Prórroga (gol de oro): si el portador no está en su nido, gana el primero que llegue.
+	if ChaseService.startOvertime() then
+		setPhase("Overtime", Config.Chase.OvertimeSeconds)
+		AnnouncementService.server("⚡ ¡PRÓRROGA! Gana el primero que meta la criatura en su nido.", "threshold")
+		waitPhase(Config.Chase.OvertimeSeconds, ChaseService.isOver)
+	end
 
 	-- Resultados
 	local result = ChaseService.finish()

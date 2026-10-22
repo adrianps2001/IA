@@ -94,6 +94,16 @@ local function renderCreatures()
 		end)
 	end
 
+	local hidden = (profile.TotalCreatures or #profile.Creatures) - #profile.Creatures
+	if hidden > 0 then
+		UI.label({
+			Size = UDim2.new(1, 0, 0, 26),
+			Text = string.format("…y %d criaturas más que no están entre las %d mejores", hidden, #profile.Creatures),
+			TextColor3 = UI.Colors.Muted,
+			LayoutOrder = #profile.Creatures + 1,
+		}, content)
+	end
+
 	local breedText = "Elige 2 criaturas para criar"
 	if #selected == 2 then
 		local best: Rarity.RarityName = "Common"
@@ -213,8 +223,8 @@ local function renderShop()
 	local products = {
 		{ Key = "ServerLuck", Text = "🍀 Suerte del Servidor (15 min, para TODOS)", Product = true },
 		{ Key = "ShellShield", Text = "🛡️ Escudo de Cáscara (bloquea 1 robo, máx. 1 por ronda)", Product = true },
-		{ Key = "SeasonEgg", Text = "🥚 Huevo de Temporada: " .. oddsText(Config.EggRanges.Season), Product = true },
-		{ Key = "BreedReroll", Text = "🔁 Repetir la última cría", Product = true },
+		{ Key = "SeasonEgg", Text = "🥚 Huevo de Temporada: " .. oddsText(Config.EggRanges.Season), Product = true, Random = true },
+		{ Key = "BreedReroll", Text = "🔁 Repetir la última cría", Product = true, Random = true },
 		{ Key = "CoinsSmall", Text = "🪙 Pack pequeño de Monedas", Product = true },
 		{ Key = "BigBag", Text = "🎒 Bolsa Grande (+50 % de Calor)", Product = false },
 		{ Key = "AutoDeposit", Text = "🔥 Auto-Depósito", Product = false },
@@ -223,7 +233,12 @@ local function renderShop()
 		{ Key = "FastIncubator", Text = "⏩ Incubadora Rápida", Product = false },
 		{ Key = "ExtraBreedSlot", Text = "➕ Ranura de cría extra", Product = false },
 	}
+	-- Los objetos aleatorios de pago no se muestran donde la ley los restringe.
+	local randomRestricted = player:GetAttribute("PaidRandomRestricted") ~= false
 	for index, item in products do
+		if (item :: any).Random and randomRestricted then
+			continue
+		end
 		local id = if item.Product then Config.DevProducts[item.Key] else Config.GamePasses[item.Key]
 		local owned = not item.Product and player:GetAttribute("Pass_" .. item.Key) == true
 		local r = row(50, index)
@@ -246,11 +261,22 @@ local function renderShop()
 	end
 end
 
+local renderedTab = ""
+
 render = function()
+	-- Conserva el scroll si se vuelve a dibujar la misma pestaña (llega una vista nueva cada 10 s).
+	local scroll = if renderedTab == currentTab then content.CanvasPosition else Vector2.zero
+	renderedTab = currentTab
 	UI.clear(content)
 	UI.clear(footer)
 	table.clear(timeLabels)
-	UI.list(content, 6)
+	-- UI.clear solo borra GuiObjects: el UIListLayout se crea una única vez.
+	if not content:FindFirstChildOfClass("UIListLayout") then
+		UI.list(content, 6)
+	end
+	task.defer(function()
+		content.CanvasPosition = scroll
+	end)
 	for name, button in tabButtons do
 		button.BackgroundColor3 = if name == currentTab then UI.Colors.Accent else UI.Colors.PanelLight
 	end

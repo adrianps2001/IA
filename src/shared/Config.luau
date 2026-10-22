@@ -13,7 +13,11 @@ Config.Round = {
 	IntermissionTime = 15,
 	MinPlayers = 1, -- en producción, 4+; con 1 se puede probar en Studio
 	MaxPlayers = 16,
-	BarGoalPerPlayer = 600, -- Calor necesario por jugador para llenar la barra
+	-- Calor para llenar la barra = BarGoalBase + BarGoalPerPlayer × jugadores. Las fuentes
+	-- son fijas, así que cada jugador extra aporta menos: por eso hay una parte fija.
+	-- Ajustado con el simulador (sim/): la barra acaba de media entre el 55 y el 70 %.
+	BarGoalBase = 6000,
+	BarGoalPerPlayer = 1150,
 	BarGoalMin = 1200,
 }
 
@@ -42,6 +46,9 @@ Config.Heat = {
 
 Config.Election = {
 	MinChance = 0.02, -- cualquiera puede ser elegido
+	-- Suerte acumulada: cada ronda sin ser elegido sube tu mínimo, hasta PityMaxChance.
+	PityPerRound = 0.02,
+	PityMaxChance = 0.12,
 }
 
 Config.Chase = {
@@ -55,6 +62,24 @@ Config.Chase = {
 	PassRange = 12,
 	DoorCloseTime = 10,
 	ShieldsPerRound = 1,
+	-- Defensa en casa: dentro de su propio nido, robar al portador cuesta este múltiplo de tiempo.
+	HomeHoldMultiplier = 1.5,
+	-- Asegurar: si el portador aguanta estos segundos seguidos en su nido, gana y la
+	-- persecución termina (0 = desactivado; solo cuenta el nido al acabar el tiempo).
+	SecureSeconds = 25,
+	-- Territorio: durante la persecución, quien entra en un nido ajeno va a esta fracción de
+	-- velocidad, y el portador dentro de su propio nido no sufre la penalización de portador.
+	IntruderSpeedMultiplier = 0.6,
+	HomeCarrierFullSpeed = true,
+	-- Aturdimiento: quien sufre un robo no puede moverse ni robar durante estos segundos.
+	StunSeconds = 2,
+	-- Ventaja del elegido: segundos que los demás tardan en poder moverse al empezar.
+	HeadStartSeconds = 4,
+	-- Inmunidad del elegido al empezar la persecución (después, la normal tras cada robo).
+	StartImmunitySeconds = 10,
+	-- Prórroga (gol de oro): si al acabar el portador no está en su nido, se sigue jugando
+	-- hasta este máximo; gana el primero que meta la criatura en su nido (0 = desactivada).
+	OvertimeSeconds = 45,
 }
 
 Config.Movement = {
@@ -82,6 +107,8 @@ Config.Nest = {
 	MaxSlots = 40,
 	VipExtraSlots = 10,
 	OfflineCapHours = 8,
+	-- Fracción de la producción que se cobra sin conexión (1 = igual que jugando).
+	OfflineRate = 0.25,
 	Count = 16,
 }
 
@@ -105,17 +132,28 @@ Config.BreedSeconds = {
 	Secret = 14400,
 }
 
+Config.Breeding = {
+	MutationChance = 0.1, -- probabilidad por ranura de que el gen del hijo mute
+	CostPerTierSquared = 2000, -- coste = esto × nivel de rareza² del mejor padre
+}
+
+-- Escala global de precios en Monedas (mejoras, cría y Nueva generación). Es el mando
+-- principal para frenar o acelerar la progresión; se ajusta con el simulador (sim/).
+Config.PriceScale = 1
+
 Config.Upgrades = {
-	Bag = { BaseCost = 150, Growth = 1.7, MaxLevel = 9 }, -- 100 a 1.000 de Calor en 10 niveles (0-9)
-	Boots = { BaseCost = 200, Growth = 1.75, MaxLevel = 10 },
-	Sniffer = { BaseCost = 2500, Growth = 1, MaxLevel = 1 },
-	Nest = { BaseCost = 300, Growth = 1.55, MaxLevel = 17 }, -- 6 + 17*2 = 40 ranuras
-	Incubator = { BaseCost = 1000, Growth = 2, MaxLevel = 5 },
+	-- Primeros niveles baratos (se compran en la primera sesión) y últimos muy caros (metas
+	-- de semanas). Curvas ajustadas con el simulador: ver docs/simulacion.html.
+	Bag = { BaseCost = 150, Growth = 3.5, MaxLevel = 9 }, -- 100 a 1.000 de Calor en 10 niveles (0-9)
+	Boots = { BaseCost = 200, Growth = 3.1, MaxLevel = 10 },
+	Sniffer = { BaseCost = 100_000, Growth = 1, MaxLevel = 1 },
+	Nest = { BaseCost = 300, Growth = 2.05, MaxLevel = 17 }, -- 6 + 17*2 = 40 ranuras
+	Incubator = { BaseCost = 1000, Growth = 7, MaxLevel = 5 },
 }
 
 Config.Rebirth = {
 	CreaturesNeeded = 40,
-	BaseCoins = 1_000_000,
+	BaseCoins = 100_000_000,
 	MultiplierPerGeneration = 0.5,
 }
 
