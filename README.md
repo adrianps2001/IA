@@ -2,7 +2,7 @@
 
 Juego social para Roblox: todo el servidor alimenta **un único huevo gigante**, el huevo **elige a un dueño** al eclosionar y los demás tienen 3 minutos para **robárselo**. Las criaturas que consigues viven en tu nido, producen Monedas aunque no estés y se pueden criar para obtener genes nuevos.
 
-El diseño completo está en [`docs/GDD.md`](docs/GDD.md). Este repositorio contiene el **prototipo jugable** (fase 1 del roadmap: una ronda completa en gris) junto con el nido, la cría, la economía, las misiones y la monetización.
+El diseño completo está en [`docs/GDD.md`](docs/GDD.md). La **guía visual del proyecto** (Roblox para creadores, archivos, Luau y todo el código explicado con demos interactivas) está en [`docs/index.html`](docs/index.html) y se publica con GitHub Pages en https://adrianps2001.github.io/IA/. Este repositorio contiene el **prototipo jugable** (fase 1 del roadmap: una ronda completa en gris) junto con el nido, la cría, la economía, las misiones y la monetización.
 
 ## Cómo probarlo
 
@@ -57,6 +57,8 @@ src/client/                 StarterPlayerScripts.Client
   Controllers/EffectsController Latido del huevo y criaturas arcoíris
 tests/run.luau              Tests de la lógica pura
 docs/GDD.md                 Documento de diseño
+docs/index.html, assets/    Web de documentación (GitHub Pages)
+tools/                      export_data.luau y build_docs.py: generan la web desde el código
 ```
 
 **Seguridad:** el servidor es autoritativo. El cliente solo envía intenciones ("quiero esprintar"). El servidor valida distancias, tiempos de pulsación, costes y fases, y calcula todas las velocidades.
@@ -70,7 +72,13 @@ luau-lsp analyze --flag:LuauSolverV2=true --sourcemap=sourcemap.json \
   --definitions=globalTypes.d.luau src  # análisis de tipos con las APIs de Roblox
 ```
 
-La CI de GitHub (`.github/workflows/ci.yml`) ejecuta los tests y comprueba que el proyecto compila con Rojo en cada push.
+La CI de GitHub (`.github/workflows/ci.yml`) ejecuta los tests, el análisis de tipos, comprueba que la web está al día y que el proyecto compila con Rojo en cada push.
+
+## La web de documentación
+
+- **Publicarla:** en GitHub, *Settings → Pages → Build and deployment → Deploy from a branch*, rama `main`, carpeta `/docs`.
+- **Actualizarla tras cambiar el código:** `python3 tools/build_docs.py`. Copia en `docs/index.html` los fragmentos de código (por nombre de función) y los datos reales del juego (vía `tools/export_data.luau`). Necesita `luau` en el PATH.
+- **Verla en local:** `python3 -m http.server -d docs` y abrir http://localhost:8000.
 
 ## Antes de publicar
 

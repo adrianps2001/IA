@@ -26,6 +26,9 @@ jobs:
       - name: Tests de lógica
         run: luau tests/run.luau
 
+      - name: Web de documentación al día
+        run: python3 tools/build_docs.py --check
+
       - name: Análisis de tipos
         run: |
           rojo sourcemap default.project.json -o sourcemap.json
