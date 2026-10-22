@@ -15,6 +15,8 @@ El diseño completo está en [`docs/GDD.md`](docs/GDD.md). La **guía visual del
 
 El mapa (bosque, huevo y 16 nidos) se genera por código al arrancar el servidor, así que no hace falta ningún archivo de mapa.
 
+**Modo de prueba en Studio:** los jugadores Player2, Player3... juegan solos con un **piloto automático** (F8 lo activa o desactiva) y **F7** abre un panel de depuración (saltar fase, llenar la barra, ser el portador, dar monedas o criaturas). En Studio las fases duran el 35 % (`Config.Testing.TimeScale`). Nada de esto funciona fuera de Studio. La guía y la lista de comprobación están en [`docs/PRUEBAS.md`](docs/PRUEBAS.md).
+
 ## Cómo se juega una ronda (~12 min)
 
 | Fase | Duración | Qué pasa |
@@ -39,6 +41,7 @@ src/shared/                 ReplicatedStorage.Shared (servidor y cliente)
   Quests, PlayerData        esquema de datos guardados (lógica pura, con tests)
   CreatureModel             Construye el modelo 3D modular de una criatura
   Remotes, RoundState       Remotos y estado de ronda replicado
+  Testing                   Modo de prueba en Studio (Config.Testing)
 src/server/                 ServerScriptService.Server
   Services/DataService      Guardado con bloqueo de sesión, autosave, vista para la UI
   Services/MapService       Mapa en gris: bosque circular, huevo y 16 nidos
@@ -50,12 +53,15 @@ src/server/                 ServerScriptService.Server
   Services/QuestService     Misiones diarias y racha de 7 días
   Services/MonetizationService  Pases, productos, suscripción, recibos idempotentes
   Services/AnnouncementService  Avisos locales y globales (MessagingService)
+  Services/DebugService     Comandos de depuración (solo Studio)
 src/client/                 StarterPlayerScripts.Client
   Controllers/HUDController     Bolsa, barra, temporizador, flecha de objetivo, avisos
   Controllers/HatchController   Espectáculo de eclosión y ruleta
   Controllers/ChaseController   Botones del portador y ventana de tratos
   Controllers/NestController    Panel del nido: criaturas, incubadora, mejoras, misiones, tienda
   Controllers/EffectsController Latido del huevo y criaturas arcoíris
+  Controllers/DebugController   Panel de depuración (F7, solo Studio)
+  Controllers/AutopilotController Piloto automático para probar en Studio (F8)
   ChaseRules, Rewards,       Reglas de la persecución, reparto de premios y geometría
   MapLayout                 del mapa (lógica pura, compartida con el simulador)
 sim/                        Simulador de bots: Round (una ronda), Meta (semanas), run (CLI)
@@ -63,6 +69,7 @@ tests/run.luau              Tests de la lógica pura
 docs/GDD.md                 Documento de diseño
 docs/index.html, assets/    Web de documentación (GitHub Pages)
 docs/simulacion.html        Informe del simulador (lo genera tools/sim_report.py)
+docs/PRUEBAS.md             Cómo probar en Studio y lista de comprobación
 tools/                      export_data.luau, build_docs.py, sim_report.py, Json.luau
 ```
 

@@ -23,6 +23,7 @@ local EVENTS = {
 	"RequestCollectEggs",
 	"RequestRebirth",
 	"SetGoldenOffering",
+	"DebugCommand", -- solo Studio (Config.Testing.DebugTools)
 }
 
 local FUNCTIONS = {

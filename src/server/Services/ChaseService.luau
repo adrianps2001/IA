@@ -88,6 +88,10 @@ function ChaseService.stealAttempts(player: Player): number
 	return stealAttempts[player] or 0
 end
 
+function ChaseService.isActive(): boolean
+	return active
+end
+
 function ChaseService.carrier(): Player?
 	return carrier
 end

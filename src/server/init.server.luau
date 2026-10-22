@@ -12,6 +12,7 @@ local services = {
 	require(script.Services.HeatService),
 	require(script.Services.ChaseService),
 	require(script.Services.RoundService),
+	require(script.Services.DebugService), -- solo responde en Studio
 }
 
 for _, service in services do

@@ -201,6 +201,15 @@ Config.EggRanges = {
 Config.ServerLuck = { Seconds = 15 * 60, Luck = 2 }
 Config.CoinPacks = { CoinsSmall = 5_000, CoinsLarge = 120_000 } :: { [string]: number }
 
+-- Pruebas en Roblox Studio (docs/PRUEBAS.md). Solo tienen efecto dentro de Studio: en un
+-- servidor publicado se ignoran siempre.
+Config.Testing = {
+	Autopilot = true, -- las ventanas de prueba juegan solas; F8 activa/desactiva en cada ventana
+	AutopilotOnFirstPlayer = false, -- Player1 (tú) empieza controlando su personaje
+	DebugTools = true, -- panel de depuración (F7): saltar fase, dar Monedas, llenar la barra...
+	TimeScale = 0.35, -- duración de las fases en Studio (0,35 = rondas de unos 4 min; 1 = normal)
+}
+
 Config.Data = {
 	StoreName = "PlayerData_v1",
 	AutosaveSeconds = 60,

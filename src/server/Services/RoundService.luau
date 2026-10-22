@@ -14,6 +14,7 @@ local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 local Rewards = require(Shared.Rewards)
 local RoundState = require(Shared.RoundState)
+local Testing = require(Shared.Testing)
 
 local AnalyticsHelper = require(script.Parent.Parent.Util.Analytics)
 local AnnouncementService = require(script.Parent.AnnouncementService)
@@ -72,15 +73,28 @@ function RoundService.isBloodMoon(): boolean
 	return now.wday == def.WeekDay and now.hour >= def.StartHour and now.hour < def.StartHour + def.Hours
 end
 
+local skipRequested = false
+
+-- Herramienta de depuración (solo Studio): termina la fase actual.
+function RoundService.skipPhase()
+	skipRequested = true
+end
+
 -- Espera hasta que acabe el tiempo o se cumpla la condición.
 local function waitPhase(duration: number, stopEarly: (() -> boolean)?)
 	local endsAt = os.clock() + duration
+	skipRequested = false
 	while os.clock() < endsAt do
-		if stopEarly and stopEarly() then
+		if skipRequested or (stopEarly and stopEarly()) then
+			skipRequested = false
 			return
 		end
 		task.wait(0.25)
 	end
+end
+
+local function secondsText(seconds: number): string
+	return if seconds >= 60 and seconds % 60 == 0 then string.format("%d minutos", seconds // 60) else string.format("%d segundos", seconds)
 end
 
 local function runElection(players: { Player }): (Player?, { [string]: number })
@@ -212,18 +226,20 @@ local function playRound()
 	EggService.reset(#readyPlayers())
 	RoundState.set("ChosenUserId", 0)
 	RoundState.set("CarrierUserId", 0)
-	setPhase("Intermission", Config.Round.IntermissionTime)
+	local intermission = Testing.duration(Config.Round.IntermissionTime)
+	setPhase("Intermission", intermission)
 	setMood("Intermission")
 	if bloodMoon then
 		AnnouncementService.server("🌕 ¡LUNA DE SANGRE! Huevos de rareza mínima Épica y persecución de 5 minutos.", "rare")
 	end
-	waitPhase(Config.Round.IntermissionTime)
+	waitPhase(intermission)
 
-	-- Incubación
-	setPhase("Incubation", Config.Round.IncubationTime)
+	-- Incubación (en Studio, más corta: Config.Testing.TimeScale)
+	local incubation = Testing.duration(Config.Round.IncubationTime)
+	setPhase("Incubation", incubation)
 	setMood("Incubation")
 	HeatService.setActive(true)
-	waitPhase(Config.Round.IncubationTime, EggService.isFull)
+	waitPhase(incubation, EggService.isFull)
 	HeatService.setActive(false)
 
 	local players = readyPlayers()
@@ -247,10 +263,10 @@ local function playRound()
 	end
 
 	-- Persecución
-	local chaseTime = if bloodMoon then Config.Round.BloodMoonChaseTime else Config.Round.ChaseTime
+	local chaseTime = Testing.duration(if bloodMoon then Config.Round.BloodMoonChaseTime else Config.Round.ChaseTime)
 	setPhase("Chase", chaseTime)
 	setMood("Chase")
-	AnnouncementService.server(string.format("¡El huevo ha elegido a %s! Tenéis %d minutos para robársela.", chosen.DisplayName, chaseTime // 60), "threshold")
+	AnnouncementService.server(string.format("¡El huevo ha elegido a %s! Tenéis %s para robársela.", chosen.DisplayName, secondsText(math.floor(chaseTime))), "threshold")
 	ChaseService.begin(chosen, genes)
 	if Config.Chase.HeadStartSeconds > 0 then
 		AnnouncementService.server(string.format("¡%s tiene %d s de ventaja!", chosen.DisplayName, Config.Chase.HeadStartSeconds), "info")
@@ -259,17 +275,19 @@ local function playRound()
 
 	-- Prórroga (gol de oro): si el portador no está en su nido, gana el primero que llegue.
 	if ChaseService.startOvertime() then
-		setPhase("Overtime", Config.Chase.OvertimeSeconds)
+		local overtime = Testing.duration(Config.Chase.OvertimeSeconds)
+		setPhase("Overtime", overtime)
 		AnnouncementService.server("⚡ ¡PRÓRROGA! Gana el primero que meta la criatura en su nido.", "threshold")
-		waitPhase(Config.Chase.OvertimeSeconds, ChaseService.isOver)
+		waitPhase(overtime, ChaseService.isOver)
 	end
 
 	-- Resultados
 	local result = ChaseService.finish()
-	setPhase("Results", Config.Round.ResultsTime)
+	local results = Testing.duration(Config.Round.ResultsTime)
+	setPhase("Results", results)
 	setMood("Incubation")
 	awardResults(readyPlayers(), result)
-	waitPhase(Config.Round.ResultsTime)
+	waitPhase(results)
 end
 
 function RoundService.init()
