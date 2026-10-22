@@ -7,7 +7,7 @@ local RunService = game:GetService("RunService")
 
 local Config = require(script.Parent.Config)
 
-export type Flag = "Autopilot" | "DebugTools"
+export type Flag = "Autopilot" | "DebugTools" | "ForceLootNight"
 
 local Testing = {}
 

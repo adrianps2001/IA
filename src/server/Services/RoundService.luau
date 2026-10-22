@@ -9,6 +9,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Creature = require(Shared.Creature)
 local Election = require(Shared.Election)
+local Events = require(Shared.Events)
 local Genes = require(Shared.Genes)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
@@ -22,6 +23,7 @@ local ChaseService = require(script.Parent.ChaseService)
 local DataService = require(script.Parent.DataService)
 local EggService = require(script.Parent.EggService)
 local HeatService = require(script.Parent.HeatService)
+local LootService = require(script.Parent.LootService)
 local NestService = require(script.Parent.NestService)
 local QuestService = require(script.Parent.QuestService)
 
@@ -68,9 +70,7 @@ local function readyPlayers(): { Player }
 end
 
 function RoundService.isBloodMoon(): boolean
-	local def = Config.Events.BloodMoon
-	local now = os.date("!*t")
-	return now.wday == def.WeekDay and now.hour >= def.StartHour and now.hour < def.StartHour + def.Hours
+	return Events.isBloodMoon(os.time())
 end
 
 local skipRequested = false
@@ -223,6 +223,8 @@ local function playRound()
 
 	local bloodMoon = RoundService.isBloodMoon()
 	RoundState.set("BloodMoon", bloodMoon)
+	RoundState.set("LootNight", Events.isLootNight(os.time()) or Testing.enabled("ForceLootNight"))
+	LootService.resetRound()
 
 	-- Preparados
 	ChaseService.resetRound()

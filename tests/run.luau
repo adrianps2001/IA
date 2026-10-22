@@ -7,6 +7,7 @@ local Creature = require("../src/shared/Creature")
 local Decorations = require("../src/shared/Decorations")
 local Economy = require("../src/shared/Economy")
 local Election = require("../src/shared/Election")
+local Events = require("../src/shared/Events")
 local Genes = require("../src/shared/Genes")
 local MapLayout = require("../src/shared/MapLayout")
 local PlayerData = require("../src/shared/PlayerData")
@@ -479,6 +480,60 @@ test("Rewards: premio al elegido que pierde", function()
 	expect(own.elegido.Creature and not own.elegido.ChosenEgg)
 	-- Si la criatura escapa, el elegido también recibe su huevo.
 	expect(Rewards.compute(participants, nil, {}, "elegido").elegido.ChosenEgg)
+end)
+
+test("Events: ventanas horarias y Huevo Comunitario", function()
+	-- 2026-10-24 es sábado. 20:30 UTC: Luna de Sangre; 21:30: Noche de Saqueo.
+	local saturday = 1792800000 - (1792800000 % 86400) -- medianoche UTC del 2026-10-24
+	expect(os.date("!*t", saturday).wday == 7, "la fecha base debería ser sábado")
+	expect(Events.isBloodMoon(saturday + 20.5 * 3600))
+	expect(not Events.isBloodMoon(saturday + 21.5 * 3600))
+	expect(Events.isLootNight(saturday + 21.5 * 3600))
+	expect(not Events.isLootNight(saturday + 23.5 * 3600))
+	expect(not Events.isLootNight(saturday - 86400 + 21.5 * 3600), "el viernes no hay saqueo")
+	-- Ventana que cruza la medianoche.
+	local late = { WeekDays = { 7 }, StartHour = 23, Hours = 2 }
+	expect(Events.inWindow(late, saturday + 86400 + 0.5 * 3600))
+	expect(not Events.inWindow(late, saturday + 86400 + 1.5 * 3600))
+	expect(Events.monthKey(saturday) == "2026-10")
+	local a = Events.communityGenes("2026-10")
+	local b = Events.communityGenes("2026-10")
+	expect(a.Body == b.Body and a.Pattern == b.Pattern and a.Mutation == b.Mutation, "misma criatura para todos")
+	expect(Genes.rarityOf(a) == Config.Events.Community.Rarity)
+	local goal = Config.Events.Community.Goal
+	expect(Events.communityEligible(Config.Events.Community.MinContribution, false, goal))
+	expect(not Events.communityEligible(Config.Events.Community.MinContribution, true, goal))
+	expect(not Events.communityEligible(Config.Events.Community.MinContribution - 1, false, goal))
+	expect(not Events.communityEligible(10 ^ 6, false, goal - 1))
+end)
+
+test("Events.canLoot: defensas, Secretas, límites y pulsación", function()
+	local hold = Config.Events.LootNight.HoldSeconds
+	local base: Events.LootCheck = {
+		Now = 100,
+		HoldStartedAt = 100 - hold,
+		Distance = 5,
+		IsOwner = false,
+		OwnerHome = false,
+		Rarity = "Rare",
+		LootsThisRound = 0,
+		NestCooldownUntil = 0,
+	}
+	local function with(changes: { [string]: any }): Events.LootCheck
+		local c = table.clone(base) :: any
+		for k, v in changes do
+			c[k] = v
+		end
+		return c
+	end
+	expect((Events.canLoot(base)))
+	expect(not Events.canLoot(with({ OwnerHome = true })), "dueño en casa")
+	expect(not Events.canLoot(with({ Rarity = "Secret" })), "Secreta")
+	expect(not Events.canLoot(with({ IsOwner = true })))
+	expect(not Events.canLoot(with({ LootsThisRound = Config.Events.LootNight.PerRound })))
+	expect(not Events.canLoot(with({ NestCooldownUntil = 101 })))
+	expect(not Events.canLoot(with({ Distance = Config.Events.LootNight.MaxDistance + 1 })))
+	expect(not Events.canLoot(with({ HoldStartedAt = 100 - hold / 2 })), "pulsación corta")
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

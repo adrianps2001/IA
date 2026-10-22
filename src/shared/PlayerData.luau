@@ -30,7 +30,10 @@ export type Profile = {
 	LastBreed: { string }?,
 	Funnel: { [string]: boolean },
 	Decorations: { string }, -- ids de Config.Decorations compradas
+	Community: CommunityState, -- aportación al Huevo Comunitario del mes
 }
+
+export type CommunityState = { Month: string, Heat: number, Claimed: boolean }
 
 local PlayerData = {}
 
@@ -69,6 +72,7 @@ function PlayerData.default(now: number): Profile
 		LastBreed = nil,
 		Funnel = {},
 		Decorations = {},
+		Community = { Month = "", Heat = 0, Claimed = false },
 	}
 end
 
@@ -176,6 +180,15 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 				table.insert(profile.Decorations, id)
 			end
 		end
+	end
+
+	local community = raw.Community
+	if type(community) == "table" and type(community.Month) == "string" then
+		profile.Community = {
+			Month = community.Month,
+			Heat = math.max(number(community.Heat, 0), 0),
+			Claimed = community.Claimed == true,
+		}
 	end
 
 	return profile

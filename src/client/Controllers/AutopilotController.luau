@@ -6,6 +6,7 @@
 -- validaciones del servidor). F8 activa o desactiva el piloto en esa ventana.
 -- Solo funciona dentro de Studio (Testing.enabled("Autopilot")).
 
+local CollectionService = game:GetService("CollectionService")
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 
@@ -31,6 +32,8 @@ local holding: ProximityPrompt? = nil
 local holdUntil = 0
 local doorUsedRound = -1
 local shopRound = -1
+local lootPlanRound = -1 -- Noche de Saqueo: en qué ronda decidió si saquea
+local wantsLoot = false
 
 local function rootOf(p: Player): BasePart?
 	local character = p.Character
@@ -99,7 +102,43 @@ local function nearestSource(root: BasePart): BasePart?
 	return best
 end
 
+-- Noche de Saqueo: una vez por ronda, ir a por una criatura de un nido ajeno.
+local function tryLoot(root: BasePart): boolean
+	local round = tonumber(RoundState.get("Round")) or 0
+	if lootPlanRound ~= round then
+		lootPlanRound = round
+		wantsLoot = math.random() < 0.4
+	end
+	if not RoundState.get("LootNight") or not wantsLoot then
+		return false
+	end
+	local best: ProximityPrompt? = nil
+	local bestDistance = math.huge
+	for _, prompt in CollectionService:GetTagged("LootPrompt") do
+		local model = prompt:FindFirstAncestorOfClass("Model")
+		if prompt:IsA("ProximityPrompt") and prompt.Enabled and model and model:GetAttribute("OwnerUserId") ~= player.UserId then
+			local d = flat(model:GetPivot().Position, root.Position)
+			if d < bestDistance then
+				best, bestDistance = prompt, d
+			end
+		end
+	end
+	if not best then
+		return false
+	end
+	local model = best:FindFirstAncestorOfClass("Model") :: Model
+	moveTo(model:GetPivot().Position)
+	if bestDistance < Config.Events.LootNight.MaxDistance - 4 then
+		hold(best, best.HoldDuration + 0.3)
+		wantsLoot = false -- un intento por ronda, salga bien o no
+	end
+	return true
+end
+
 local function incubation(root: BasePart)
+	if tryLoot(root) then
+		return
+	end
 	local heat = tonumber(player:GetAttribute("Heat")) or 0
 	local capacity = tonumber(player:GetAttribute("BagCapacity")) or 100
 	local offering = player:GetAttribute("Offering")

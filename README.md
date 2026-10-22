@@ -42,6 +42,7 @@ src/shared/                 ReplicatedStorage.Shared (servidor y cliente)
   CreatureModel             Construye el modelo 3D modular de una criatura
   Decorations, DecorationModel  Decoraciones del nido: datos y construcción
   Remotes, RoundState       Remotos y estado de ronda replicado
+  Events                    Horarios de eventos, reglas del saqueo, criatura comunitaria
   Testing                   Modo de prueba en Studio (Config.Testing)
 src/server/                 ServerScriptService.Server
   Services/DataService      Guardado con bloqueo de sesión, autosave, vista para la UI
@@ -54,6 +55,8 @@ src/server/                 ServerScriptService.Server
   Services/QuestService     Misiones diarias y racha de 7 días
   Services/MonetizationService  Pases, productos, suscripción, recibos idempotentes
   Services/AnnouncementService  Avisos locales y globales (MessagingService)
+  Services/CommunityService Huevo Comunitario (barra global en MemoryStore)
+  Services/LootService      Noche de Saqueo
   Services/DebugService     Comandos de depuración (solo Studio)
 src/client/                 StarterPlayerScripts.Client
   Controllers/HUDController     Bolsa, barra, temporizador, flecha de objetivo, avisos
@@ -134,7 +137,7 @@ Implementado:
 - Incubadora y huevos personales.
 - Las 5 mejoras permanentes y la Nueva generación.
 - Misiones diarias y racha de 7 días.
-- Luna de Sangre.
+- Luna de Sangre, Noche de Saqueo (sábados y domingos, 21-23 UTC; por defecto el ladrón se lleva una copia común y el dueño no pierde nada) y Huevo Comunitario (barra global mensual en MemoryStore con criatura conmemorativa).
 - Anuncios globales de Míticas y Secretas.
 - Pases, productos y suscripción, con probabilidades públicas y comprobación de `PolicyService` para los objetos aleatorios de pago.
 - Embudo de analítica.
@@ -142,7 +145,7 @@ Implementado:
 - Liberar criaturas a cambio de polvo (una a una o las guardadas) y decoración del nido (12 piezas de Monedas o polvo, solo estéticas). Se pueden apagar con `Config.Sinks`.
 
 Pendiente (siguientes fases del roadmap):
-- Huevo Doble, Noche de Saqueo, Huevo del Admin y Huevo Comunitario.
+- Huevo Doble (requiere varias persecuciones a la vez) y Huevo del Admin.
 - Grupos ("Bandada").
 - Intercambio de criaturas.
 - Visitas y "me gusta" en nidos, y salón de la fama.

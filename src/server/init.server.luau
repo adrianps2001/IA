@@ -8,6 +8,8 @@ local services = {
 	require(script.Services.MapService),
 	require(script.Services.QuestService),
 	require(script.Services.NestService),
+	require(script.Services.CommunityService),
+	require(script.Services.LootService),
 	require(script.Services.EggService),
 	require(script.Services.HeatService),
 	require(script.Services.ChaseService),

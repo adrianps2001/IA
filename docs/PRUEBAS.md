@@ -42,6 +42,8 @@ Panel de depuración (F7):
 | 🪙 +1 M Monedas / ✨ +1000 polvo | Para probar la tienda, las mejoras y la cría |
 | 🐣 Criatura Épica / 🌈 Mítica | Añade una criatura a tu nido |
 | ⏩ Abrir huevos ya | Termina la incubadora |
+| 🌙 Noche de Saqueo on/off | Activa el evento en la ronda actual (o pon `Config.Testing.ForceLootNight = true` para todas) |
+| 🌍 Llenar Huevo Comunitario | Llena la barra global en este servidor y reparte la criatura conmemorativa |
 
 ## Lista de comprobación por fase
 
@@ -82,8 +84,18 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots).
 - [ ] Los demás reciben polvo de consolación.
 - [ ] Los bots compran mejoras y huevos en la tienda del nido.
 
+### Eventos
+- [ ] 🌙 Noche de Saqueo: en la Incubación aparece "Saquear" en las criaturas de nidos ajenos; los bots lo intentan a veces.
+- [ ] No se puede saquear si el dueño está dentro de su nido, ni una Secreta, ni dos veces en la misma ronda.
+- [ ] El ladrón recibe una copia común; el dueño recibe un aviso y no pierde nada.
+- [ ] 🌍 La barra del Huevo Comunitario (bajo el polvo) sube al depositar Calor.
+- [ ] Al llenarla, quien aportó al menos 500 recibe la criatura del mes (la misma para todos).
+- [ ] Huevo del Elegido: si el elegido pierde la criatura, aparece un huevo en su incubadora.
+
 ### Nido y datos
-- [ ] Panel del nido: criaturas, incubadora, mejoras, misiones y tienda.
+- [ ] Panel del nido: criaturas, incubadora, mejoras, decorar, misiones y tienda.
+- [ ] Liberar: una criatura seleccionada o "liberar guardadas" (pide confirmación; nunca toca las del nido).
+- [ ] Decorar: comprar una pieza la coloca en el nido y suma Belleza al cartel.
 - [ ] La producción suma monedas cada segundo.
 - [ ] Con *API Services* activado: sal y vuelve a entrar y comprueba que se guardó todo.
 

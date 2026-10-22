@@ -2,6 +2,7 @@
 -- Nido personal (GDD 5.6, 5.7, 6): parcela, producción por segundo, incubadora, cría,
 -- mejoras permanentes y "Nueva generación".
 
+local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
@@ -159,6 +160,22 @@ function NestService.refreshDisplay(player: Player)
 		local row = math.floor((i - 1) / columns)
 		local offset = CFrame.new((col - (columns - 1) / 2) * spacing, 2.6, 7 - row * spacing)
 		model:PivotTo(nest.Origin * offset) -- de frente a la entrada
+		-- Para la Noche de Saqueo: LootService activa este prompt cuando toca.
+		model:SetAttribute("CreatureId", creature.Id)
+		model:SetAttribute("OwnerUserId", player.UserId)
+		local body = model.PrimaryPart
+		if body and Config.Events.LootNight.Enabled then
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "LootPrompt"
+			prompt.ActionText = "Saquear"
+			prompt.ObjectText = Creature.name(creature)
+			prompt.HoldDuration = Config.Events.LootNight.HoldSeconds
+			prompt.MaxActivationDistance = Config.Events.LootNight.MaxDistance - 2
+			prompt.RequiresLineOfSight = false
+			prompt.Enabled = false
+			prompt.Parent = body
+			CollectionService:AddTag(prompt, "LootPrompt")
+		end
 		model.Parent = folder
 	end
 

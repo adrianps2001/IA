@@ -21,6 +21,8 @@ local BUTTONS = {
 	{ "🐣 Criatura Épica", "GiveCreature", "Epic" },
 	{ "🌈 Criatura Mítica", "GiveCreature", "Mythic" },
 	{ "⏩ Abrir huevos ya", "HatchEggs" },
+	{ "🌙 Noche de Saqueo on/off", "LootNight" },
+	{ "🌍 Llenar Huevo Comunitario", "CommunityFill" },
 }
 
 function DebugController.start()

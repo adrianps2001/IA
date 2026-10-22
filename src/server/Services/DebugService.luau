@@ -12,6 +12,7 @@ local Testing = require(Shared.Testing)
 
 local AnnouncementService = require(script.Parent.AnnouncementService)
 local ChaseService = require(script.Parent.ChaseService)
+local CommunityService = require(script.Parent.CommunityService)
 local DataService = require(script.Parent.DataService)
 local EggService = require(script.Parent.EggService)
 local NestService = require(script.Parent.NestService)
@@ -45,6 +46,12 @@ local commands: { [string]: (Player, any) -> () } = {
 		NestService.giveCreature(player, Genes.rollSet(function()
 			return random:NextNumber()
 		end, name), "Debug")
+	end,
+	CommunityFill = function()
+		CommunityService.debugFill()
+	end,
+	LootNight = function()
+		RoundState.set("LootNight", not RoundState.get("LootNight"))
 	end,
 	HatchEggs = function(player)
 		local profile = DataService.get(player)

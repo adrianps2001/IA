@@ -196,6 +196,31 @@ Config.Quests = {
 Config.Events = {
 	-- Luna de Sangre: sábados de 20:00 a 21:00 UTC.
 	BloodMoon = { WeekDay = 7, StartHour = 20, Hours = 1, MinRarity = "Epic" },
+	-- Noche de Saqueo: sábados y domingos de 21:00 a 23:00 UTC. Durante la Incubación se
+	-- puede saquear una criatura expuesta en un nido ajeno si su dueño no está dentro.
+	-- Con OwnerLoses = false (versión prudente) el dueño no pierde nada: el ladrón se lleva
+	-- una copia común. Con true, la criatura cambia de dueño (las Secretas nunca).
+	LootNight = {
+		Enabled = true,
+		WeekDays = { 7, 1 },
+		StartHour = 21,
+		Hours = 2,
+		HoldSeconds = 4,
+		MaxDistance = 12,
+		PerRound = 1, -- saqueos por jugador y ronda
+		NestCooldown = 90, -- segundos que un nido queda protegido tras un saqueo
+		OwnerLoses = false,
+	},
+	-- Huevo Comunitario: todos los servidores llenan una barra global cada mes. Al llenarse,
+	-- quien haya aportado al menos MinContribution recibe la criatura conmemorativa del mes
+	-- (la misma para todo el mundo).
+	Community = {
+		Enabled = true,
+		Goal = 25_000_000,
+		MinContribution = 500,
+		Rarity = "Epic",
+		FlushSeconds = 30, -- cada cuánto se envía lo aportado a la barra global
+	},
 }
 
 -- IDs reales de Roblox: sustituir los 0 tras crear los pases y productos en el Creator Hub.
@@ -239,6 +264,7 @@ Config.Testing = {
 	AutopilotOnFirstPlayer = false, -- Player1 (tú) empieza controlando su personaje
 	DebugTools = true, -- panel de depuración (F7): saltar fase, dar Monedas, llenar la barra...
 	TimeScale = 0.35, -- duración de las fases en Studio (0,35 = rondas de unos 4 min; 1 = normal)
+	ForceLootNight = false, -- en Studio, todas las rondas son Noche de Saqueo
 }
 
 Config.Data = {

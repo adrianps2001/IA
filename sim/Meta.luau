@@ -6,6 +6,7 @@
 local Config = require("../src/shared/Config")
 local Creature = require("../src/shared/Creature")
 local Economy = require("../src/shared/Economy")
+local Events = require("../src/shared/Events")
 local Genes = require("../src/shared/Genes")
 local PlayerData = require("../src/shared/PlayerData")
 local Quests = require("../src/shared/Quests")
@@ -293,13 +294,7 @@ function Meta.run(params: Params)
 		spend(p, now)
 	end
 
-	local function isBloodMoon(now: number): boolean
-		local def = Config.Events.BloodMoon
-		local daysSinceEpoch = math.floor(now / 86400)
-		local wday = ((daysSinceEpoch + 4) % 7) + 1 -- 1 = domingo, como os.date("*t").wday
-		local hour = math.floor((now % 86400) / 3600)
-		return wday == def.WeekDay and hour >= def.StartHour and hour < def.StartHour + def.Hours
-	end
+	local isBloodMoon = Events.isBloodMoon
 
 	local rounds = {}
 	local daily = {}

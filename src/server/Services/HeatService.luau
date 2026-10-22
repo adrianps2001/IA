@@ -13,6 +13,7 @@ local MapLayout = require(Shared.MapLayout)
 
 local AnalyticsHelper = require(script.Parent.Parent.Util.Analytics)
 local AnnouncementService = require(script.Parent.AnnouncementService)
+local CommunityService = require(script.Parent.CommunityService)
 local DataService = require(script.Parent.DataService)
 local EggService = require(script.Parent.EggService)
 local MapService = require(script.Parent.MapService)
@@ -119,6 +120,7 @@ function HeatService.deposit(player: Player)
 		s.Heat = 0
 		s.Affinity += amount
 		EggService.addHeat(amount)
+		CommunityService.contribute(player, amount)
 		DataService.addStat(player, "HeatDeposited", amount)
 		QuestService.progress(player, "DepositHeat", amount)
 		local profile = DataService.get(player)
