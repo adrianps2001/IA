@@ -1,0 +1,7 @@
+# Generados por Rojo / luau-lsp
+sourcemap.json
+*.rbxl
+*.rbxlx
+*.rbxm
+*.rbxmx
+globalTypes.d.luau
