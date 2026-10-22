@@ -282,8 +282,46 @@ local function buildTrade()
 	button(2 / 3, "Cancelar", UI.Colors.Bad, "TradeCancel")
 end
 
+-- No mostrar "Saquear" en tus criaturas ni "Me gusta" en tu nido (el servidor también lo
+-- rechaza, pero así no confunde).
+local function hideIfMine(instance: Instance)
+	if not instance:IsA("ProximityPrompt") then
+		return
+	end
+	local mine = false
+	if instance.Name == "LootPrompt" then
+		local model = instance:FindFirstAncestorOfClass("Model")
+		mine = model ~= nil and model:GetAttribute("OwnerUserId") == player.UserId
+	elseif instance.Name == "LikePrompt" then
+		local nest = instance.Parent and instance.Parent.Parent
+		mine = nest ~= nil and nest.Name == "Nest_" .. tostring(player:GetAttribute("NestIndex"))
+	end
+	if mine and not instance:GetAttribute("HiddenForOwner") then
+		instance:SetAttribute("HiddenForOwner", true)
+		instance.Enabled = false
+		instance:GetPropertyChangedSignal("Enabled"):Connect(function()
+			if instance.Enabled then
+				instance.Enabled = false
+			end
+		end)
+	end
+end
+
 function SocialController.start()
 	gui = UI.screen("Social", 4)
+
+	workspace.DescendantAdded:Connect(hideIfMine)
+	local function scanNests()
+		local map = workspace:FindFirstChild("Map")
+		local nests = map and map:FindFirstChild("Nests")
+		if nests then
+			for _, descendant in nests:GetDescendants() do
+				hideIfMine(descendant)
+			end
+		end
+	end
+	scanNests()
+	player:GetAttributeChangedSignal("NestIndex"):Connect(scanNests)
 
 	UI.button({
 		Name = "Toggle",
