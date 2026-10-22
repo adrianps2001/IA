@@ -5,6 +5,7 @@
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
+local MapLayout = require(Shared.MapLayout)
 
 export type Nest = {
 	Index: number,
@@ -19,9 +20,9 @@ export type Nest = {
 
 local MapService = {}
 
-MapService.Radius = 150
-MapService.NestRadius = 128
-MapService.NestSize = 26
+MapService.Radius = MapLayout.Radius
+MapService.NestRadius = MapLayout.NestRadius
+MapService.NestSize = MapLayout.NestSize
 MapService.EggCenter = Vector3.new(0, 0, 0)
 MapService.Nests = {} :: { Nest }
 MapService.Zones = {} :: { [string]: Vector3 }
@@ -50,11 +51,35 @@ local function polar(angle: number, radius: number, y: number?): Vector3
 	return Vector3.new(math.cos(angle) * radius, y or 0, math.sin(angle) * radius)
 end
 
+local function toVector(point: MapLayout.Point): Vector3
+	return Vector3.new(point.X, 0, point.Z)
+end
+
+local function rngFunction(): number
+	return rng:NextNumber()
+end
+
+-- Punto aleatorio repartido uniformemente por la superficie del anillo (ver MapLayout).
 function MapService.randomGroundPoint(minRadius: number, maxRadius: number): Vector3
-	local angle = rng:NextNumber(0, math.pi * 2)
-	-- raíz cuadrada para repartir uniformemente por área
-	local r = math.sqrt(rng:NextNumber(minRadius * minRadius, maxRadius * maxRadius))
-	return polar(angle, r, 0)
+	return toVector(MapLayout.randomInRing(rngFunction, minRadius, maxRadius))
+end
+
+-- Obstáculos (troncos, rocas, géiseres) como círculos en el plano: { centro, radio }.
+local obstacles: { { Position: Vector3, Radius: number } } = {}
+
+function MapService.addObstacle(position: Vector3, radius: number)
+	table.insert(obstacles, { Position = Vector3.new(position.X, 0, position.Z), Radius = radius })
+end
+
+-- true si en ese punto no hay ningún obstáculo a menos de margin studs.
+function MapService.isClear(point: Vector3, margin: number): boolean
+	local flat = Vector3.new(point.X, 0, point.Z)
+	for _, obstacle in obstacles do
+		if (obstacle.Position - flat).Magnitude < obstacle.Radius + margin then
+			return false
+		end
+	end
+	return true
 end
 
 function MapService.randomPointNear(center: Vector3, spread: number): Vector3
@@ -90,7 +115,7 @@ local function buildGround()
 	block({
 		Name = "Clearing",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(1, 50, 50),
+		Size = Vector3.new(1, MapLayout.ClearingRadius * 2, MapLayout.ClearingRadius * 2),
 		CFrame = CFrame.new(0, 0.1, 0) * CFrame.Angles(0, 0, math.rad(90)),
 		Color = Color3.fromRGB(120, 100, 70),
 		Material = Enum.Material.Ground,
@@ -138,13 +163,12 @@ local function buildEgg()
 end
 
 local function buildNest(index: number): Nest
-	local angle = (index / Config.Nest.Count) * math.pi * 2
-	local center = polar(angle, MapService.NestRadius, 0)
+	local center = toVector(MapLayout.nestCenter(index))
 	local origin = CFrame.lookAt(center, Vector3.new(0, 0, 0))
 	local size = MapService.NestSize
 	local half = size / 2
 	local wallHeight = 9
-	local opening = 9
+	local opening = MapLayout.NestOpening
 
 	local model = Instance.new("Model")
 	model.Name = "Nest_" .. index
@@ -227,12 +251,9 @@ end
 
 local function buildZones()
 	-- Ángulos de las zonas del GDD; los nidos quedan en el borde, las zonas en el anillo medio.
-	MapService.Zones = {
-		Swamp = polar(math.rad(45), 82),
-		CrystalCave = polar(math.rad(135), 82),
-		Ruins = polar(math.rad(225), 82),
-		Bridge = polar(math.rad(315), 82),
-	}
+	for name in MapLayout.ZoneAngles do
+		MapService.Zones[name] = toVector(MapLayout.zoneCenter(name))
+	end
 
 	block({
 		Name = "Swamp",
@@ -246,6 +267,7 @@ local function buildZones()
 	-- Cueva de cristales: rocas y cristales decorativos.
 	for _ = 1, 10 do
 		local pos = MapService.randomPointNear(MapService.Zones.CrystalCave, 18)
+		MapService.addObstacle(pos, 1.5)
 		block({
 			Name = "Crystal",
 			Size = Vector3.new(2, rng:NextNumber(4, 9), 2),
@@ -259,6 +281,7 @@ local function buildZones()
 	-- Ruinas: columnas rotas.
 	for i = 1, 8 do
 		local pos = MapService.Zones.Ruins + polar(i * math.pi / 4, 16)
+		MapService.addObstacle(pos, 2.2)
 		block({
 			Name = "Ruin",
 			Size = Vector3.new(3, rng:NextNumber(3, 12), 3),
@@ -270,6 +293,7 @@ local function buildZones()
 
 	-- Puente colgante (atajo arriesgado): pasarela estrecha sin barandilla entre dos rocas.
 	for _, offset in { -24, 24 } do
+		MapService.addObstacle((CFrame.lookAt(MapService.Zones.Bridge, Vector3.zero) * CFrame.new(offset, 0, 0)).Position, 7)
 		block({
 			Name = "BridgeRock",
 			Size = Vector3.new(14, 5, 10),
@@ -287,9 +311,12 @@ local function buildZones()
 	}, mapFolder)
 
 	-- Árboles repartidos (obstáculos y cobertura en la persecución).
+	for _, geyser in MapLayout.geyserPositions() do
+		MapService.addObstacle(toVector(geyser), 4.5)
+	end
 	for _ = 1, 70 do
-		local pos = MapService.randomGroundPoint(32, MapService.NestRadius - 20)
-		local tooClose = false
+		local pos = MapService.randomGroundPoint(MapLayout.TreeRing.Min, MapLayout.TreeRing.Max)
+		local tooClose = not MapService.isClear(pos, 3)
 		for _, zone in MapService.Zones do
 			if (zone - pos).Magnitude < 24 then
 				tooClose = true
@@ -297,6 +324,7 @@ local function buildZones()
 			end
 		end
 		if not tooClose then
+			MapService.addObstacle(pos, 1.8)
 			local height = rng:NextNumber(10, 20)
 			block({
 				Name = "Trunk",

@@ -9,6 +9,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Economy = require(Shared.Economy)
 local Genes = require(Shared.Genes)
+local MapLayout = require(Shared.MapLayout)
 
 local AnalyticsHelper = require(script.Parent.Parent.Util.Analytics)
 local AnnouncementService = require(script.Parent.AnnouncementService)
@@ -29,6 +30,8 @@ local HeatService = {}
 
 local random = Random.new()
 local active = false
+-- Recolocan las fuentes que nadie ha cogido (se llaman al empezar cada ronda).
+local relocators: { () -> () } = {}
 local states: { [Player]: PlayerState } = {}
 
 local function state(player: Player): PlayerState
@@ -154,8 +157,24 @@ local function spawnSource(
 	onCollect: (Player, Part) -> boolean
 ): Part
 	local p = makePickup(name, color, size, shape)
-	p.Position = position() + Vector3.new(0, size.Y / 2 + 0.5, 0)
+	-- Evita aparecer dentro de un árbol o una roca, donde nadie podría cogerla.
+	local function place()
+		local point = position()
+		for _ = 1, 8 do
+			if MapService.isClear(point, 2.5) then
+				break
+			end
+			point = position()
+		end
+		p.Position = point + Vector3.new(0, size.Y / 2 + 0.5, 0)
+	end
+	place()
 	local taken = false
+	table.insert(relocators, function()
+		if not taken then
+			place()
+		end
+	end)
 	p.Touched:Connect(function(hit)
 		if taken or not active or not hit:IsA("BasePart") then
 			return
@@ -165,7 +184,7 @@ local function spawnSource(
 			taken = true
 			p.Transparency = 1
 			task.delay(respawn, function()
-				p.Position = position() + Vector3.new(0, size.Y / 2 + 0.5, 0)
+				place()
 				p.Transparency = 0
 				taken = false
 			end)
@@ -178,7 +197,7 @@ local function spawnEmbers()
 	local def = Config.Heat.Ember
 	for _ = 1, def.Count do
 		spawnSource("Ember", Color3.fromRGB(255, 120, 30), Vector3.new(1.4, 1.4, 1.4), Enum.PartType.Ball, function()
-			return MapService.randomGroundPoint(28, MapService.NestRadius - 18)
+			return MapService.randomGroundPoint(MapLayout.SourceRing.Min, MapLayout.SourceRing.Max)
 		end, def.Respawn, function(player)
 			return HeatService.give(player, def.Amount) > 0
 		end)
@@ -210,7 +229,7 @@ local function spawnLuckyBlocks()
 	local def = Config.Heat.LuckyBlock
 	for _ = 1, def.Count do
 		local block = spawnSource("LuckyBlock", Color3.fromRGB(255, 210, 40), Vector3.new(3, 3, 3), Enum.PartType.Block, function()
-			return MapService.randomGroundPoint(30, MapService.NestRadius - 20)
+			return MapService.randomGroundPoint(MapLayout.SourceRing.Min, MapLayout.SourceRing.Max)
 		end, def.Respawn, function(player)
 			local amount = random:NextInteger(def.Min, def.Max)
 			local added = HeatService.give(player, amount)
@@ -242,9 +261,8 @@ end
 -- Géiseres: hacen falta dos jugadores activándolos casi a la vez.
 local function spawnGeysers()
 	local def = Config.Heat.Geyser
-	for i = 1, def.Count do
-		local angle = (i / def.Count) * math.pi * 2 + math.pi / def.Count
-		local pos = Vector3.new(math.cos(angle) * 58, 0, math.sin(angle) * 58)
+	for _, point in MapLayout.geyserPositions() do
+		local pos = Vector3.new(point.X, 0, point.Z)
 		local geyser = Instance.new("Part")
 		geyser.Name = "Geyser"
 		geyser.Shape = Enum.PartType.Cylinder
@@ -424,6 +442,9 @@ end
 
 -- Al final de la ronda el Calor sin depositar se pierde (GDD 6).
 function HeatService.resetRound()
+	for _, relocate in relocators do
+		relocate()
+	end
 	for player, s in states do
 		s.Heat = 0
 		s.Affinity = 0

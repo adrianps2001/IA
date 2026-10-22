@@ -37,6 +37,7 @@ local affinityLabel: TextLabel
 local coinsLabel: TextLabel
 local dustLabel: TextLabel
 local bannerLabel: TextLabel
+local secureLabel: TextLabel
 local toastList: Frame
 local beam: Beam
 local targetAttachment: Attachment
@@ -74,6 +75,15 @@ local function buildTop()
 		end
 	end
 	barLabel = UI.label({ Size = UDim2.fromScale(1, 1), ZIndex = 4 }, bar)
+
+	-- Persecución: cuenta atrás para asegurar la criatura en el nido.
+	secureLabel = UI.label({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 1, 6),
+		Size = UDim2.new(1, 0, 0, 26),
+		TextColor3 = UI.Colors.Gold,
+		Visible = false,
+	}, top)
 end
 
 local function buildCurrencies()
@@ -213,13 +223,10 @@ local function currentTarget(): Vector3?
 			local egg = mapChild("Egg")
 			return if egg and egg:IsA("BasePart") then egg.Position else nil
 		end
-	elseif phase == "Chase" then
+	elseif phase == "Chase" or phase == "Overtime" then
 		if player:GetAttribute("IsCarrier") then
-			local index = player:GetAttribute("NestIndex")
-			local nests = mapChild("Nests")
-			local nest = nests and nests:FindFirstChild("Nest_" .. tostring(index))
-			local floor = nest and nest:FindFirstChild("Floor")
-			return if floor and floor:IsA("BasePart") then floor.Position else nil
+			local nestPosition = player:GetAttribute("NestPosition")
+			return if typeof(nestPosition) == "Vector3" then nestPosition else nil
 		end
 		local carrier = playerByUserId(RoundState.get("CarrierUserId"))
 		local character = carrier and carrier.Character
@@ -318,6 +325,12 @@ function HUDController.start()
 		end
 		phaseLabel.Text = name
 		timerLabel.Text = if phase == "Waiting" then "" else UI.formatTime(RoundState.timeLeft())
+		local secure = tonumber(RoundState.get("SecureProgress")) or 0
+		local secureTotal = Config.Chase.SecureSeconds
+		secureLabel.Visible = (phase == "Chase" or phase == "Overtime") and secure > 0 and secureTotal > 0
+		if secureLabel.Visible then
+			secureLabel.Text = string.format("🔒 Asegurando la criatura: %d / %d s", math.floor(secure * secureTotal), secureTotal)
+		end
 		updateBeam()
 	end)
 

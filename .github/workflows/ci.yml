@@ -29,10 +29,20 @@ jobs:
       - name: Web de documentación al día
         run: python3 tools/build_docs.py --check
 
+      - name: Simulador de bots (prueba de humo)
+        run: |
+          luau --codegen sim/run.luau -a partida 1 8
+          luau --codegen sim/run.luau -a lote 1 20 12
+          luau --codegen sim/run.luau -a meta 1 2 24 > /dev/null
+
       - name: Análisis de tipos
         run: |
           rojo sourcemap default.project.json -o sourcemap.json
           output=$(luau-lsp analyze --flag:LuauSolverV2=true --sourcemap=sourcemap.json --definitions=globalTypes.d.luau src 2>&1 | grep -v '^\[' || true)
+          echo "$output"
+          test -z "$output"
+          # Simulador, herramientas y tests (fuera de Roblox)
+          output=$(luau-lsp analyze --platform=standard --flag:LuauSolverV2=true sim tools tests 2>&1 | grep -v '^\[' || true)
           echo "$output"
           test -z "$output"
 

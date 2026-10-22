@@ -26,7 +26,6 @@ type Profile = PlayerData.Profile
 local NestService = {}
 
 local MAX_DISPLAYED = 12
-local BREED_MUTATION_CHANCE = 0.1
 
 local random = Random.new()
 local function rng(): number
@@ -49,6 +48,18 @@ function NestService.nestOf(player: Player): MapService.Nest?
 	return nil
 end
 
+-- Índice del nido que contiene esa posición (o nil si está fuera de todos).
+function NestService.nestIndexAt(position: Vector3): number?
+	for _, nest in MapService.Nests do
+		local localPos = nest.Origin:PointToObjectSpace(position)
+		local half = nest.Size / 2
+		if math.abs(localPos.X) <= half and math.abs(localPos.Z) <= half and localPos.Y < 20 then
+			return nest.Index
+		end
+	end
+	return nil
+end
+
 function NestService.isInsideOwnNest(player: Player): boolean
 	local nest = NestService.nestOf(player)
 	local character = player.Character
@@ -56,9 +67,7 @@ function NestService.isInsideOwnNest(player: Player): boolean
 	if not nest or not root then
 		return false
 	end
-	local localPos = nest.Origin:PointToObjectSpace(root.Position)
-	local half = nest.Size / 2
-	return math.abs(localPos.X) <= half and math.abs(localPos.Z) <= half and localPos.Y < 20
+	return NestService.nestIndexAt(root.Position) == nest.Index
 end
 
 local function notifyRare(player: Player, creature: Creature.Creature)
@@ -138,6 +147,9 @@ local function assignNest(player: Player)
 		if not owners[index] then
 			owners[index] = player
 			player:SetAttribute("NestIndex", index)
+			-- La posición viaja como atributo: con StreamingEnabled el cliente puede no tener
+			-- cargado el modelo del nido cuando está lejos (la flecha del HUD la necesita).
+			player:SetAttribute("NestPosition", MapService.Nests[index].Origin.Position)
 			return
 		end
 	end
@@ -297,7 +309,7 @@ local function startBreed(player: Player, idA: string, idB: string, free: boolea
 		return false
 	end
 	DataService.addCoins(player, -cost)
-	local child = Genes.inherit(a.Genes, b.Genes, rng, BREED_MUTATION_CHANCE)
+	local child = Genes.inherit(a.Genes, b.Genes, rng, Config.Breeding.MutationChance)
 	local childRarity = Genes.rarityOf(child)
 	addEgg(player, "Breed", Economy.breedSeconds(parentRarity), childRarity, childRarity, child)
 	profile.LastBreed = { idA, idB }

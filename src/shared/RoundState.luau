@@ -5,7 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-export type Phase = "Waiting" | "Intermission" | "Incubation" | "Hatch" | "Chase" | "Results"
+export type Phase = "Waiting" | "Intermission" | "Incubation" | "Hatch" | "Chase" | "Overtime" | "Results"
 
 local RoundState = {}
 
@@ -15,11 +15,13 @@ RoundState.PhaseNames = {
 	Incubation = "Incubación",
 	Hatch = "¡Eclosión!",
 	Chase = "Persecución",
+	Overtime = "¡Prórroga!",
 	Results = "Resultados",
 } :: { [Phase]: string }
 
 -- Atributos: Phase, PhaseEndsAt (GetServerTimeNow), Bar, BarGoal, MinRarity, Luck,
--- CarrierUserId, ChosenUserId, CreatureName, CreatureRarity, BloodMoon, ServerLuckEndsAt, Round
+-- CarrierUserId, ChosenUserId, CreatureName, CreatureRarity, BloodMoon, ServerLuckEndsAt, Round,
+-- ImmuneUntil, SecureProgress (0-1: cuánto le falta al portador para asegurar)
 local folder: Folder
 if RunService:IsServer() then
 	local existing = ReplicatedStorage:FindFirstChild("RoundState")

@@ -1,9 +1,12 @@
 --!strict
 -- Game passes, productos de consumo y recibos idempotentes (GDD 9).
 -- Regla ética: ninguna compra garantiza ser elegido ni ganar la persecución.
+-- Productos aleatorios de pago: solo se ofrecen si PolicyService lo permite (atributo
+-- PaidRandomRestricted).
 
 local MarketplaceService = game:GetService("MarketplaceService")
 local Players = game:GetService("Players")
+local PolicyService = game:GetService("PolicyService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
@@ -38,6 +41,14 @@ local function refreshPasses(player: Player)
 		club = ok and type(status) == "table" and status.IsSubscribed == true
 	end
 	player:SetAttribute("Pass_Club", club)
+
+	-- En algunos países están restringidos los objetos aleatorios de pago (huevos, repetir
+	-- cría). Si no se puede consultar, se asume restringido: es la opción segura.
+	local ok, policy = pcall(function()
+		return PolicyService:GetPolicyInfoForPlayerAsync(player)
+	end)
+	local restricted = not ok or type(policy) ~= "table" or policy.ArePaidRandomItemsRestricted ~= false
+	player:SetAttribute("PaidRandomRestricted", restricted)
 end
 
 function MonetizationService.hasPass(player: Player, name: string): boolean
@@ -86,6 +97,11 @@ local function processReceipt(receipt: any): Enum.ProductPurchaseDecision
 		profile.Funnel.FirstPurchase = true
 	end
 	DataService.markChanged(player)
+	-- Guardar antes de confirmar: si el guardado falla, Roblox reintentará el recibo y el
+	-- registro de recibos evitará entregarlo dos veces.
+	if not DataService.saveNow(player) then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
 	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 

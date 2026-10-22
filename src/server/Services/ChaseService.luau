@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local ChaseRules = require(Shared.ChaseRules)
 local Config = require(Shared.Config)
 local Creature = require(Shared.Creature)
 local CreatureModel = require(Shared.CreatureModel)
@@ -48,6 +49,13 @@ local shieldCharges: { [Player]: number } = {}
 local shieldsUsed: { [Player]: number } = {}
 local sprintUntil: { [Player]: number } = {}
 local sprintReadyAt: { [Player]: number } = {}
+local stunnedUntil: { [Player]: number } = {}
+
+-- Final de la persecución (ver Config.Chase y ChaseRules): asegurar y prórroga.
+local homeStreak = 0
+local secured = false
+local overtime = false
+local over = false
 
 local function rootOf(player: Player): BasePart?
 	local character = player.Character
@@ -94,9 +102,22 @@ local function updateSpeed(player: Player)
 	end
 	local profile = DataService.get(player)
 	local boots = if profile then profile.Upgrades.Boots else 0
-	local sprinting = (sprintUntil[player] or 0) > os.clock()
-	humanoid.WalkSpeed = Economy.walkSpeed(boots, player == carrier, sprinting)
+	local now = os.clock()
+	local sprinting = (sprintUntil[player] or 0) > now
+	local stunned = active and (stunnedUntil[player] or 0) > now
+	-- Territorio: solo cuenta durante la persecución.
+	local atHome, intruding = false, false
+	local root = rootOf(player)
+	if active and root then
+		local here = NestService.nestIndexAt(root.Position)
+		local own = player:GetAttribute("NestIndex")
+		atHome = here ~= nil and here == own
+		intruding = here ~= nil and here ~= own
+	end
+	humanoid.WalkSpeed = if stunned then 0 else Economy.walkSpeed(boots, player == carrier, sprinting, atHome, intruding)
 	player:SetAttribute("Sprinting", sprinting)
+	player:SetAttribute("Stunned", stunned)
+	player:SetAttribute("Intruding", intruding)
 end
 
 -- Portador -------------------------------------------------------------------------------
@@ -126,15 +147,16 @@ local function onStealTriggered(thief: Player)
 	local now = os.clock()
 	local began = holdStart[thief]
 	holdStart[thief] = nil
+	if (stunnedUntil[thief] or 0) > now then
+		return -- aturdido o esperando la ventaja del elegido
+	end
 	-- El tiempo de pulsación lo mide el servidor: un cliente modificado no puede saltárselo.
-	if not began or now - began < Config.Chase.StealHoldTime - 0.15 then
-		return
-	end
-	if now < immuneUntil then
+	local atHome = NestService.isInsideOwnNest(current)
+	local check = ChaseRules.canSteal(now, began, immuneUntil, distance(thief, current), atHome)
+	if check == "immune" then
 		AnnouncementService.player(thief, "¡El portador es inmune unos segundos!")
-		return
 	end
-	if distance(thief, current) > Config.Chase.StealRange + 3 then
+	if check ~= "ok" then
 		return
 	end
 
@@ -159,6 +181,11 @@ local function onStealTriggered(thief: Player)
 	end
 	DataService.addStat(thief, "Steals", 1)
 	QuestService.progress(thief, "Steal", 1)
+	if Config.Chase.StunSeconds > 0 then
+		stunnedUntil[current] = now + Config.Chase.StunSeconds
+		AnnouncementService.player(current, string.format("¡Te la han robado! Aturdido %d s", Config.Chase.StunSeconds))
+		updateSpeed(current)
+	end
 	ChaseService.setCarrier(thief)
 end
 
@@ -176,6 +203,10 @@ function ChaseService.setCarrier(player: Player)
 
 	carrier = player
 	immuneUntil = os.clock() + Config.Chase.ImmunityAfterSteal
+	-- Las pulsaciones empezadas sobre el portador anterior no cuentan para el nuevo.
+	table.clear(holdStart)
+	homeStreak = 0
+	RoundState.set("SecureProgress", 0)
 	player:SetAttribute("IsCarrier", true)
 	RoundState.set("CarrierUserId", player.UserId)
 	RoundState.set("ImmuneUntil", workspace:GetServerTimeNow() + Config.Chase.ImmunityAfterSteal)
@@ -266,6 +297,7 @@ end
 -- Si el portador muere o se va, la criatura queda en el suelo y cualquiera puede cogerla.
 drop = function(position: Vector3?)
 	clearCarrierFx()
+	table.clear(holdStart)
 	if carrier and carrier.Parent then
 		carrier:SetAttribute("IsCarrier", false)
 		updateSpeed(carrier)
@@ -308,15 +340,48 @@ function ChaseService.begin(chosen: Player, creatureGenes: Genes.GeneSet)
 	if root then
 		built:PivotTo(root.CFrame * CFrame.new(0, 1, 5))
 	end
+	homeStreak, secured, overtime, over = 0, false, false, false
+	table.clear(stunnedUntil)
 	ChaseService.setCarrier(chosen)
+	-- El elegido empieza con más inmunidad y los demás tardan unos segundos en poder moverse.
+	local now = os.clock()
+	immuneUntil = now + Config.Chase.StartImmunitySeconds
+	RoundState.set("ImmuneUntil", workspace:GetServerTimeNow() + Config.Chase.StartImmunitySeconds)
+	for _, player in Players:GetPlayers() do
+		if player ~= chosen then
+			stunnedUntil[player] = now + Config.Chase.HeadStartSeconds
+			updateSpeed(player)
+		end
+	end
+end
+
+-- ¿Ya está decidida? (asegurada, o alguien llegó a su nido en la prórroga)
+function ChaseService.isOver(): boolean
+	return over
+end
+
+-- Empieza la prórroga si hace falta: el portador no está en su nido. Devuelve si empezó.
+function ChaseService.startOvertime(): boolean
+	local current = carrier
+	if over or Config.Chase.OvertimeSeconds <= 0 then
+		return false
+	end
+	if current and NestService.isInsideOwnNest(current) then
+		return false
+	end
+	overtime = true
+	return true
 end
 
 function ChaseService.finish(): ChaseResult
 	active = false
 	local winner: Player? = nil
-	if carrier and carrier.Parent and NestService.isInsideOwnNest(carrier) then
+	if carrier and carrier.Parent and (secured or ChaseRules.carrierWins(NestService.isInsideOwnNest(carrier))) then
 		winner = carrier
 	end
+	overtime = false
+	RoundState.set("SecureProgress", 0)
+	table.clear(stunnedUntil)
 	local partners = if winner then ChaseService.partnersOf(winner) else {}
 	local result: ChaseResult = { Winner = winner, Genes = genes, Partners = partners }
 
@@ -384,7 +449,7 @@ local function setupDealPrompt(player: Player, character: Model)
 			return
 		end
 		local phase = RoundState.phase()
-		if phase ~= "Incubation" and phase ~= "Chase" and phase ~= "Hatch" then
+		if phase ~= "Incubation" and phase ~= "Chase" and phase ~= "Overtime" and phase ~= "Hatch" then
 			return
 		end
 		pendingOffers[player] = { From = offerer, At = os.clock() }
@@ -497,6 +562,7 @@ function ChaseService.start()
 		shieldsUsed[player] = nil
 		sprintUntil[player] = nil
 		sprintReadyAt[player] = nil
+		stunnedUntil[player] = nil
 		deals[player] = nil
 		for _, set in deals do
 			set[player] = nil
@@ -510,6 +576,7 @@ function ChaseService.start()
 		if accumulator < 1 / 20 then
 			return
 		end
+		local elapsed = accumulator
 		accumulator = 0
 		local current = carrier
 		if model and current then
@@ -518,6 +585,35 @@ function ChaseService.start()
 				local target = root.CFrame * CFrame.new(0, 0.5, 5)
 				model:PivotTo(model:GetPivot():Lerp(target, 0.35))
 			end
+		end
+		if not active or not current or over then
+			return
+		end
+		-- Defensa en casa, asegurar y prórroga.
+		local atHome = NestService.isInsideOwnNest(current)
+		local prompt = stealPrompt
+		local hold = ChaseRules.holdTime(atHome)
+		if prompt and prompt.HoldDuration ~= hold then
+			prompt.HoldDuration = hold
+		end
+		if overtime and ChaseRules.overtimeWin(true, atHome) then
+			over = true
+			AnnouncementService.server(string.format("⚡ ¡%s mete la criatura en su nido y gana la prórroga!", current.DisplayName), "rare")
+			return
+		end
+		homeStreak = if atHome then homeStreak + elapsed else 0
+		if Config.Chase.SecureSeconds > 0 then
+			-- Solo se replica cuando cambia de forma visible (no 20 veces por segundo).
+			local progress = math.clamp(homeStreak / Config.Chase.SecureSeconds, 0, 1)
+			local sent = tonumber(RoundState.get("SecureProgress")) or 0
+			if math.abs(progress - sent) >= 0.02 or (progress == 0 and sent ~= 0) then
+				RoundState.set("SecureProgress", progress)
+			end
+		end
+		if ChaseRules.isSecured(homeStreak) then
+			secured = true
+			over = true
+			AnnouncementService.server(string.format("🔒 ¡%s ha asegurado la criatura en su nido!", current.DisplayName), "rare")
 		end
 	end)
 

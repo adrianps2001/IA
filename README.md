@@ -2,7 +2,7 @@
 
 Juego social para Roblox: todo el servidor alimenta **un único huevo gigante**, el huevo **elige a un dueño** al eclosionar y los demás tienen 3 minutos para **robárselo**. Las criaturas que consigues viven en tu nido, producen Monedas aunque no estés y se pueden criar para obtener genes nuevos.
 
-El diseño completo está en [`docs/GDD.md`](docs/GDD.md). La **guía visual del proyecto** (Roblox para creadores, archivos, Luau y todo el código explicado con demos interactivas) está en [`docs/index.html`](docs/index.html) y se publica con GitHub Pages en https://adrianps2001.github.io/IA/. Este repositorio contiene el **prototipo jugable** (fase 1 del roadmap: una ronda completa en gris) junto con el nido, la cría, la economía, las misiones y la monetización.
+El diseño completo está en [`docs/GDD.md`](docs/GDD.md). La **guía visual del proyecto** (Roblox para creadores, archivos, Luau y todo el código explicado con demos interactivas) está en [`docs/index.html`](docs/index.html) y se publica con GitHub Pages en https://adrianps2001.github.io/IA/. El **informe del simulador de bots** (repetición de una partida y gráficas antes/después de los ajustes de equilibrio) está en [`docs/simulacion.html`](docs/simulacion.html). Este repositorio contiene el **prototipo jugable** (fase 1 del roadmap: una ronda completa en gris) junto con el nido, la cría, la economía, las misiones y la monetización.
 
 ## Cómo probarlo
 
@@ -21,9 +21,10 @@ El mapa (bosque, huevo y 16 nidos) se genera por código al arrancar el servidor
 |---|---|---|
 | Preparados | 15 s | Se reinicia el huevo y la barra |
 | Incubación | 8 min (o hasta llenar la barra) | Recoge **Calor** (brasas, luciérnagas del pantano, bloques de suerte, géiseres en pareja) y deposítalo en el huevo. Lo que depositas es tu **Afinidad**. Los objetos de ofrenda (cristal, pluma, hueso) sesgan los genes. Puedes empujar a quien lleve la bolsa llena (F). |
-| Eclosión | 30 s | El huevo tiembla y un foco recorre a los jugadores como una ruleta. Probabilidad = Afinidad / total, con un **mínimo del 2 %** para todos. |
-| Persecución | 3 min (5 con Luna de Sangre) | El elegido lleva la criatura a su nido. Para robarla hay que mantener **E** 1,5 s junto al portador. Hay 3 s de inmunidad tras cada robo. El portador tiene **esprint** (Shift), **relevo** a un aliado (Q) y **puerta del nido** 10 s (R). |
-| Resultados | 15 s | Quien tenga la criatura **dentro de su nido** al acabar el tiempo se la queda. El resto recibe **Polvo de cáscara** de consuelo. |
+| Eclosión | 30 s | El huevo tiembla y un foco recorre a los jugadores como una ruleta. Probabilidad = Afinidad / total, con un **mínimo del 2 %** que sube un 2 % por cada ronda sin ser elegido (hasta un 12 %: "suerte acumulada"). |
+| Persecución | 3 min (5 con Luna de Sangre) | El elegido lleva la criatura a su nido, con 10 s de inmunidad y 4 s de ventaja. Para robarla hay que mantener **E** 1,5 s junto al portador (2,25 s si está en su nido). Tras un robo hay 3 s de inmunidad y quien la pierde queda **aturdido** 2 s. Dentro de un nido ajeno se va al 60 % de velocidad. El portador tiene **esprint** (Shift), **relevo** a un aliado (Q) y **puerta del nido** 10 s (R). Aguantar **25 s seguidos** en tu nido **asegura** la criatura. |
+| Prórroga | hasta 45 s | Si al acabar el tiempo el portador no está en su nido, gana el primero que meta la criatura en el suyo. |
+| Resultados | 15 s | Se la queda quien la aseguró o la tenía en su nido. El resto recibe **Polvo de cáscara** de consuelo. |
 
 **Tratos (T):** puedes ofrecer un trato a otro jugador. Si uno de los dos gana, el otro se lleva el 30 % de su polvo y una copia común de la criatura. Robarle a un aliado cuenta como traición y suma al título "Traidor".
 
@@ -55,10 +56,14 @@ src/client/                 StarterPlayerScripts.Client
   Controllers/ChaseController   Botones del portador y ventana de tratos
   Controllers/NestController    Panel del nido: criaturas, incubadora, mejoras, misiones, tienda
   Controllers/EffectsController Latido del huevo y criaturas arcoíris
+  ChaseRules, Rewards,       Reglas de la persecución, reparto de premios y geometría
+  MapLayout                 del mapa (lógica pura, compartida con el simulador)
+sim/                        Simulador de bots: Round (una ronda), Meta (semanas), run (CLI)
 tests/run.luau              Tests de la lógica pura
 docs/GDD.md                 Documento de diseño
 docs/index.html, assets/    Web de documentación (GitHub Pages)
-tools/                      export_data.luau y build_docs.py: generan la web desde el código
+docs/simulacion.html        Informe del simulador (lo genera tools/sim_report.py)
+tools/                      export_data.luau, build_docs.py, sim_report.py, Json.luau
 ```
 
 **Seguridad:** el servidor es autoritativo. El cliente solo envía intenciones ("quiero esprintar"). El servidor valida distancias, tiempos de pulsación, costes y fases, y calcula todas las velocidades.
@@ -66,13 +71,33 @@ tools/                      export_data.luau y build_docs.py: generan la web des
 ## Tests y comprobaciones
 
 ```sh
-luau tests/run.luau                    # 27 tests de rarezas, genes, Elección, economía, misiones y datos
+luau tests/run.luau                    # 33 tests de rarezas, genes, Elección, economía, reglas, misiones y datos
 rojo sourcemap default.project.json -o sourcemap.json
 luau-lsp analyze --flag:LuauSolverV2=true --sourcemap=sourcemap.json \
   --definitions=globalTypes.d.luau src  # análisis de tipos con las APIs de Roblox
 ```
 
 La CI de GitHub (`.github/workflows/ci.yml`) ejecuta los tests, el análisis de tipos, comprueba que la web está al día y que el proyecto compila con Rojo en cada push.
+
+## Simulador de bots (partidas de prueba)
+
+Juega rondas completas y semanas de economía con bots de 6 personalidades (Novato, Casual, Recolector, Ladrón, Fiel y Con pases) sobre el mapa a escala real. Usa los **mismos módulos** que el juego.
+
+```sh
+luau --codegen sim/run.luau -a partida 7 12          # una partida narrada (semilla 7, 12 bots)
+luau --codegen sim/run.luau -a lote 1 300 12         # 300 partidas y sus estadísticas
+luau --codegen sim/run.luau -a lote 1 300 12 Chase.StealHoldTime=2   # probar otro valor de Config
+luau --codegen sim/run.luau -a meta 7 30 60 > m.json # 30 días de economía con 60 bots
+python3 tools/sim_report.py                          # regenera docs/simulacion.html (~4 min)
+```
+
+Con él se encontraron problemas serios de equilibrio, que ya están corregidos en `Config`:
+- **La criatura se escapaba en el ~80 % de las rondas** (robos en el último segundo). Se añadieron prórroga, asegurar, territorio, aturdimiento y ventaja del elegido. Ahora se escapa en menos del 2 %.
+- **La barra se llenaba siempre a mitad de tiempo**, así que siempre salía Épica como mínimo. Nueva meta `base + por jugador`.
+- **La economía estaba inflada unas 100 veces.** Curvas de precio más empinadas y producción sin conexión al 25 %.
+- **Los novatos casi nunca eran elegidos.** Suerte acumulada.
+
+Los detalles, con gráficas antes/después, están en `docs/simulacion.html`.
 
 ## La web de documentación
 
@@ -92,7 +117,7 @@ Implementado:
 - Calor y sus 4 fuentes, bolsa limitada, empujones y ofrendas.
 - Umbrales de la barra al 25/50/75/100 %.
 - Elección con mínimo del 2 %.
-- Persecución con robo, inmunidad, esprint, relevo, puerta del nido y Escudo de Cáscara.
+- Persecución con robo, inmunidad, esprint, relevo, puerta del nido y Escudo de Cáscara, más las mecánicas añadidas con el simulador: prórroga, asegurar, territorio, aturdimiento y ventaja del elegido (configurables en `Config.Chase`).
 - Tratos y traiciones, con títulos Leal/Traidor.
 - Consuelo con Polvo de cáscara.
 - Nido con producción, también sin conexión (tope de 8 h).
@@ -102,7 +127,7 @@ Implementado:
 - Misiones diarias y racha de 7 días.
 - Luna de Sangre.
 - Anuncios globales de Míticas y Secretas.
-- Pases, productos y suscripción, con probabilidades públicas.
+- Pases, productos y suscripción, con probabilidades públicas y comprobación de `PolicyService` para los objetos aleatorios de pago.
 - Embudo de analítica.
 - Ciclo visual de la ronda (atardecer, eclipse y noche).
 
@@ -114,6 +139,8 @@ Pendiente (siguientes fases del roadmap):
 - Ranking semanal de robos.
 - Emotes de reacción.
 - Selector de gen para la Ofrenda Dorada (el servidor ya la admite).
+- Liberar criaturas a cambio de polvo y más sumideros de Monedas (el simulador muestra acumulación a final de mes).
+- Emparejamiento por nivel o premio al elegido que pierde (los novatos casi nunca ganan la persecución).
 - Sonido.
 - Tutorial guiado.
 - Pase de temporada.
