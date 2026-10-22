@@ -329,9 +329,12 @@ function Meta.run(params: Params)
 
 			for _, server in servers do
 				local t: number = slotStart + Rng.range(rng, 0, slotLength * 0.5)
+				local serverBots: { Round.Bot } = {}
 				for _, p in server do
 					login(p, t)
+					table.insert(serverBots, p.Bot)
 				end
+				Round.formParties(serverBots, rng) -- Bandadas para esta sesión
 				local maxRounds: number = 0
 				for _, p in server do
 					maxRounds = math.max(maxRounds, p.Bot.Arch.RoundsPerSession)

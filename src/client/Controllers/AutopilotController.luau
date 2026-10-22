@@ -332,6 +332,46 @@ function AutopilotController.start()
 		return Enum.ContextActionResult.Sink
 	end, false, Enum.KeyCode.F8)
 
+	-- Bandada: acepta la mitad de las invitaciones.
+	Remotes.event("PartyInvited").OnClientEvent:Connect(function(fromUserId: number)
+		if enabled then
+			task.delay(1, function()
+				Remotes.event("PartyRespond"):FireServer(fromUserId, math.random() < 0.5)
+			end)
+		end
+	end)
+
+	-- Intercambio: acepta, ofrece su peor criatura y confirma en cuanto puede. Sirve para
+	-- probar el intercambio entre tú y un bot.
+	Remotes.event("TradeRequested").OnClientEvent:Connect(function(fromUserId: number)
+		if enabled then
+			task.delay(1, function()
+				Remotes.event("TradeRespond"):FireServer(fromUserId, true)
+			end)
+		end
+	end)
+	Remotes.event("TradeUpdated").OnClientEvent:Connect(function(view)
+		if not enabled or not view then
+			return
+		end
+		task.delay(1, function()
+			if #view.Mine == 0 then
+				local ok, profile = pcall(function()
+					return Remotes.func("GetProfile"):InvokeServer()
+				end)
+				local creatures = if ok and profile then profile.Creatures else {}
+				if #creatures > 0 then
+					Remotes.event("TradeSetOffer"):FireServer({ creatures[#creatures].Id })
+				end
+			elseif not view.Ready.Me and #view.Theirs > 0 then
+				Remotes.event("TradeReady"):FireServer()
+			elseif view.Ready.Me and view.Ready.Them and not view.Confirmed.Me and view.ConfirmAt then
+				task.wait(math.max(0, view.ConfirmAt - workspace:GetServerTimeNow()) + 0.2)
+				Remotes.event("TradeConfirm"):FireServer()
+			end
+		end)
+	end)
+
 	-- Acepta tratos al azar, como haría alguien sociable.
 	Remotes.event("DealOffered").OnClientEvent:Connect(function(fromUserId: number)
 		if enabled then

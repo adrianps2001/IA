@@ -165,6 +165,16 @@ function Economy.beauty(owned: { string }): number
 	return total
 end
 
+-- Bandada: de un depósito, cuánto se queda quien deposita y cuánto recibe cada uno de los
+-- otros `others` miembros conectados.
+function Economy.partyShare(amount: number, others: number): (number, number)
+	if others <= 0 then
+		return amount, 0
+	end
+	local each = math.floor(amount * Config.Party.HeatShare / others)
+	return amount - each * others, each
+end
+
 -- Polvo de cáscara de consolación según Afinidad e intentos de robo (GDD 5.5).
 function Economy.consolationDust(affinity: number, stealAttempts: number): number
 	local c = Config.Consolation

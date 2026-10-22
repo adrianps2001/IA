@@ -25,6 +25,7 @@ local EggService = require(script.Parent.EggService)
 local HeatService = require(script.Parent.HeatService)
 local LootService = require(script.Parent.LootService)
 local NestService = require(script.Parent.NestService)
+local PartyService = require(script.Parent.PartyService)
 local QuestService = require(script.Parent.QuestService)
 
 local RoundService = {}
@@ -208,9 +209,10 @@ local function awardResults(players: { Player }, result: ChaseService.ChaseResul
 			NestService.giveChosenEgg(player)
 			AnnouncementService.player(player, "El huevo te eligió: te deja un Huevo del Elegido en la incubadora.", "rare")
 		end
-		DataService.addDust(player, reward.Dust)
+		local dust = math.floor(reward.Dust * PartyService.dustMultiplier(player))
+		DataService.addDust(player, dust)
 		if not reward.Creature then
-			AnnouncementService.player(player, string.format("+%d Polvo de cáscara de consuelo", reward.Dust))
+			AnnouncementService.player(player, string.format("+%d Polvo de cáscara de consuelo", dust))
 		end
 		DataService.addStat(player, "RoundsPlayed", 1)
 		QuestService.progress(player, "PlayRounds", 1)

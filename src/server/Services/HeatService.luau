@@ -18,6 +18,7 @@ local DataService = require(script.Parent.DataService)
 local EggService = require(script.Parent.EggService)
 local MapService = require(script.Parent.MapService)
 local MonetizationService = require(script.Parent.MonetizationService)
+local PartyService = require(script.Parent.PartyService)
 local QuestService = require(script.Parent.QuestService)
 
 type PlayerState = {
@@ -118,7 +119,13 @@ function HeatService.deposit(player: Player)
 	local amount = s.Heat
 	if amount > 0 then
 		s.Heat = 0
-		s.Affinity += amount
+		-- Bandada: una parte de la Afinidad se reparte entre el resto del grupo.
+		local keep, shares = PartyService.shareHeat(player, amount)
+		s.Affinity += keep
+		for _, share in shares do
+			state(share.Player).Affinity += share.Amount
+			sync(share.Player)
+		end
 		EggService.addHeat(amount)
 		CommunityService.contribute(player, amount)
 		DataService.addStat(player, "HeatDeposited", amount)

@@ -14,6 +14,7 @@ local PlayerData = require("../src/shared/PlayerData")
 local Quests = require("../src/shared/Quests")
 local Rarity = require("../src/shared/Rarity")
 local Rewards = require("../src/shared/Rewards")
+local Trade = require("../src/shared/Trade")
 
 local passed, failed = 0, 0
 
@@ -534,6 +535,65 @@ test("Events.canLoot: defensas, Secretas, límites y pulsación", function()
 	expect(not Events.canLoot(with({ NestCooldownUntil = 101 })))
 	expect(not Events.canLoot(with({ Distance = Config.Events.LootNight.MaxDistance + 1 })))
 	expect(not Events.canLoot(with({ HoldStartedAt = 100 - hold / 2 })), "pulsación corta")
+end)
+
+test("Economy.partyShare: la Bandada reparte el 10 % del depósito", function()
+	local keep, each = Economy.partyShare(1000, 3)
+	expect(each == math.floor(1000 * Config.Party.HeatShare / 3))
+	expect(keep + each * 3 == 1000, "no se crea ni se pierde Calor")
+	local solo, none = Economy.partyShare(1000, 0)
+	expect(solo == 1000 and none == 0)
+end)
+
+test("Trade: doble confirmación y cambio atómico", function()
+	local rng = seeded(31)
+	local function make(prefix: string, n: number): { Creature.Creature }
+		local list = {}
+		for i = 1, n do
+			table.insert(list, Creature.new(prefix .. i, Genes.rollSet(rng, "Rare"), "Test", 0))
+		end
+		return list
+	end
+	local a, b = make("a", 5), make("b", 5)
+	local function owns(list: { Creature.Creature }): (string) -> boolean
+		return function(id)
+			for _, c in list do
+				if c.Id == id then
+					return true
+				end
+			end
+			return false
+		end
+	end
+	local t = Trade.new("1", "2")
+	expect(Trade.sideOf(t, "2") == "B" and Trade.sideOf(t, "3") == nil)
+	expect(not Trade.setReady(t, "A", 0), "no se puede estar listo sin ofertas")
+	expect(not Trade.setOffer(t, "A", { "b1" }, owns(a)), "no puedes ofrecer lo que no tienes")
+	expect(not Trade.setOffer(t, "A", { "a1", "a1" }, owns(a)), "sin repetidos")
+	expect(not Trade.setOffer(t, "A", { "a1", "a2", "a3", "a4", "a5" }, owns(a)), "máximo por lado")
+	expect(Trade.setOffer(t, "A", { "a1", "a2" }, owns(a)))
+	expect(Trade.setOffer(t, "B", { "b3" }, owns(b)))
+	expect(Trade.setReady(t, "A", 10) and Trade.setReady(t, "B", 11))
+	expect(t.ReadyAt == 11)
+	-- Antes de la espera no se puede confirmar.
+	expect(not Trade.confirm(t, "A", 11 + Config.Trade.ConfirmDelay - 1) and not t.Confirmed.A)
+	-- Un cambio de oferta quita el "Listo" de los dos.
+	expect(Trade.setOffer(t, "B", { "b3", "b4" }, owns(b)))
+	expect(not t.Ready.A and not t.Ready.B and t.ReadyAt == nil)
+	Trade.setReady(t, "A", 20)
+	Trade.setReady(t, "B", 20)
+	local later = 20 + Config.Trade.ConfirmDelay
+	expect(not Trade.confirm(t, "A", later), "falta el otro")
+	expect(Trade.confirm(t, "B", later), "los dos han confirmado")
+	local ok, newA, newB = Trade.apply(t, a, b)
+	expect(ok and #newA == 5 and #newB == 5)
+	expect(owns(newA)("b3") and owns(newA)("b4") and not owns(newA)("a1"))
+	expect(owns(newB)("a1") and owns(newB)("a2") and not owns(newB)("b3"))
+	-- Si una criatura ya no está (liberada, saqueada…), no cambia nada.
+	local gone = table.move(a, 2, 5, 1, {})
+	local ok2, sameA, sameB = Trade.apply(t, gone, b)
+	expect(not ok2 and sameA == gone and sameB == b)
+	expect(Trade.value({ a[1] }) == Creature.baseIncome(a[1]))
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

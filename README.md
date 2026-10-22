@@ -43,6 +43,7 @@ src/shared/                 ReplicatedStorage.Shared (servidor y cliente)
   Decorations, DecorationModel  Decoraciones del nido: datos y construcción
   Remotes, RoundState       Remotos y estado de ronda replicado
   Events                    Horarios de eventos, reglas del saqueo, criatura comunitaria
+  Trade                     Máquina de estados del intercambio (doble confirmación)
   Testing                   Modo de prueba en Studio (Config.Testing)
 src/server/                 ServerScriptService.Server
   Services/DataService      Guardado con bloqueo de sesión, autosave, vista para la UI
@@ -57,6 +58,8 @@ src/server/                 ServerScriptService.Server
   Services/AnnouncementService  Avisos locales y globales (MessagingService)
   Services/CommunityService Huevo Comunitario (barra global en MemoryStore)
   Services/LootService      Noche de Saqueo
+  Services/PartyService     Bandadas
+  Services/TradeService     Intercambio de criaturas
   Services/DebugService     Comandos de depuración (solo Studio)
 src/client/                 StarterPlayerScripts.Client
   Controllers/HUDController     Bolsa, barra, temporizador, flecha de objetivo, avisos
@@ -64,6 +67,7 @@ src/client/                 StarterPlayerScripts.Client
   Controllers/ChaseController   Botones del portador y ventana de tratos
   Controllers/NestController    Panel del nido: criaturas (cría y liberar), incubadora, mejoras, decorar, misiones, tienda
   Controllers/EffectsController Latido del huevo y criaturas arcoíris
+  Controllers/SocialController  Bandada, intercambio e historial
   Controllers/DebugController   Panel de depuración (F7, solo Studio)
   Controllers/AutopilotController Piloto automático para probar en Studio (F8)
   ChaseRules, Rewards,       Reglas de la persecución, reparto de premios y geometría
@@ -131,6 +135,7 @@ Implementado:
 - Elección con mínimo del 2 %.
 - Persecución con robo, inmunidad, esprint, relevo, puerta del nido y Escudo de Cáscara, más las mecánicas añadidas con el simulador: prórroga, asegurar, territorio, aturdimiento y ventaja del elegido (configurables en `Config.Chase`).
 - Tratos y traiciones, con títulos Leal/Traidor.
+- Bandada (grupos de hasta 4: reparten el 10 % del Calor, se ven a través de las paredes y +10 % de polvo con un amigo) e intercambio de criaturas con doble confirmación, cambio atómico e historial.
 - Consuelo con Polvo de cáscara, y premio al elegido que pierde la criatura: polvo extra y un Huevo del Elegido (Rara a Épica).
 - Nido con producción, también sin conexión (tope de 8 h).
 - 60 genes, 6 rarezas y cría con mutación.
@@ -146,8 +151,6 @@ Implementado:
 
 Pendiente (siguientes fases del roadmap):
 - Huevo Doble (requiere varias persecuciones a la vez) y Huevo del Admin.
-- Grupos ("Bandada").
-- Intercambio de criaturas.
 - Visitas y "me gusta" en nidos, y salón de la fama.
 - Ranking semanal de robos.
 - Emotes de reacción.

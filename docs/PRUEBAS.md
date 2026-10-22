@@ -92,6 +92,14 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots).
 - [ ] Al llenarla, quien aportó al menos 500 recibe la criatura del mes (la misma para todos).
 - [ ] Huevo del Elegido: si el elegido pierde la criatura, aparece un huevo en su incubadora.
 
+### Bandada e intercambio
+- [ ] 🐦 Bandada: invita a un bot (lo acepta la mitad de las veces) y comprueba que se ve a través de las paredes.
+- [ ] Al depositar, los miembros de la Bandada reciben un 10 % de Afinidad (mira la Afinidad del otro jugador).
+- [ ] 🤝 Intercambio: pide uno a un bot. El bot ofrece su peor criatura, pulsa "Listo" y confirma cuando puede.
+- [ ] Cambiar tu oferta quita el "Listo" de los dos. "Confirmar" solo se activa 3 s después de que los dos estén listos.
+- [ ] Al completarse, las criaturas cambian de nido y aparece en "Últimos intercambios".
+- [ ] Si alguien sale a mitad, el intercambio se cancela sin cambiar nada.
+
 ### Nido y datos
 - [ ] Panel del nido: criaturas, incubadora, mejoras, decorar, misiones y tienda.
 - [ ] Liberar: una criatura seleccionada o "liberar guardadas" (pide confirmación; nunca toca las del nido).

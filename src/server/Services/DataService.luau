@@ -384,6 +384,7 @@ function DataService.view(player: Player): any
 		StoredRelease = { Count = #bulk, Dust = bulkDust },
 		Decorations = decorations,
 		Beauty = Economy.beauty(profile.Decorations),
+		Trades = table.move(profile.Trades, math.max(#profile.Trades - 4, 1), #profile.Trades, 1, {}),
 		Now = now(),
 	}
 end

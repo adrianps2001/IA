@@ -187,6 +187,25 @@ Config.Decorations = {
 	{ Id = "throne", Name = "Trono de cáscara", Currency = "Dust", Cost = 15_000, Beauty = 15 },
 }
 
+-- Bandada (GDD 9): grupos de hasta 4 que duran entre rondas. Comparten una parte del Calor
+-- depositado (Afinidad), se ven a través de las paredes y, si hay un amigo de Roblox en el
+-- grupo, ganan más Polvo de cáscara. No son aliados automáticos en la persecución: para
+-- eso están los tratos.
+Config.Party = {
+	MaxSize = 4,
+	HeatShare = 0.10, -- parte de cada depósito que se reparte entre el resto del grupo
+	FriendDustBonus = 0.10,
+	InviteTimeout = 30,
+}
+
+-- Intercambio de criaturas (ver Trade.luau).
+Config.Trade = {
+	MaxItems = 4, -- criaturas por lado
+	ConfirmDelay = 3, -- segundos entre "Listo" de los dos y poder confirmar
+	RequestTimeout = 30,
+	HistorySize = 20,
+}
+
 Config.Quests = {
 	PerDay = 3,
 	RewardDust = 50,

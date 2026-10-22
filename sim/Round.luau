@@ -29,6 +29,7 @@ export type Bot = {
 	Upgrades: { [string]: number },
 	Payer: boolean,
 	RoundsSinceChosen: number?,
+	Party: number?, -- Bandada (bots con el mismo número)
 }
 
 -- Estado del bot dentro de una ronda.
@@ -104,6 +105,36 @@ export type Options = {
 }
 
 local Round = {}
+
+-- Forma Bandadas de hasta Config.Party.MaxSize con los bots sociables (cada bot entra con
+-- probabilidad Arch.Social). Los demás juegan solos.
+function Round.formParties(bots: { Bot }, rng: Rng)
+	local next: number = 0
+	local size: number = Config.Party.MaxSize
+	for _, bot in bots do
+		bot.Party = nil
+		if rng() < bot.Arch.Social then
+			if size >= Config.Party.MaxSize then
+				next += 1
+				size = 0
+			end
+			bot.Party = next
+			size += 1
+		end
+	end
+	-- Una Bandada de uno no existe.
+	local counts: { [number]: number } = {}
+	for _, bot in bots do
+		if bot.Party then
+			counts[bot.Party] = (counts[bot.Party] or 0) + 1
+		end
+	end
+	for _, bot in bots do
+		if bot.Party and counts[bot.Party] < 2 then
+			bot.Party = nil
+		end
+	end
+end
 
 local EGG: Point = { X = 0, Z = 0 }
 local DEPOSIT_REACH = Config.Heat.DepositRadius - 2
@@ -315,7 +346,20 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 		end
 		local amount = agent.Heat
 		agent.Heat = 0
-		agent.Affinity += amount
+		-- Bandada: una parte de la Afinidad se reparte entre el resto del grupo (PartyService).
+		local mates = {}
+		if agent.Bot.Party then
+			for _, other in agents do
+				if other ~= agent and other.Bot.Party == agent.Bot.Party then
+					table.insert(mates, other)
+				end
+			end
+		end
+		local keep, each = Economy.partyShare(amount, #mates)
+		for _, mate in mates do
+			mate.Affinity += each
+		end
+		agent.Affinity += keep
 		agent.Deposited += amount
 		bar = math.min(goal, bar + amount)
 		local minRarity, _, index = Economy.thresholdFor(bar / goal)
