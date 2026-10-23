@@ -43,7 +43,7 @@ const ARCH = {
   Grinder: { label: "Fiel", color: "#7b5cff" },
   Payer: { label: "Con pases", color: "#e8a400" },
 };
-const VARIANT = { before: "Antes", after: "Después" };
+const VARIANT = { before: "v1", after: "v2" };
 const VCOLOR = { before: "#a79cb3", after: "#ff8a2a" };
 
 /* ---------------------------------------------------------------- tarjetas resumen */
@@ -52,13 +52,16 @@ function kpis() {
   const root = $("#kpis");
   if (!root) return;
   const b = SIM.Chase.before["12"], a = SIM.Chase.after["12"];
+  const mb = SIM.Meta.before, ma = SIM.Meta.after;
   const items = [
-    ["La criatura se escapa", b.Escape, a.Escape, pct, false],
-    ["Gana el elegido", b.ChosenWins, a.ChosenWins, pct, true],
-    ["Robos por partida", b.Steals, a.Steals, (v) => dec(v, 1), false],
-    ["Barra al eclosionar", b.Bar, a.Bar, pct, null],
-    ["Barra llena antes de tiempo", b.EarlyFull, a.EarlyFull, pct, false],
-    ["Persecución media", b.ChaseSeconds, a.ChaseSeconds, (v) => `${Math.round(v)} s`, null],
+    ["Victorias por hora de juego", mb.Totals.WinsPerHour, ma.Totals.WinsPerHour, (v) => dec(v, 2), true],
+    ["Sesiones con alguna victoria", mb.Totals.SessionsWithWin, ma.Totals.SessionsWithWin, pct, true],
+    ["Victorias por hora de un novato", mb.Summary.Newbie.WinsPerHour, ma.Summary.Newbie.WinsPerHour, (v) => dec(v, 2), true],
+    ["Duración de la ronda", b.RoundMinutes, a.RoundMinutes, (v) => `${dec(v, 1)} min`, false],
+    ["El elegido conserva su criatura (12 jug.)", b.ChosenWins, a.ChosenWins, pct, true],
+    ["Robos por criatura (12 jug.)", b.Steals, a.Steals, (v) => dec(v, 1), false],
+    ["La criatura se escapa (12 jug.)", b.Escape, a.Escape, pct, false],
+    ["Generación media a 30 días", mb.Totals.Generation, ma.Totals.Generation, (v) => dec(v, 2), null],
   ];
   for (const [label, before, after, f, higherIsBetter] of items) {
     let cls = "";
@@ -319,10 +322,14 @@ function retention() {
     return d?.ByArch[arch]?.[field] ?? 0;
   };
   const last = SIM.Params.Days;
-  let html = `<tr><th>Tipo de jugador</th><th>Elegido al menos 1 vez (día 7)</th><th>Ha ganado alguna vez (día 7)</th><th>Elegido (día ${last})</th><th>Ha ganado (día ${last})</th></tr>`;
+  let html = `<tr><th>Tipo de jugador</th><th>Victorias por hora</th><th>Sesiones con victoria</th><th>Ha ganado alguna vez (día 7)</th><th>Ha ganado (día ${last})</th></tr>`;
   for (const arch of SIM.Archs) {
     html += `<tr><td><i class="dot" style="background:${ARCH[arch].color}"></i>${ARCH[arch].label}</td>`;
-    for (const [day, field] of [[7, "ChosenShare"], [7, "WinnersShare"], [last, "ChosenShare"], [last, "WinnersShare"]]) {
+    for (const [field, f] of [["WinsPerHour", (v) => dec(v, 2)], ["SessionsWithWin", pct]]) {
+      const b = SIM.Meta.before.Summary[arch]?.[field] ?? 0, a = SIM.Meta.after.Summary[arch]?.[field] ?? 0;
+      html += `<td>${f(b)} → <b class="${a > b ? "good" : a < b ? "bad" : ""}">${f(a)}</b></td>`;
+    }
+    for (const [day, field] of [[7, "WinnersShare"], [last, "WinnersShare"]]) {
       const b = at("before", day, arch, field), a = at("after", day, arch, field);
       const cls = a > b + 0.001 ? "good" : a < b - 0.001 ? "bad" : "";
       html += `<td>${pct(b)} → <b class="${cls}">${pct(a)}</b></td>`;
@@ -375,6 +382,7 @@ function replay() {
     add("rect", { x: -4.5, y: nestSize / 2 - 1.5, width: 9, height: 3, fill: "#ffd060" }, g);
   }
   // Bots
+  const foxLayer = add("g", {});
   const dots = {};
   const indexById = {};
   data.Bots.forEach((b, i) => {
@@ -410,7 +418,7 @@ function replay() {
   const tMax = frames[frames.length - 1].T;
   slider.max = String(tMax);
   let t = 0, playing = false, last = 0;
-  const PHASES = { Incubation: "🔥 Incubación", Hatch: "🥚 Eclosión", Chase: "🏃 Persecución", Results: "🏆 Resultados" };
+  const PHASES = { Incubation: "🔥 Incubación", Hatch: "🥚 Eclosión", Chase: "🏃 Persecución", Overtime: "⚡ Prórroga", Results: "🏆 Resultados" };
 
   function frameAt(time) {
     let lo = 0, hi = frames.length - 1;
@@ -430,8 +438,13 @@ function replay() {
       const d = dots[idx];
       d.g.setAttribute("transform", `translate(${x} ${z})`);
       d.heat.setAttribute("r", String(Math.min(p[2] / 150, 1) * 2.6));
-      d.ring.setAttribute("opacity", f.C != null && indexById[String(f.C)] === idx ? "1" : "0");
+      const carriers = Array.isArray(f.C) ? f.C : f.C != null ? [f.C] : [];
+      d.ring.setAttribute("opacity", carriers.some((c) => indexById[String(c)] === idx) ? "1" : "0");
     });
+    // Zorros del bosque y criaturas sueltas.
+    foxLayer.innerHTML = "";
+    for (const p of f.F || []) add("text", { x: p[0], y: p[1] + 3, "text-anchor": "middle", "font-size": 9 }, foxLayer).textContent = "🦊";
+    for (const p of f.L || []) add("circle", { cx: p[0], cy: p[1], r: 3.5, fill: "#ffd23f", stroke: "#fff", "stroke-width": 1 }, foxLayer);
     const bar = f.Bar || 0;
     eggShape.setAttribute("rx", String(7 + Math.min(bar / 20000, 1) * 3));
     info.innerHTML = `<b>${PHASES[f.Phase] || f.Phase}</b> · ${Math.floor(t)} s · Calor en el huevo: ${big(bar)}`;
@@ -465,7 +478,8 @@ function replay() {
   slider.addEventListener("input", () => seek(Number(slider.value)));
   $(".jump-chase", root).addEventListener("click", () => seek(phaseStart.Chase ?? 0));
   const s = data.Summary;
-  $(".replay-summary", root).innerHTML = `Semilla ${data.Seed} · 12 bots · ${s.Steals} robos · ${s.Carriers} portadores · ${s.Secured ? "acabó <b>asegurada</b>" : s.Overtime ? "se decidió en la <b>prórroga</b>" : s.Escaped ? "la criatura <b>escapó</b>" : "ganó al acabar el tiempo"}`;
+  const ends = (s.Chases || []).map((c) => (c.Secured ? "asegurada" : c.Overtime ? "en la prórroga" : c.Escaped ? "escapó" : "al acabar el tiempo"));
+  $(".replay-summary", root).innerHTML = `Semilla ${data.Seed} · 12 bots · ${s.Creatures} criatura${s.Creatures === 1 ? "" : "s"} · ${s.Steals} robos · ${s.ShieldBlocks || 0} escudos rotos · ${ends.map((e) => `<b>${e}</b>`).join(", ")}`;
   draw();
 }
 

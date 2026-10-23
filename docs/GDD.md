@@ -1,26 +1,48 @@
 # GDD — THE EGG CHOOSES (El Huevo Elige) para Roblox
 
-2026-10-21 · Adrian
+Versión 2 · 2026-10-23 · Adrian (v1: 2026-10-21)
+
+> **Qué cambia en la versión 2.** Tras jugar miles de rondas con el simulador de bots se vio que la v1 tenía fallos de fondo:
+> - la incubación (8 min) casi no decidía quién ganaba;
+> - el premio era demasiado escaso;
+> - la ronda tenía mucho tiempo muerto;
+> - había pago por ganar;
+> - los AFK estropeaban la ronda.
+>
+> La v2 corrige esas mecánicas. Los resultados, en 30 días simulados con 72 jugadores y las mismas horas de juego:
+>
+> | | v1 | v2 |
+> |---|---|---|
+> | Duración de la ronda | ~12,8 min | ~5,8 min |
+> | Victorias por hora de juego (media) | 0,5 | 2,3 |
+> | Sesiones que acaban con alguna victoria | 24 % | 69 % |
+> | Victorias por hora de un novato | 0 | 0,35 |
+> | Victorias por hora de un jugador casual | 0,02 | 0,9 |
+> | El elegido conserva su criatura (12 jugadores) | 10 % | ~33 % |
+> | Robos por criatura (12 jugadores) | 9,3 | ~3,4 |
+> | Nuevas generaciones al mes (jugador muy activo) | 2 | 2 |
+>
+> Las secciones afectadas están marcadas con **(v2)**. La lista de cambios y el porqué de cada uno están en la sección 12.
 
 ## 1. Resumen ejecutivo
 
 **The Egg Chooses** es un juego social de 10 a 16 jugadores por servidor donde todo el servidor alimenta un único huevo gigante, el huevo elige a un dueño al eclosionar y el resto intenta robárselo. Junta en una sola partida los tres motores que dominan Roblox en 2026: robar (Steal a Brainrot, Steal an Egg), revelar con suerte (lucky blocks, RNG) y cooperar bajo presión (99 Nights in the Forest).
 
-**Pitch en una frase (para TikTok):** "Todo el servidor cuida UN huevo. Cuando nace, elige a UNA persona. Los demás tienen 3 minutos para robárselo."
+**Pitch en una frase (para TikTok):** "Todo el servidor cuida UN huevo. Cuando nace, elige a UNA persona. Los demás tienen 2 minutos para robárselo."
 
-**Género:** social party + idle/coleccionismo + persecución asimétrica. **Plataformas:** móvil primero (la mayoría del público de Roblox), PC, consola (Xbox, PlayStation). **Duración de ronda:** unos 12 minutos. **Sesión objetivo:** 35 a 45 minutos (3 rondas). **Clasificación objetivo:** apto para todas las edades (violencia nula; robar = agarrar y cargar, nunca pegar).
+**Género:** social party + idle/coleccionismo + persecución asimétrica. **Plataformas:** móvil primero (la mayoría del público de Roblox), PC, consola (Xbox, PlayStation). **Duración de ronda (v2):** unos 6 minutos. **Sesión objetivo:** 35 a 45 minutos (6 o 7 rondas). **Clasificación objetivo:** apto para todas las edades (violencia nula; robar = agarrar y cargar, nunca pegar).
 
 ### Pilares de diseño
 
 1. **Un servidor, un evento.** Cada ronda es un momento colectivo con cuenta atrás compartida; nadie juega solo aunque juegue solo.
-2. **La suerte se ve.** La eclosión es un espectáculo de 30 segundos que todo el servidor mira a la vez; está diseñada para grabarse.
+2. **La suerte se ve.** La eclosión es un momento de 10 segundos que todo el servidor mira a la vez; está diseñada para grabarse. **(v2)** Antes duraba 30 s: demasiado tiempo sin poder hacer nada.
 3. **Drama sin crueldad.** El robo genera persecuciones y alianzas, pero perder nunca quita progreso permanente: el perdedor se lleva consuelo (polvo de cáscara).
 4. **Tu nido crece aunque no estés.** Las criaturas producen ingresos por segundo y dan razón para volver cada día.
 5. **Cada criatura es única.** Se generan combinando genes (cuerpo, cabeza, patrón, aura, mutación), así cada jugador tiene algo que nadie más tiene.
 
 ### Qué lo hace novedoso
 
-En los juegos de robar actuales cada jugador roba a otro de forma individual. Aquí el botín es **uno solo y compartido**, nace de un esfuerzo colectivo y la elección del dueño es pública y dramática. Eso convierte cada ronda en una historia con protagonista, traidores y giro final: exactamente el formato que funciona en clips cortos.
+En los juegos de robar actuales cada jugador roba a otro de forma individual. Aquí el botín es **escaso y compartido** (una criatura por cada pocos jugadores), nace de un esfuerzo colectivo y la elección del dueño es pública y dramática. Eso convierte cada ronda en una historia con protagonista, traidores y giro final: exactamente el formato que funciona en clips cortos.
 
 ## 2. Tendencias de Roblox y oportunidad
 
@@ -60,28 +82,30 @@ El núcleo son jugadores de 9 a 15 años que juegan en móvil con amigos; el seg
 
 **Fantasía secundaria:** criar una colección rara que crece sola y que otros envidian al visitar tu nido.
 
-## 4. Core loop y bucles de juego
+## 4. Core loop y bucles de juego (v2)
 
-La ronda de unos 12 minutos es el bucle central; el nido convierte cada ronda en progreso permanente y da motivos para volver.
+La ronda de unos 6 minutos es el bucle central; el nido convierte cada ronda en progreso permanente y da motivos para volver.
 
 ```mermaid
 flowchart LR
-  A[Incubación<br/>8 min · reunir Calor] --> B[Eclosión<br/>30 s · la Elección]
-  B --> C[Persecución<br/>3 min · robar o huir]
-  C -->|criatura o polvo de cáscara| D[Nido<br/>idle, cría, mejoras]
-  D -->|siguiente ronda: las mejoras del nido ayudan| A
+  A[Incubación<br/>3,5 min · reunir Calor<br/>lluvia dorada a mitad] --> B[Eclosión<br/>10 s · la Elección]
+  B --> C[Persecución<br/>2 min + 30 s de prórroga]
+  C -->|criatura, Huevo del Elegido o polvo| D[Nido<br/>idle, cría, mejoras]
+  D -->|siguiente ronda| A
 ```
 
-Ganar o perder la persecución siempre alimenta el nido: criatura para quien la mete en su nido, polvo de cáscara para el resto.
+Ganar o perder la persecución siempre alimenta el nido: criatura para quien la mete en su nido, Huevo del Elegido para el elegido que la pierde y polvo de cáscara para el resto (si participó).
+
+**Por qué se acortó (v2).** En la v1 la ronda duraba ~12,8 min y en una sesión de 35-45 min solo cabían 3 rondas, con una criatura para todo el servidor. El 76 % de las sesiones acababa sin ganar nada. Con rondas de 6 min y varias criaturas por ronda, el 69 % de las sesiones tiene al menos una victoria.
 
 ### Bucles por escala
 
 | Escala | Qué hace el jugador | Qué le hace volver |
 |---|---|---|
-| Ronda (12 min) | Recoger Calor, ver la eclosión, perseguir o huir | El próximo huevo puede ser más raro |
-| Sesión (35-45 min) | 3 rondas, mejoras del nido, iniciar crías | Un huevo personal a punto de nacer |
+| Ronda (6 min) | Recoger Calor, ver la eclosión, perseguir o huir | El próximo huevo puede ser más raro |
+| Sesión (35-45 min) | 6-7 rondas, mejoras del nido, iniciar crías | Un huevo personal a punto de nacer |
 | Día | Misiones diarias, racha, cobrar la producción sin conexión | Racha de 7 días, crías de hasta 4 h |
-| Semana | Luna de Sangre, actualización del sábado, ranking de robos | Genes nuevos y títulos semanales |
+| Semana | Luna de Sangre, actualización del sábado, ranking de robos | Genes nuevos y campeón de la semana |
 | Temporada (6 semanas) | Pase de temporada, bioma nuevo | Genes exclusivos que no vuelven |
 
 ## 5. Mecánicas detalladas
@@ -91,44 +115,54 @@ Cada mecánica sirve a una de las cuatro fases de la ronda; todas se aprenden en
 ### 5.1 Calor (recurso de ronda)
 
 - El Calor se genera en **fuentes de calor** repartidas por el mapa: brasas que se recogen, géiseres que hay que activar en equipo, luciérnagas que se cazan y bloques de suerte que sueltan de 1 a 50 de Calor.
-- Cada jugador lleva una **bolsa** con capacidad limitada (100 al inicio, ampliable). Hay que volver al huevo para depositar: eso crea tráfico y encuentros.
-- Depositar Calor suma **Afinidad** personal con el huevo y llena la **barra del servidor**.
-- Mientras llevas la bolsa llena brillas: los demás pueden empujarte para que caiga parte del Calor (no se roba la bolsa entera). Esto introduce el robo desde el minuto uno sin frustrar.
+- Cada jugador lleva una **bolsa** con capacidad limitada (100 al inicio, ampliable con Monedas). Hay que volver al huevo para depositar: eso crea tráfico y encuentros. **(v2)** Ningún pase da más capacidad.
+- Depositar Calor suma **Afinidad** personal con el huevo, llena la **barra del servidor** y **(v2)** da **escudos** para la persecución (5.4).
+- **(v2) Lluvia de brasas doradas:** a mitad de la incubación, durante 25 s, las brasas valen el doble. Es un objetivo común en mitad de la fase más larga, para que no sea siempre "recoger y llevar".
+- Mientras llevas la bolsa llena brillas: los demás pueden empujarte para que caiga parte del Calor (no se roba la bolsa entera). **(v2)** Tras un empujón tienes 6 s de protección, nadie puede empujar a la misma persona más de una vez cada 30 s y los novatos no pueden ser empujados en sus 5 primeras rondas. Así no se convierte en acoso a los nuevos.
 
 ### 5.2 El Huevo Gigante
 
 - Está en el centro del mapa, visible desde todas partes, y cambia de aspecto según lo que recibe: color, grietas, sonido de latido.
 - **Ofrendas:** además de Calor, se pueden depositar objetos raros encontrados en el mapa (cristal, pluma, hueso). Cada ofrenda sesga un gen de la criatura: el cristal aumenta la probabilidad de cuerpo cristalino, etc. Esto da profundidad a los jugadores veteranos.
-- **Umbrales de servidor:** al llegar al 25 %, 50 %, 75 % y 100 % de la barra, la rareza mínima garantizada sube y suena un aviso para todo el servidor.
+- **Umbrales de servidor:** al llegar al 25 %, 50 %, 75 % y 100 % de la barra, la rareza mínima garantizada sube y suena un aviso para todo el servidor. La meta de la barra está pensada para que acabe de media entre el 55 % y el 70 %.
 
-### 5.3 La Elección
+### 5.3 La Elección (v2)
 
-- Al eclosionar, la criatura recorre a los jugadores con un foco (como una ruleta) y elige uno.
-- La probabilidad de cada jugador = su Afinidad / Afinidad total del servidor, con un mínimo del 2 % para todos: cualquiera puede ser elegido, y eso alimenta los clips de "no puse nada y me eligió".
+- **Varias criaturas por ronda.** El huevo suelta una criatura más por cada 5 perseguidores, hasta 3: con 2-6 jugadores sale 1; con 7-11, 2; con 12 o más, 3. Cada una elige a un jugador distinto. Esto sustituye al evento "Huevo Doble" de la v1: con una sola criatura para 12 jugadores, la persecución era 11 contra 1 y el elegido solo la conservaba el 10 % de las veces.
+- La probabilidad de cada jugador = su Afinidad / Afinidad total del servidor, con un mínimo del 2 % para todos. Cualquiera puede ser elegido, y eso alimenta los clips de "no puse nada y me eligió". El mínimo sube un 2 % por cada ronda sin ser elegido, hasta un 12 % ("suerte acumulada").
+- **(v2) Novatos:** en su primera ronda, un jugador nuevo ya tiene ese 12 %.
+- **(v2) Inactivos:** solo pueden ser elegidos quienes depositaron algo o se movieron en el último minuto. Si el huevo elegía a alguien AFK, se la robaban al instante y la ronda perdía la gracia.
+- **(v2) 10 segundos, sin bloquear la cámara:** el huevo se agrieta y un foco salta entre los 5 favoritos hasta pararse en cada elegido. Mientras, todos pueden moverse y colocarse.
 - El elegido recibe un aura dorada, una correa con la criatura y una flecha hacia su nido.
 
-### 5.4 Persecución y robo
+### 5.4 Persecución y robo (v2)
 
-- **Duración:** 3 minutos. El elegido debe llevar la criatura a su nido y mantenerla dentro hasta que acabe el tiempo.
-- **Robar:** quien toque al portador y mantenga el botón 1,5 segundos le quita la correa. El ladrón pasa a ser el portador y la flecha apunta a SU nido.
-- **Defensa:** el portador tiene un esprint con recarga y puede pasar la correa a un aliado (pase de relevo). Los nidos tienen una puerta que se cierra 10 segundos una vez por ronda.
-- **Equilibrio:** el portador corre un 10 % más lento; cada robo concede 3 segundos de inmunidad al nuevo portador para evitar cadenas absurdas.
+- **Duración:** 2 minutos. Cada elegido debe llevar su criatura a su nido y **asegurarla** (aguantar 30 s seguidos dentro) o tenerla dentro al acabar el tiempo. Si no está en su nido, empieza una **prórroga** de 30 s: gana el primero que la meta en el suyo.
+- **Robar (v2): un toque y un tira y afloja.** Tocar el botón junto al portador empieza un tira y afloja de 1,5 s (2,25 s si el portador está en su nido). El ladrón tiene que seguir cerca todo ese tiempo y el portador lo rompe si se aleja. En la v1 había que *mantener* el botón mientras los dos os movíais, algo muy incómodo en móvil, que es la mayoría del público.
+- **Escudos de Afinidad (v2):** cada 800 de Calor depositado en la ronda da un escudo (máximo 1). Si te van a quitar la criatura y tienes escudo, se rompe y el robo no ocurre. Así la incubación también cuenta en la persecución: en la v1, recoger Calor 8 minutos solo daba probabilidad de ser el *primer* portador.
+- **Una criatura por persona:** quien lleva una no puede robar otra, y quien ya ha ganado una en la ronda no persigue más. Así cada portador tiene sus propios perseguidores.
+- **Defensa:** el portador tiene un esprint con recarga y puede pasar la correa a un aliado libre (pase de relevo). Los nidos tienen una puerta que se cierra 10 segundos una vez por ronda. En su nido, el portador va a velocidad normal y los intrusos van más lentos.
+- **Equilibrio:** el portador corre un 10 % más lento fuera de su nido. Cada robo da 3 s de inmunidad al nuevo portador y deja aturdido 2 s al que la pierde. Los elegidos empiezan con 10 s de inmunidad y 4 s de ventaja.
+- **Ladrones del bosque (v2):** en servidores con menos de 6 jugadores salen zorros del borde del mapa que persiguen a los portadores. Si ganan el tira y afloja, la criatura cae al suelo y cualquiera puede recogerla; nunca se la quedan. Dan tensión a los servidores pequeños, que son lo normal al lanzar. Son claramente criaturas del juego, no jugadores falsos.
 - **Alianzas:** botón "Ofrecer trato": si un aliado te ayuda y ganas, recibe el 30 % del polvo de cáscara y una copia común de la criatura. Es opcional y se puede traicionar.
 
 ### 5.5 Consuelo
 
-- Todos los que no se quedan con la criatura reciben **Polvo de cáscara** según su Afinidad y sus intentos de robo. Con el polvo se compran huevos pequeños personales (de rareza baja) para el nido. Así nadie sale de una ronda con las manos vacías.
+- Todos los que no se quedan con una criatura reciben **Polvo de cáscara** según su Afinidad y sus intentos de robo. **(v2)** Quien no hizo nada en la ronda no cobra. Con el polvo se compran huevos pequeños personales y decoración.
+- **(v2) Huevo del Elegido:** el elegido que pierde su criatura recibe 50 de polvo extra y un huevo de Rara a Épica. Ser elegido nunca es una pérdida.
 
 ### 5.6 Nido personal
 
 - Parcela propia dentro de cada servidor (como en los tycoons), cargada desde tus datos guardados.
-- Las criaturas generan **Monedas por segundo** según su rareza y genes, también sin conexión (con tope de 8 horas).
-- Se puede decorar y visitar. Los nidos ajenos se pueden ver, nunca saquear fuera de los eventos de saqueo (ver sección 7).
+- Las criaturas generan **Monedas por segundo** según su rareza y genes, también sin conexión (al 25 %, con tope de 8 horas).
+- Se puede **decorar** (12 piezas de Monedas o polvo, solo estéticas) y visitar. Los nidos ajenos se pueden ver; solo se pueden saquear en la Noche de Saqueo (sección 7). Las criaturas sobrantes se pueden **liberar** a cambio de polvo.
+- **(v2) Favoritas:** hasta 3 criaturas con ⭐. No se liberan por error, sobreviven a la Nueva generación y la primera te acompaña flotando durante la ronda (solo estética). Así el nido también se ve en la ronda.
+- **(v2) Huevo de bienvenida:** la primera vez, además de una criatura de regalo, un huevo que nace en 2 minutos, para que el novato vea pronto el ciclo del nido.
 
 ### 5.7 Genes y cría
 
 - Cinco ranuras de genes: Cuerpo, Cabeza, Patrón, Aura y Mutación. Cada gen tiene rareza propia; la rareza global de la criatura sale de la combinación.
-- Rarezas: Común, Rara, Épica, Legendaria, Mítica y **Secreta** (aprox. 1 entre 1.000.000, anunciada en todos los servidores).
+- Rarezas: Común, Rara, Épica, Legendaria, Mítica y **Secreta**. **(v2)** La Secreta es de 1 entre 50.000 (antes 1 entre 1.000.000). Con el volumen real de eclosiones, el anuncio global de "¡alguien sacó una Secreta!" tardaría meses en ocurrir, y es uno de los ganchos virales. Se ajustará con datos reales.
 - **Cría:** dos criaturas del nido producen un huevo personal que hereda genes de ambos padres con probabilidad de mutación. Tarda tiempo real (de 10 min a 4 h), lo que crea citas de vuelta.
 - Todas las criaturas son diseños propios: nada de personajes del meme "Italian Brainrot" ni de otras propiedades intelectuales.
 
@@ -152,7 +186,7 @@ La economía tiene tres monedas con funciones separadas, para que la ronda (habi
 
 ### Rebirth ("Nueva generación")
 
-Al llegar a 40 criaturas y un umbral de Monedas, el jugador puede reiniciar el nido a cambio de un multiplicador permanente de producción y un **gen exclusivo de generación** (por ejemplo, un aura que solo tienen los de Generación 5). Es la meta larga de los jugadores dedicados y un objeto de estatus visible.
+Al llegar a 40 criaturas y un umbral de Monedas, el jugador puede reiniciar el nido (**v2:** conservando sus 3 favoritas) a cambio de un multiplicador permanente de producción y un **gen exclusivo de generación** (por ejemplo, un aura que solo tienen los de Generación 5). Es la meta larga de los jugadores dedicados y un objeto de estatus visible.
 
 ### Misiones y retención diaria
 
@@ -176,7 +210,7 @@ Lo social es el producto: cada sistema empuja a jugar con amigos, a hablar de lo
 
 ### Sistemas sociales
 
-- **Grupos de hasta 4** ("Bandada"): comparten 10 % de Calor depositado y se ven a través de paredes. Entrar con amigos da +10 % de Polvo.
+- **Grupos de hasta 4** ("Bandada"): comparten el 10 % del Calor depositado (Afinidad) y se ven a través de las paredes. Con un amigo de Roblox en el grupo, +10 % de Polvo. **(v2)** No son aliados automáticos en la persecución (para eso están los tratos), para que cuatro amigos no sean imbatibles.
 - **Pactos y traiciones:** el botón de trato (sección 5.4) registra cuántos pactos has cumplido o roto. Aparece en tu perfil como "Leal" o "Traidor", un título que la comunidad adora presumir.
 - **Intercambio** de criaturas entre jugadores con ventana de confirmación doble, historial y valor estimado visible para reducir estafas.
 - **Visitas de nido:** dar "me gusta" a nidos ajenos; los nidos más votados de la semana salen en un salón de la fama del lobby.
@@ -190,16 +224,16 @@ Lo social es el producto: cada sistema empuja a jugar con amigos, a hablar de lo
 
 | Evento | Frecuencia | Qué pasa |
 |---|---|---|
-| Luna de Sangre | Cada sábado, 1 hora | Huevos con rareza mínima Épica y persecución de 5 minutos |
-| Huevo Doble | Aleatorio, 1 vez al día | Dos huevos en el mismo servidor: se forman dos bandos |
-| Noche de Saqueo | Fines de semana | Se pueden robar criaturas de nidos ajenos con defensas activas; las Secretas son inmunes |
+| Luna de Sangre | Cada sábado, 3 franjas de 1 hora (02:00, 12:00 y 20:00 UTC) **(v2)** para todas las zonas horarias | Huevos con rareza mínima Épica y persecución de 3 minutos |
+| ~~Huevo Doble~~ **(v2)** | — | Sustituido por las varias criaturas por ronda (5.3), que funcionan siempre |
+| Noche de Saqueo | Sábados y domingos, 21:00-23:00 UTC | **(v2)** Fase propia de 60 s tras los resultados (en la v1 competía con la incubación y partía el servidor). Se saquea una criatura de un nido ajeno si su dueño no está dentro. Versión prudente: el ladrón se lleva una copia común y el dueño no pierde nada (configurable). Las Secretas son inmunes |
 | Huevo del Admin | Evento en directo semanal | El equipo entra en un servidor anunciado y siembra un huevo único; diseñado para que los streamers lo cubran |
 | Huevo Comunitario | Mensual | Todos los servidores aportan Calor a una barra global; al llenarse, todos reciben una criatura conmemorativa |
 
 ### Seguridad y civismo
 
 - Chat según las reglas y filtros de Roblox; emotes y frases rápidas para quienes no tienen chat activado.
-- Nada de ataques: robar es tocar y mantener. Nunca hay daño ni muerte.
+- Nada de ataques: robar es tocar y aguantar cerca. Nunca hay daño ni muerte.
 - Botón para silenciar o bloquear desde la propia persecución.
 
 ## 8. Mundo, arte, sonido y UX
@@ -230,7 +264,8 @@ El estilo debe reconocerse en una miniatura de 150 píxeles: un huevo enorme y b
 - **Tutorial de 45 segundos** jugable dentro de la primera ronda: recoge, deposita, mira la eclosión. Nada de pantallas de texto.
 - HUD mínimo: bolsa, barra del servidor, temporizador de fase y flecha de objetivo.
 - Un botón de acción contextual en móvil (recoger / depositar / robar / pasar).
-- Pantalla de eclosión con cámara cinemática y botón "Grabar clip" usando la captura de Roblox.
+- Eclosión de 10 s sin bloquear la cámara **(v2)**, con botón "Captura" al final usando la captura de Roblox.
+- Bajo la barra, lo que importa en cada momento de la persecución: la cuenta atrás del tira y afloja, el aviso "¡Te están robando!", los escudos y el progreso para asegurar.
 
 ## 9. Monetización
 
@@ -240,7 +275,7 @@ La estrategia combina cinco fuentes y nunca vende la victoria en la persecución
 
 | Pase | Precio (Robux) | Qué da |
 |---|---|---|
-| Bolsa Grande | 99 | +50 % de capacidad de Calor |
+| Estela de Brasas **(v2)** | 99 | Rastro de chispas al correr (estético). Sustituye a la Bolsa Grande (+50 % de Calor), que era pagar por ganar: más Calor daba más probabilidad de ser elegido |
 | Nido VIP | 249 | +10 ranuras, decoración dorada, etiqueta VIP |
 | Auto-Depósito | 199 | El Calor se deposita solo al estar cerca del huevo |
 | x2 Monedas | 299 | Duplica la producción del nido |
@@ -253,7 +288,6 @@ La estrategia combina cinco fuentes y nunca vende la victoria en la persecución
 |---|---|---|
 | **Suerte del Servidor (15 min)** | 199 | Sube la rareza de los huevos de TODO el servidor y anuncia el nombre del comprador. Es la compra estrella: genera agradecimiento público y presión social sana |
 | Ofrenda Dorada | 49 | Sesga un gen elegido en el próximo huevo del servidor |
-| Escudo de Cáscara | 39 | Un solo uso: bloquea un robo durante la persecución. Máximo 1 por ronda para no comprar la victoria |
 | Reintento de Cría | 25 | Repite una cría con los mismos padres |
 | Packs de Monedas | 49 a 999 | Escalado clásico con bonus en packs grandes |
 | Huevo de Temporada | 99 | Probabilidades públicas antes de comprar |
@@ -276,7 +310,7 @@ Suscripción mensual (precio en moneda local, renovación automática) con: +20 
 
 ### 9.6 Reglas de monetización ética
 
-1. Ninguna compra garantiza ser elegido ni ganar la persecución.
+1. Ninguna compra garantiza ser elegido ni ganar la persecución, ni da ventaja en ellas. **(v2)** Se quitaron el Escudo de Cáscara de pago (bloqueaba un robo) y la Bolsa Grande (más Calor, más probabilidad de ser elegido). Los escudos ahora se ganan depositando Calor.
 2. Todo lo aleatorio de pago muestra sus probabilidades antes de comprar.
 3. Sin temporizadores falsos ni ventanas emergentes de compra tras perder.
 4. Lo exclusivo de pago es cosmético o de comodidad; todo gen jugable se puede conseguir gratis.
@@ -302,7 +336,7 @@ La viralidad se diseña dentro del juego: cada ronda debe producir al menos un m
 | "El huevo me eligió" | Sorpresa pura, sobre todo con poca Afinidad | Short vertical de 10-15 s con reacción |
 | Robo en el último segundo | Giro final, euforia o rabia | Clip con temporizador visible |
 | Traición en un pacto | Drama entre amigos | Storytime de 30-60 s |
-| Criatura Secreta | Rareza 1 en un millón, anuncio global | Vídeo largo de "abrí X huevos" |
+| Criatura Secreta | Rareza 1 entre 50.000, anuncio global | Vídeo largo de "abrí X huevos" |
 | Luna de Sangre en directo | Evento con hora fija | Directo en Twitch/YouTube |
 
 ### 10.2 Fase 1: Prelanzamiento (8 semanas antes)
@@ -393,7 +427,8 @@ El marketing arranca 8 semanas antes del lanzamiento, en paralelo al final del v
 | Retención día 1 | ≥ 30 % | Indica que la primera ronda engancha |
 | Retención día 7 | ≥ 10 % | Señal clave para el descubrimiento de Roblox |
 | Retención día 30 | ≥ 4 % | Valida la capa de nido y cría |
-| Duración media de sesión | ≥ 25 min | Unas 2 rondas completas |
+| Duración media de sesión | ≥ 25 min | Unas 4 rondas completas |
+| Sesiones con al menos una victoria | ≥ 60 % | **(v2)** El simulador da un 69 % (la v1, un 24 %) |
 | % de "me gusta" | ≥ 85 % | Umbral habitual de los juegos bien valorados |
 | Clips publicados por 1.000 jugadores | Seguir al alza | Mide la viralidad diseñada |
 
@@ -402,11 +437,12 @@ El marketing arranca 8 semanas antes del lanzamiento, en paralelo al final del v
 | Riesgo | Impacto | Mitigación |
 |---|---|---|
 | Clones rápidos tras viralizarse | Alto | Lanzar contenido cada semana, marca fuerte, criaturas propias registradas |
-| Persecución frustrante para el elegido | Alto | Inmunidad tras robo, relevo, puerta del nido, pruebas de equilibrio con datos |
+| Persecución frustrante para el elegido | Alto | **(v2)** Varias criaturas por ronda, escudos de Afinidad, asegurar en el nido, prórroga, inmunidad, relevo y puerta. El simulador da que el elegido conserva su criatura ~1/3 de las veces |
 | Saturación del género "robar" | Medio | Comunicar "el huevo elige", no "roba" |
 | Exploits de velocidad o teletransporte | Alto | Validación en servidor, registros de anomalías |
-| Inflación de Monedas | Medio | Sumideros (cría, rebirth, decoración) y revisión semanal de la economía |
-| Servidores vacíos tras el pico | Medio | Servidores de 10-16 con relleno inteligente y modo de 6 jugadores |
+| Inflación de Monedas | Medio | Sumideros (cría, rebirth, decoración, liberar criaturas) y revisión semanal de la economía. **(v2)** Con más victorias por hora, los precios se multiplicaron por 2,5 para que la progresión del nido siga al mismo ritmo |
+| Servidores vacíos tras el pico | Medio | Servidores de 10-16 con relleno inteligente. **(v2)** Ladrones del bosque cuando hay menos de 6 jugadores |
+| Jugadores AFK | Medio | **(v2)** Fuera de la Elección y sin consuelo si no han hecho nada en la ronda |
 
 ### 11.6 Próximos pasos
 
@@ -414,6 +450,28 @@ El marketing arranca 8 semanas antes del lanzamiento, en paralelo al final del v
 - Prueba con 20 jugadores: ¿se entiende la Elección sin explicación?
 - Elegir nombre definitivo y comprobar que no está registrado en Roblox
 - Abrir TikTok, YouTube y Discord del juego
+
+## 12. Cambios de la versión 2 y por qué
+
+Todos los números salen del simulador de bots (`sim/`), que juega con las mismas reglas que el servidor. La comparación usa 30 días con 72 jugadores de 6 tipos y las mismas horas de juego (las sesiones se miden en minutos, no en rondas).
+
+| Problema en la v1 | Dato | Cambio en la v2 |
+|---|---|---|
+| La incubación (8 min) casi no decidía quién ganaba | El elegido conservaba la criatura el 10 % de las veces con 12 jugadores | Escudos de Afinidad; incubación de 3,5 min con lluvia dorada |
+| El premio era demasiado escaso | 0,5 victorias por hora; el 76 % de las sesiones sin ninguna | Varias criaturas por ronda (1-3) y rondas de ~6 min |
+| Los novatos no ganaban nunca | 0 victorias por hora en un mes | Mínimo del 12 % en la primera ronda, protección contra empujones, huevo de bienvenida y Huevo del Elegido. Ahora 0,35 por hora |
+| Mucho tiempo muerto | Eclosión de 30 s y resultados de 15 s | Eclosión de 10 s sin bloquear la cámara y resultados de 8 s |
+| Persecución caótica (11 contra 1) | 9,3 robos por ronda; la prórroga decidía el 43 % | Una criatura por persona, tira y afloja: ~3,4 robos por criatura y prórroga en ~1/4 |
+| Mantener el botón en móvil | — | Robo por toque con tira y afloja |
+| Pago por ganar, contra la propia regla del GDD | Escudo de Cáscara y Bolsa Grande | Quitados; los escudos se ganan jugando y la Bolsa Grande pasa a ser estética |
+| Los AFK estropeaban la ronda | — | Solo eligen y cobran quienes han participado |
+| Servidores pequeños sin tensión | ~3 robos por ronda con 4 jugadores | Zorros del bosque |
+| La Secreta nunca saldría | 1 entre 1.000.000 | 1 entre 50.000 (ajustar con datos) |
+| La Nueva generación borraba lo que ganaste | — | 3 favoritas sobreviven |
+| Nido y ronda desconectados | — | Compañero en la ronda (estético) y escudos que dependen de la ronda |
+| Luna de Sangre a una sola hora | 20:00 UTC | 3 franjas |
+| Noche de Saqueo partía el servidor | Competía con la incubación | Fase propia tras los resultados |
+| Más victorias = más inflación | Monedas ×2,9 a final de mes | Precios ×2,5: la progresión del nido va al mismo ritmo que en la v1 |
 
 ## Fuentes
 
