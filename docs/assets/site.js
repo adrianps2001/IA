@@ -657,11 +657,18 @@ function demoMap(root) {
   // Árboles: plataforma cuadrada y tronco.
   arena.Trees.forEach((t, i) => {
     const g = add("g", { style: "cursor:pointer" });
-    add("rect", { x: t.X - t.Half, y: t.Z - t.Half, width: t.Half * 2, height: t.Half * 2, rx: 2, fill: "#8a6a4a", opacity: 0.8 }, g);
+    // Plataforma octogonal (apotema t.Half).
+    const corner = t.Half / Math.cos(Math.PI / 8);
+    const pts = [];
+    for (let k = 0; k < 8; k++) {
+      const a = (k + 0.5) * Math.PI / 4;
+      pts.push(`${t.X + Math.cos(a) * corner},${t.Z + Math.sin(a) * corner}`);
+    }
+    add("polygon", { points: pts.join(" "), fill: "#8a6a4a", opacity: 0.8 }, g);
     add("circle", { cx: t.X, cy: t.Z, r: t.Radius, fill: "#5a3d28", stroke: "#e88a4a", "stroke-width": 1.2 }, g);
-    if (t.Ramp) add("circle", { cx: t.X, cy: t.Z, r: t.Half + 3, fill: "none", stroke: "#d9b07a", "stroke-width": 2.5, "stroke-dasharray": "3 2", opacity: 0.8 }, g);
+    if (t.Ramp) add("circle", { cx: t.X, cy: t.Z, r: t.Half / Math.cos(Math.PI / 8) + 2.8, fill: "none", stroke: "#d9b07a", "stroke-width": 2.5, "stroke-dasharray": "3 2", opacity: 0.8 }, g);
     const decks = t.Decks.map((d) => `${d}`).join(", ");
-    g.addEventListener("mouseenter", () => (tip.textContent = `Árbol ${i + 1}: plataformas a ${decks} studs de altura · ${t.Ramp ? "rampa en espiral con barandilla" : "escalera de mano"}${t.Hut ? " · cabaña para esconderse" : ""}.`));
+    g.addEventListener("mouseenter", () => (tip.textContent = `Árbol ${i + 1}: ${t.Decks.length} pisos, a ${decks} studs de altura · ${t.Ramp ? "rampa en espiral con barandilla" : "escalera de mano"}${t.Hut ? " · cabaña para esconderse" : ""}.`));
   });
   const colors = { Bridge: ["#d9b07a", 3.5, ""], Beam: ["#5a3d28", 1.6, ""], Stones: ["#9aa3a8", 2.5, "2 4"] };
   for (const l of arena.Links) {
@@ -843,7 +850,7 @@ function fillStats() {
     if (key === "genes") n.textContent = DATA.Slots.reduce((a, s) => a + DATA.Genes[s].length, 0);
     if (key === "rarities") n.textContent = RARITIES.length;
     if (key === "round") n.textContent = Math.round(PHASES.reduce((a, p) => a + CFG.Round[p.key], 0) / 60);
-    if (key === "players") n.textContent = CFG.Round.MaxPlayers;
+    if (key === "players") n.textContent = CFG.Matchmaking ? CFG.Matchmaking.MaxPlayers : CFG.Round.MaxPlayers;
   }
   for (const n of $$("[data-cfg]")) {
     const value = n.dataset.cfg.split(".").reduce((o, k) => (o == null ? o : o[k]), CFG);

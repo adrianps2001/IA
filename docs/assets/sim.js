@@ -382,8 +382,13 @@ function replay() {
   }
   // Árboles gigantes del parkour: plataforma (cuadrado) y tronco.
   for (const tree of data.Trees || []) {
-    const half = tree.R + 6;
-    add("rect", { x: tree.X - half, y: tree.Z - half, width: half * 2, height: half * 2, fill: "#8a6a4a", opacity: 0.55, rx: 2 });
+    const corner = (tree.R + 5.5) / Math.cos(Math.PI / 8);
+    const pts = [];
+    for (let k = 0; k < 8; k++) {
+      const a = (k + 0.5) * Math.PI / 4;
+      pts.push(`${tree.X + Math.cos(a) * corner},${tree.Z + Math.sin(a) * corner}`);
+    }
+    add("polygon", { points: pts.join(" "), fill: "#8a6a4a", opacity: 0.55 });
     add("circle", { cx: tree.X, cy: tree.Z, r: tree.R, fill: "#5a3d28", stroke: "#c86a3a", "stroke-width": 1.5 });
   }
   // Bots

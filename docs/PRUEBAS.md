@@ -65,7 +65,7 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 
 ### Lobby
 - [ ] Apareces en **tu nido del lobby**, en la entrada, mirando a tus criaturas. El cartel del arco dice "Nido de …".
-- [ ] Tus criaturas están en los **pedestales**, con su placa (nombre, rareza, producción) y el aro del color de la rareza (dorado si es favorita). Dan saltitos.
+- [ ] Los podios y la valla no parpadean al moverte (antes había piezas solapadas). Tus criaturas están en los **pedestales**, con su placa (nombre, rareza, producción) y el aro del color de la rareza (dorado si es favorita). Dan saltitos.
 - [ ] Primera vez (sin datos guardados): una criatura de regalo y un **huevo de bienvenida** que nace en 2 minutos. El huevo del cuenco del nido **brilla** cuando está listo.
 - [ ] El botón 🥚 **Nido** abre el panel: criaturas, incubadora, mejoras, decorar, misiones y tienda.
 - [ ] Comprar una decoración la coloca en el nido y suma Belleza al cartel.
@@ -83,8 +83,8 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 - [ ] Al acabar (resultados y, si toca, saqueo), vuelves a tu nido del lobby con lo ganado, y con "Seguir jugando: sí" vuelves a la cola.
 
 ### Arena y parkour
-- [ ] Alrededor del claro hay **12 árboles gigantes** con plataformas a tres alturas.
-- [ ] Las **rampas** en espiral se suben andando y tienen barandilla. Los árboles sin rampa tienen **escalera** (se trepa).
+- [ ] Alrededor del claro hay **12 árboles gigantes** con plataformas de hasta 6 pisos (hasta 132 studs de alto).
+- [ ] Las **rampas** en espiral se suben andando y tienen barandilla; en cada piso, un rellano te pasa a la plataforma. Los árboles sin rampa tienen **escalera** pegada a una cara de las plataformas: se trepa hasta arriba del todo y no choca con ellas.
 - [ ] Los **puentes** tienen cuerdas; las **vigas** son estrechas y sin barandilla; los **caminos de piedras** se cruzan saltando.
 - [ ] Las **setas rojas** te lanzan hacia arriba (suena "boing").
 - [ ] La **tirolina** (E en el poste de lo más alto de un árbol grande) te baja hasta otro árbol.
@@ -95,7 +95,7 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 ### Incubación
 - [ ] Las brasas, luciérnagas y **cajas sorpresa** se pueden recoger y **desaparecen del todo** al cogerlas (también los "?"). Reaparecen después.
 - [ ] Con la bolsa llena, sale el aviso "Tu bolsa está llena" y las fuentes no se recogen.
-- [ ] Hay brasas en lo alto de los árboles.
+- [ ] Hay muchas brasas y alguna caja sorpresa en lo alto de los árboles.
 - [ ] Depositar en el huevo sube la barra y tu Afinidad. El huevo **late y suena** más deprisa cuanto más llena está la barra.
 - [ ] A mitad de la incubación empieza la **lluvia de brasas doradas** (brasas doradas que dan el doble 25 s).
 - [ ] Empujar (F) a alguien con la bolsa llena le hace soltar Calor (los novatos están protegidos sus 5 primeras rondas).

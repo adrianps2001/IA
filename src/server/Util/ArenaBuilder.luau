@@ -110,28 +110,42 @@ local function buildTree(tree: ArenaLayout.Tree, folder: Folder, addObstacle: (V
 		}, model)
 	end
 
-	-- Plataformas: anillo cuadrado alrededor del tronco (4 tablas que entran en el tronco
-	-- para que no queden huecos en las esquinas).
+	-- Plataformas: octógono alrededor del tronco (8 tablas que entran en el tronco para que no
+	-- queden huecos). Con un cuadrado, las esquinas chocaban con la rampa y la escalera.
 	local half = ArenaLayout.deckHalf(tree)
 	local inner = tree.Radius * 0.7
+	local sides = ArenaLayout.DeckSides
+	local depth = half - inner
+	local faceWidth = 2 * half * math.tan(math.pi / sides) + 0.15 -- un poco más: sin rendijas
 	for _, level in tree.Decks do
 		local y = level - 0.5
-		local depth = half - inner
-		for _, side in { -1, 1 } do
-			block({ Name = "Deck", Size = Vector3.new(half * 2, 1, depth), CFrame = CFrame.new(center + Vector3.new(0, y, side * (inner + depth / 2))), Color = WOOD, Material = Enum.Material.WoodPlanks }, model)
-			block({ Name = "Deck", Size = Vector3.new(depth, 1, inner * 2), CFrame = CFrame.new(center + Vector3.new(side * (inner + depth / 2), y, 0)), Color = WOOD, Material = Enum.Material.WoodPlanks }, model)
+		for k = 0, sides - 1 do
+			local angle = k * 2 * math.pi / sides
+			local dir = Vector3.new(math.cos(angle), 0, math.sin(angle))
+			local face = CFrame.lookAt(center + dir * (inner + depth / 2) + Vector3.new(0, y, 0), center + Vector3.new(0, y, 0))
+			-- Las tablas alternan unas centésimas de altura para que las zonas donde se solapan
+			-- no parpadeen (dos caras en el mismo plano).
+			local lift = if k % 2 == 0 then 0 else 0.02
+			block({ Name = "Deck", Size = Vector3.new(faceWidth, 1, depth), CFrame = face * CFrame.new(0, lift, 0), Color = WOOD, Material = Enum.Material.WoodPlanks }, model)
+			-- Borde oscuro para que se vea el contorno desde lejos.
+			block({
+				Name = "Trim",
+				Size = Vector3.new(faceWidth - 0.3, 0.6, 0.4),
+				CFrame = face * CFrame.new(0, -0.25, depth / 2 - 0.15), -- borde exterior (-Z mira al tronco)
+				Color = DARK_WOOD,
+				Material = Enum.Material.Wood,
+				CanCollide = false,
+			}, model)
 		end
-		-- Borde oscuro para que se vea el contorno desde lejos.
-		for _, side in { -1, 1 } do
-			block({ Name = "Trim", Size = Vector3.new(half * 2 + 0.4, 0.6, 0.4), CFrame = CFrame.new(center + Vector3.new(0, y - 0.2, side * half)), Color = DARK_WOOD, Material = Enum.Material.Wood, CanCollide = false }, model)
-			block({ Name = "Trim", Size = Vector3.new(0.4, 0.6, half * 2 + 0.4), CFrame = CFrame.new(center + Vector3.new(side * half, y - 0.2, 0)), Color = DARK_WOOD, Material = Enum.Material.Wood, CanCollide = false }, model)
-		end
-		-- Farolillo en una esquina de cada plataforma.
+		-- Farolillo en una de las caras diagonales de cada plataforma.
+		local lampAngle = math.pi / 4 + tree.Index
+		local lampFace = ArenaLayout.faceAngle(lampAngle)
+		local lampPos = center + Vector3.new(math.cos(lampFace), 0, math.sin(lampFace)) * (half - 0.8)
 		local lamp = block({
 			Name = "Lantern",
 			Shape = Enum.PartType.Ball,
 			Size = Vector3.new(1.2, 1.2, 1.2),
-			CFrame = CFrame.new(center + Vector3.new(half - 0.8, level + 3, half - 0.8)),
+			CFrame = CFrame.new(lampPos + Vector3.new(0, level + 3, 0)),
 			Color = Color3.fromRGB(255, 200, 110),
 			Material = Enum.Material.Neon,
 			CanCollide = false,
@@ -141,7 +155,7 @@ local function buildTree(tree: ArenaLayout.Tree, folder: Folder, addObstacle: (V
 		light.Brightness = 1.2
 		light.Color = lamp.Color
 		light.Parent = lamp
-		block({ Name = "LanternPost", Size = Vector3.new(0.3, 3, 0.3), CFrame = CFrame.new(center + Vector3.new(half - 0.8, level + 1.5, half - 0.8)), Color = DARK_WOOD, CanCollide = false }, model)
+		block({ Name = "LanternPost", Size = Vector3.new(0.3, 3, 0.3), CFrame = CFrame.new(lampPos + Vector3.new(0, level + 1.5, 0)), Color = DARK_WOOD, CanCollide = false }, model)
 	end
 
 	-- Rampa en espiral con barandilla exterior: la ruta lenta pero segura.
@@ -164,17 +178,37 @@ local function buildTree(tree: ArenaLayout.Tree, folder: Folder, addObstacle: (V
 		end
 	end
 
-	-- Escalera de mano pegada al borde de las plataformas (trepar es rápido).
+	-- Rellanos: en cada piso, una tabla une la plataforma con la rampa justo donde la rampa
+	-- pasa a esa altura (entre el octógono y la rampa queda un pequeño hueco).
+	if tree.Ramp then
+		local points = ArenaLayout.rampPoints(tree)
+		local reach = ArenaLayout.rampRadius(tree) + ArenaLayout.RampWidth / 2 - 0.5
+		for _, level in tree.Decks do
+			local best = points[1]
+			for _, point in points do
+				if math.abs(point.Y - level) < math.abs(best.Y - level) then
+					best = point
+				end
+			end
+			local dir = Vector3.new(best.X - tree.X, 0, best.Z - tree.Z).Unit
+			local from = center + dir * (half - 1) + Vector3.new(0, level, 0)
+			local to = center + dir * reach + Vector3.new(0, level, 0)
+			plank(from, to, ArenaLayout.RampWidth, { Name = "Landing" }, model)
+		end
+	end
+
+	-- Escalera de mano pegada a una cara de las plataformas (trepar es rápido). Sube 4 studs
+	-- por encima de la plataforma más alta: así al llegar arriba se puede pasar a ella.
 	if tree.Ladder then
-		local top = tree.Decks[#tree.Decks] + 2
+		local top = tree.Decks[#tree.Decks] + 4
 		local height = math.ceil(top / 2) * 2
-		local angle = math.atan2(-tree.Z, -tree.X) -- mirando al claro
+		local angle = ArenaLayout.faceAngle(math.atan2(-tree.Z, -tree.X)) -- la cara que mira al claro
 		local dir = Vector3.new(math.cos(angle), 0, math.sin(angle))
 		local truss = Instance.new("TrussPart")
 		truss.Name = "Ladder"
 		truss.Anchored = true
 		truss.Size = Vector3.new(2, height, 2)
-		truss.CFrame = CFrame.lookAt(center + dir * (half + 1) + Vector3.new(0, height / 2, 0), center + Vector3.new(0, height / 2, 0))
+		truss.CFrame = CFrame.lookAt(center + dir * (half + 1.05) + Vector3.new(0, height / 2, 0), center + Vector3.new(0, height / 2, 0))
 		truss.Color = DARK_WOOD
 		truss.Material = Enum.Material.Wood
 		truss.Parent = model
