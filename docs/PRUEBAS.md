@@ -63,30 +63,37 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots).
 - [ ] Empujar (F) a alguien con la bolsa llena le hace soltar Calor.
 - [ ] Géiser: necesita dos jugadores pulsando a la vez.
 - [ ] Con 🔥 Llenar la barra, salen los avisos de umbral y la fase termina antes.
+- [ ] A mitad de la incubación empieza la **lluvia de brasas doradas**: las brasas se ponen doradas y dan el doble 25 s.
+- [ ] Un jugador nuevo (primeras 5 rondas) no puede ser empujado; tampoco la misma persona dos veces en 30 s.
 
-### Eclosión
-- [ ] El huevo tiembla y el foco recorre a los jugadores.
-- [ ] Se revela la criatura con su rareza y el elegido.
+### Eclosión (10 s)
+- [ ] El huevo tiembla y el foco salta entre los favoritos; **la cámara no se bloquea**.
+- [ ] Con 7 o más jugadores salen **2 criaturas** (3 con 12 o más) y un foco para cada una, del color de su rareza.
+- [ ] Un jugador que no se ha movido ni depositado en el último minuto no puede salir elegido (prueba a dejar a Player1 quieto con F8 desactivado).
 
 ### Persecución
-- [ ] El elegido tiene 10 s de inmunidad y 4 s de ventaja.
-- [ ] Los bots persiguen al portador y roban con el prompt (1,5 s).
-- [ ] En su nido, robar cuesta más (2,25 s) y se ve la barra de "asegurar".
+- [ ] Cada elegido tiene 10 s de inmunidad y los demás 4 s de espera.
+- [ ] **Robo por toque:** un toque de E junto al portador muestra "¡Robando! Quédate cerca…" y, si aguantas cerca 1,5 s, robas. Si el portador se aleja, sale "¡Se te ha escapado!".
+- [ ] El portador ve "⚠️ ¡Te están robando! ¡Aléjate!" mientras alguien le hace el tira y afloja.
+- [ ] **Escudos:** quien depositó 800 de Calor o más ve 🛡️ en la persecución. El primer robo que le hagan se bloquea y el escudo desaparece.
+- [ ] Quien lleva una criatura no puede robar otra, y quien ya aseguró una no puede robar más en esa ronda.
+- [ ] En su nido, robar cuesta más (2,25 s) y se ve la cuenta para asegurar.
 - [ ] Tras un robo: 3 s de inmunidad y el que la pierde queda aturdido.
 - [ ] Esprint (Shift), relevo (Q) y puerta del nido (R) funcionan; los bots usan esprint y puerta.
-- [ ] Aguantar 25 s en tu nido asegura la criatura.
+- [ ] Aguantar 30 s en tu nido asegura la criatura.
+- [ ] **Zorros del bosque:** con menos de 6 jugadores salen zorros 🦊 del borde del mapa que van a por los portadores. Si te alcanzan, la criatura cae al suelo y cualquiera puede recogerla.
 - [ ] Usa 🥚 Ser el portador para probar tú la huida.
 
 ### Prórroga
-- [ ] Si el portador no está en su nido al acabar, empieza la prórroga y gana el primero que llegue a su nido.
+- [ ] Las criaturas que no están en un nido al acabar pasan a la prórroga (30 s): gana el primero que llegue a su nido.
 
 ### Resultados
-- [ ] El ganador recibe la criatura en su nido (se ve en el nido y en el panel).
-- [ ] Los demás reciben polvo de consolación.
+- [ ] Cada ganador recibe su criatura en su nido (se ve en el nido y en el panel).
+- [ ] Los demás reciben polvo de consolación; quien no hizo nada en la ronda ve "Sin consuelo".
 - [ ] Los bots compran mejoras y huevos en la tienda del nido.
 
 ### Eventos
-- [ ] 🌙 Noche de Saqueo: en la Incubación aparece "Saquear" en las criaturas de nidos ajenos; los bots lo intentan a veces.
+- [ ] 🌙 Noche de Saqueo: tras los resultados hay una fase "🌙 Saqueo" de 60 s con "Saquear" en las criaturas de nidos ajenos; unos bots saquean y otros vuelven a defender su nido.
 - [ ] No se puede saquear si el dueño está dentro de su nido, ni una Secreta, ni dos veces en la misma ronda.
 - [ ] El ladrón recibe una copia común; el dueño recibe un aviso y no pierde nada.
 - [ ] 🌍 La barra del Huevo Comunitario (bajo el polvo) sube al depositar Calor.
@@ -108,6 +115,10 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots).
 - [ ] El mismo nido solo admite un "me gusta" tuyo por semana.
 
 ### Nido y datos
+- [ ] Primera vez que entras (sin datos guardados): una criatura de regalo y un **huevo de bienvenida** que nace en 2 minutos.
+- [ ] **Favoritas:** la ⭐ marca hasta 3. Una favorita no se puede liberar, y la primera te sigue flotando (también la ven los demás).
+- [ ] Nueva generación (usa +1 M Monedas varias veces y cría hasta 40): las favoritas siguen en el nido.
+- [ ] La tienda ya no vende el Escudo de Cáscara ni la Bolsa Grande; aparece la Estela de Brasas (estética).
 - [ ] Panel del nido: criaturas, incubadora, mejoras, decorar, misiones y tienda.
 - [ ] Liberar: una criatura seleccionada o "liberar guardadas" (pide confirmación; nunca toca las del nido).
 - [ ] Decorar: comprar una pieza la coloca en el nido y suma Belleza al cartel.

@@ -1,6 +1,7 @@
 --!strict
 -- Esquema de los datos guardados de cada jugador y su reparación al cargar.
 
+local Config = require("./Config")
 local Creature = require("./Creature")
 local Genes = require("./Genes")
 local Quests = require("./Quests")
@@ -32,6 +33,7 @@ export type Profile = {
 	Decorations: { string }, -- ids de Config.Decorations compradas
 	Community: CommunityState, -- aportación al Huevo Comunitario del mes
 	Trades: { TradeRecord },
+	Favorites: { string }, -- ids de criaturas marcadas con ⭐ (Config.Favorites.Max)
 	Likes: { Week: string, Given: { number } }, -- "me gusta" dados esta semana
 }
 
@@ -81,6 +83,7 @@ function PlayerData.default(now: number): Profile
 		Decorations = {},
 		Community = { Month = "", Heat = 0, Claimed = false },
 		Trades = {},
+		Favorites = {},
 		Likes = { Week = "", Given = {} },
 	}
 end
@@ -220,6 +223,15 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 					Got = strings(record.Got),
 					At = number(record.At, 0),
 				})
+			end
+		end
+	end
+
+	-- Favoritas: solo ids de criaturas que existen, sin repetir y como mucho Config.Favorites.Max.
+	if type(raw.Favorites) == "table" then
+		for _, id in raw.Favorites do
+			if type(id) == "string" and not table.find(profile.Favorites, id) and #profile.Favorites < Config.Favorites.Max and PlayerData.findCreature(profile, id) then
+				table.insert(profile.Favorites, id)
 			end
 		end
 	end

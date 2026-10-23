@@ -2,6 +2,7 @@
 -- HUD mínimo (GDD 8): bolsa, barra del servidor, temporizador de fase y flecha de objetivo.
 -- También muestra avisos del servidor y notificaciones personales.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
@@ -232,16 +233,32 @@ local function currentTarget(): Vector3?
 			local nestPosition = player:GetAttribute("NestPosition")
 			return if typeof(nestPosition) == "Vector3" then nestPosition else nil
 		end
-		local carrier = playerByUserId(RoundState.get("CarrierUserId"))
-		local character = carrier and carrier.Character
-		local root = character and character:FindFirstChild("HumanoidRootPart")
-		if root and root:IsA("BasePart") then
-			return root.Position
+		-- Puede haber varias criaturas: el portador (o la criatura suelta) más cercano.
+		local own = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		local from = if own and own:IsA("BasePart") then own.Position else Vector3.zero
+		local best: Vector3? = nil
+		local bestDistance = math.huge
+		local function consider(position: Vector3)
+			local d = (position - from).Magnitude
+			if d < bestDistance then
+				best, bestDistance = position, d
+			end
 		end
-		local creature = workspace:FindFirstChild("RoundCreature")
-		if creature and creature:IsA("Model") then
-			return creature:GetPivot().Position
+		for _, id in string.split(tostring(RoundState.get("Carriers") or ""), ",") do
+			local carrier = playerByUserId(tonumber(id))
+			local character = carrier and carrier.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			if root and root:IsA("BasePart") then
+				consider(root.Position)
+			end
 		end
+		for _, creature in CollectionService:GetTagged("RoundCreature") do
+			local body = if creature:IsA("Model") then creature.PrimaryPart else nil
+			if body and body:FindFirstChild("PickupPrompt") then
+				consider(body.Position)
+			end
+		end
+		return best
 	end
 	return nil
 end
@@ -334,12 +351,26 @@ function HUDController.start()
 		communityLabel.Text = if community >= 1 then "🌍 Huevo Comunitario ¡lleno!" else string.format("🌍 Huevo Comunitario %d %%", math.floor(community * 100))
 		phaseLabel.Text = name
 		timerLabel.Text = if phase == "Waiting" then "" else UI.formatTime(RoundState.timeLeft())
-		local secure = tonumber(RoundState.get("SecureProgress")) or 0
+		-- Persecución: asegurar, tira y afloja, escudos y aviso de robo (GDD v2).
+		local chasing = phase == "Chase" or phase == "Overtime"
+		local secure = tonumber(player:GetAttribute("SecureProgress")) or 0
 		local secureTotal = Config.Chase.SecureSeconds
-		secureLabel.Visible = (phase == "Chase" or phase == "Overtime") and secure > 0 and secureTotal > 0
-		if secureLabel.Visible then
-			secureLabel.Text = string.format("🔒 Asegurando la criatura: %d / %d s", math.floor(secure * secureTotal), secureTotal)
+		local tugEndsAt = tonumber(player:GetAttribute("TugEndsAt"))
+		local shields = tonumber(player:GetAttribute("Shields")) or 0
+		local status = ""
+		if chasing and player:GetAttribute("BeingTugged") then
+			status = "⚠️ ¡Te están robando! ¡Aléjate!"
+		elseif chasing and tugEndsAt then
+			local left = math.max(0, tugEndsAt - workspace:GetServerTimeNow())
+			status = string.format("💪 ¡Robando! Quédate cerca %.1f s", left)
+		elseif chasing and secure > 0 and secureTotal > 0 then
+			status = string.format("🔒 Asegurando la criatura: %d / %d s", math.floor(secure * secureTotal), secureTotal)
 		end
+		if chasing and shields > 0 then
+			status = (if status ~= "" then status .. " · " else "") .. string.rep("🛡️", shields)
+		end
+		secureLabel.Visible = status ~= ""
+		secureLabel.Text = status
 		updateBeam()
 	end)
 

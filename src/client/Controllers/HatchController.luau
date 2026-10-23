@@ -1,6 +1,6 @@
 --!strict
--- El espectáculo de 30 s (GDD 5.3 y 8): el huevo tiembla, un foco recorre a los jugadores
--- como una ruleta y se para en el elegido. El servidor ya decidió; aquí solo se anima.
+-- La eclosión (GDD 5.3, 8 y v2): 10 s. El huevo tiembla y un foco salta entre los
+-- favoritos hasta pararse en cada elegido. El servidor ya decidió; aquí solo se anima.
 
 local CaptureService = game:GetService("CaptureService")
 local Players = game:GetService("Players")
@@ -14,7 +14,6 @@ local Remotes = require(Shared.Remotes)
 local UI = require(script.Parent.Parent.UI)
 
 local player = Players.LocalPlayer
-local camera = workspace.CurrentCamera
 
 local HatchController = {}
 
@@ -67,16 +66,44 @@ local function show(text: string, sub: string, color: Color3?)
 	subtitle.Text = sub
 end
 
+-- Favoritos: los 5 con más probabilidad, más los elegidos si no están entre ellos.
+local function shortlist(order: { Candidate }, picks: { any }): { Candidate }
+	local sorted = table.clone(order)
+	table.sort(sorted, function(a: Candidate, b: Candidate)
+		return a.Chance > b.Chance
+	end)
+	local list: { Candidate } = {}
+	for i = 1, math.min(5, #sorted) do
+		table.insert(list, sorted[i])
+	end
+	for _, pick in picks do
+		local found = false
+		for _, candidate in list do
+			if candidate.UserId == pick.UserId then
+				found = true
+			end
+		end
+		if not found then
+			for _, candidate in order do
+				if candidate.UserId == pick.UserId then
+					table.insert(list, candidate)
+				end
+			end
+		end
+	end
+	return list
+end
+
+-- GDD v2: 10 segundos y sin bloquear la cámara (antes 30 s mirando una ruleta). El huevo se
+-- agrieta, un foco salta entre los favoritos y se para en cada elegido.
 local function play(data: any)
 	if running then
 		return
 	end
 	running = true
-	local duration = tonumber(data.Duration) or 30
+	local duration = tonumber(data.Duration) or 10
 	local order: { Candidate } = data.Order or {}
-	local chosenId: number = tonumber(data.ChosenUserId) or 0
-	local rarity: Rarity.RarityName = if Rarity.isValid(data.Rarity) then data.Rarity else "Common"
-	local info = Rarity.Info[rarity]
+	local picks: { any } = data.Picks or {}
 
 	overlay.Visible = true
 	captureButton.Visible = false
@@ -88,88 +115,79 @@ local function play(data: any)
 	end
 	chanceLabel.Text = string.format("Tu probabilidad: %.1f %%", mine * 100)
 
-	-- Fase 1 (60 %): el huevo tiembla y la cámara orbita.
+	-- Fase 1 (20 %): el huevo tiembla. La cámara sigue siendo tuya: puedes ir colocándote.
 	local eggPart = egg()
 	local originalCFrame = if eggPart then eggPart.CFrame else CFrame.new()
-	camera.CameraType = Enum.CameraType.Scriptable
-	local shakeEnd = os.clock() + duration * 0.6
-	show("¿A QUIÉN ELEGIRÁ?", "El huevo se está agrietando...", UI.Colors.Accent)
-	local angle = 0
-	local connection = RunService.RenderStepped:Connect(function(dt)
+	local crackTime = duration * 0.2
+	local shakeEnd = os.clock() + crackTime
+	show(if #picks > 1 then string.format("¡%d CRIATURAS!", #picks) else "¿A QUIÉN ELEGIRÁ?", "El huevo se está agrietando...", UI.Colors.Accent)
+	local connection = RunService.RenderStepped:Connect(function()
 		if not eggPart then
 			return
 		end
-		angle += dt * 0.4
-		local center = originalCFrame.Position
-		camera.CFrame = CFrame.lookAt(center + Vector3.new(math.cos(angle) * 34, 14, math.sin(angle) * 34), center)
 		local remaining = shakeEnd - os.clock()
 		if remaining > 0 then
-			local intensity = 0.15 + (1 - remaining / (duration * 0.6)) * 0.6
-			eggPart.CFrame = originalCFrame * CFrame.Angles(
-				math.rad(math.random(-10, 10) * intensity),
-				0,
-				math.rad(math.random(-10, 10) * intensity)
-			)
+			local intensity = 0.3 + (1 - remaining / crackTime) * 0.7
+			eggPart.CFrame = originalCFrame * CFrame.Angles(math.rad(math.random(-10, 10) * intensity), 0, math.rad(math.random(-10, 10) * intensity))
 		end
 	end)
-	task.wait(duration * 0.6)
+	task.wait(crackTime)
 	connection:Disconnect()
 	if eggPart then
 		eggPart.CFrame = originalCFrame
 	end
 
-	-- Fase 2 (30 %): ruleta con un foco que se va frenando hasta el elegido.
-	local spot = makeSpotlight()
-	local rouletteTime = duration * 0.3
-	local steps = math.max(#order * 3, 12)
-	local chosenIndex = 1
-	for index, candidate in order do
-		if candidate.UserId == chosenId then
-			chosenIndex = index
+	-- Fase 2 (60 %): un foco por criatura salta entre los favoritos y se para en su elegido.
+	local candidates = shortlist(order, picks)
+	local spots: { Part } = {}
+	local perPick = duration * 0.6 / math.max(#picks, 1)
+	for _, pick in picks do
+		local spot = makeSpotlight()
+		table.insert(spots, spot)
+		local rarity: Rarity.RarityName = if Rarity.isValid(pick.Rarity) then pick.Rarity else "Common"
+		local steps = math.max(#candidates * 2, 6)
+		local chosenIndex = 1
+		for index, candidate in candidates do
+			if candidate.UserId == pick.UserId then
+				chosenIndex = index
+			end
 		end
-	end
-	-- Ajusta el número de pasos para acabar exactamente en el elegido.
-	if #order > 0 then
-		steps += (chosenIndex - (steps % #order) - 1) % #order + 1
-	end
-	for step = 1, steps do
-		local candidate = order[((step - 1) % math.max(#order, 1)) + 1]
-		local root = candidate and rootOf(candidate.UserId)
-		if root then
-			placeSpot(spot, root.Position)
-			camera.CFrame = CFrame.lookAt(root.Position + Vector3.new(0, 12, 18), root.Position)
-			show(string.upper(candidate.Name), string.format("%.1f %%", candidate.Chance * 100), UI.Colors.Gold)
+		-- Ajusta el número de pasos para acabar exactamente en el elegido.
+		if #candidates > 0 then
+			steps += (chosenIndex - (steps % #candidates) - 1) % #candidates + 1
 		end
-		-- Intervalos crecientes: suspense al final.
-		local t = step / steps
-		local interval = (rouletteTime / steps) * (0.4 + 1.2 * t * t)
-		task.wait(interval)
+		for step = 1, steps do
+			local candidate = candidates[((step - 1) % math.max(#candidates, 1)) + 1]
+			local root = candidate and rootOf(candidate.UserId)
+			if root then
+				placeSpot(spot, root.Position)
+				show(string.upper(candidate.Name), string.format("%.1f %%", candidate.Chance * 100), UI.Colors.Gold)
+			end
+			-- Intervalos crecientes: suspense al final.
+			local t = step / steps
+			task.wait((perPick / steps) * (0.4 + 1.2 * t * t))
+		end
+		local chosenRoot = rootOf(pick.UserId)
+		if chosenRoot then
+			placeSpot(spot, chosenRoot.Position)
+		end
+		local info = Rarity.Info[rarity]
+		spot.Color = UI.rgb(info.Color)
+		if pick.UserId == player.UserId then
+			show("¡EL HUEVO TE HA ELEGIDO!", string.format("%s (%s) · ¡Corre a tu nido!", tostring(pick.CreatureName), info.DisplayName), UI.Colors.Gold)
+		else
+			show(string.format("¡ELIGE A %s!", string.upper(tostring(pick.Name))), string.format("%s (%s) · ¡Róbasela!", tostring(pick.CreatureName), info.DisplayName), UI.rgb(info.Color))
+		end
 	end
 
-	-- Fase 3: revelación.
-	local chosenRoot = rootOf(chosenId)
-	if chosenRoot then
-		placeSpot(spot, chosenRoot.Position)
-		camera.CFrame = CFrame.lookAt(chosenRoot.Position + Vector3.new(0, 8, 14), chosenRoot.Position)
-	end
-	spot.Color = UI.rgb(info.Color)
-	local creatureName = tostring(data.CreatureName or "")
-	if chosenId == player.UserId then
-		show("¡EL HUEVO TE HA ELEGIDO!", string.format("%s (%s) · ¡Corre a tu nido!", creatureName, info.DisplayName), UI.Colors.Gold)
-	else
-		show(
-			string.format("¡EL HUEVO ELIGE A %s!", string.upper(tostring(data.ChosenName or "?"))),
-			string.format("%s (%s) · ¡Róbasela!", creatureName, info.DisplayName),
-			UI.rgb(info.Color)
-		)
-	end
+	-- Fase 3: la revelación se queda en pantalla hasta que empieza la persecución.
 	captureButton.Visible = true
-	task.wait(math.max(duration - duration * 0.9 - 0.2, 1.5))
-
-	spot:Destroy()
-	camera.CameraType = Enum.CameraType.Custom
-	TweenService:Create(title, TweenInfo.new(0.5), { TextTransparency = 1 }):Play()
-	task.wait(0.5)
+	task.wait(math.max(duration * 0.2 - 0.3, 0.8))
+	for _, spot in spots do
+		spot:Destroy()
+	end
+	TweenService:Create(title, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
+	task.wait(0.3)
 	title.TextTransparency = 0
 	overlay.Visible = false
 	running = false

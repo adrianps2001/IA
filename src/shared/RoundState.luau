@@ -5,7 +5,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-export type Phase = "Waiting" | "Intermission" | "Incubation" | "Hatch" | "Chase" | "Overtime" | "Results"
+export type Phase = "Waiting" | "Intermission" | "Incubation" | "Hatch" | "Chase" | "Overtime" | "Results" | "Loot"
 
 local RoundState = {}
 
@@ -17,6 +17,7 @@ RoundState.PhaseNames = {
 	Chase = "Persecución",
 	Overtime = "¡Prórroga!",
 	Results = "Resultados",
+	Loot = "🌙 Saqueo",
 } :: { [Phase]: string }
 
 -- Atributos: Phase, PhaseEndsAt (GetServerTimeNow), Bar, BarGoal, MinRarity, Luck,

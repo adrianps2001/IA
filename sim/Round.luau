@@ -1,7 +1,8 @@
 --!strict
 -- Simula una ronda completa (GDD 4-5) con bots en el plano del mapa:
--- Incubación (Calor, géiseres, empujones, depósitos) -> Eclosión (Elección) ->
--- Persecución (robos, inmunidad, esprint, relevo, puerta) -> Premios.
+-- Incubación (Calor, géiseres, empujones, depósitos, lluvia dorada) -> Eclosión (Elección de
+-- uno o varios elegidos) -> Persecución (una por criatura: robos por toque, escudos,
+-- inmunidad, esprint, relevo, puerta, zorros del bosque) -> Premios.
 -- Usa los módulos reales del juego (Config, Economy, Election, Genes, Rarity, ChaseRules,
 -- Rewards, MapLayout) para que las reglas sean idénticas a las del servidor.
 -- Simplificaciones: sin física ni árboles; las paredes solo cuentan en la entrada del nido.
@@ -29,29 +30,55 @@ export type Bot = {
 	Upgrades: { [string]: number },
 	Payer: boolean,
 	RoundsSinceChosen: number?,
+	RoundsPlayed: number?, -- nil = veterano
 	Party: number?, -- Bandada (bots con el mismo número)
+}
+
+type Chase = {
+	Index: number,
+	Rarity: Rarity.RarityName,
+	Genes: Genes.GeneSet,
+	Chosen: Agent,
+	ChosenChance: number,
+	ChosenRank: number,
+	Carrier: Agent?, -- nil = la criatura está suelta en LoosePos
+	LoosePos: Point,
+	ImmuneUntil: number,
+	HomeStreak: number,
+	Done: boolean,
+	Secured: boolean,
+	Overtime: boolean,
+	Winner: Agent?,
+	Steals: number,
+	Carriers: { [string]: boolean },
+	FirstHome: number?,
+	LastChange: number,
+	Drops: number, -- veces que un zorro la tiró al suelo
 }
 
 -- Estado del bot dentro de una ronda.
 type Agent = {
 	Bot: Bot,
 	Key: string,
-	Nest: number,
+	Nest: number, -- 0 = zorro del bosque (sin nido)
+	IsFox: boolean,
 	Pos: Point,
 	Heat: number,
 	Capacity: number,
 	Affinity: number,
 	Attempts: number,
 	LastAttemptAt: number,
-	HoldStart: number?,
+	HoldStart: number?, -- empezó a robar (o a recoger la criatura suelta)
 	Target: Point?,
 	TargetKind: string,
 	TargetRef: any,
 	DecideAt: number,
 	IdleUntil: number,
 	BumpedAt: number,
+	BumpedTargets: { [string]: number },
 	WaitUntil: number,
 	Pursue: boolean,
+	PursueChase: Chase?,
 	SeenCarrierPos: Point?,
 	SeenAt: number,
 	SprintUntil: number,
@@ -59,6 +86,9 @@ type Agent = {
 	SprintReadyAt: number,
 	DoorUsed: boolean,
 	Partners: { [string]: boolean },
+	Carrying: Chase?,
+	WonThisRound: boolean,
+	Shields: number,
 	-- contadores
 	Collected: { [string]: number },
 	Deposited: number,
@@ -80,8 +110,8 @@ type Source = {
 
 export type BotResult = {
 	Dust: number,
-	Genes: Genes.GeneSet?,
-	Copy: Genes.GeneSet?,
+	Won: { Genes.GeneSet }, -- criaturas que se lleva
+	Copies: { Genes.GeneSet }, -- copias comunes (aliado de un ganador)
 	ChosenEgg: boolean,
 	Deposited: number,
 	Affinity: number,
@@ -94,7 +124,6 @@ export type BotResult = {
 	Collected: { [string]: number },
 	Chosen: boolean,
 	Chance: number,
-	Won: boolean,
 }
 
 export type Options = {
@@ -139,6 +168,17 @@ end
 local EGG: Point = { X = 0, Z = 0 }
 local DEPOSIT_REACH = Config.Heat.DepositRadius - 2
 local TOUCH = 2.5
+local PICKUP_HOLD = 1 -- segundos para recoger una criatura suelta (como el prompt del juego)
+
+-- El "arquetipo" de los zorros del bosque: siempre persiguen y nunca sueltan.
+local FOX_ARCH: Archetypes.Archetype = table.clone(Archetypes.ByKey.Thief)
+FOX_ARCH.Key = "Fox"
+FOX_ARCH.Label = "Zorro"
+FOX_ARCH.ChaseDesire = 1
+FOX_ARCH.HoldSkill = 1
+FOX_ARCH.Social = 0
+FOX_ARCH.Betray = 0
+FOX_ARCH.Reaction = Config.ForestThieves.Reaction
 
 local function dist(a: Point, b: Point): number
 	return MapLayout.distance(a, b)
@@ -159,7 +199,7 @@ end
 
 local function nestOf(agents: { Agent }, point: Point): number?
 	for _, a in agents do
-		if MapLayout.insideNest(a.Nest, point) then
+		if a.Nest > 0 and MapLayout.insideNest(a.Nest, point) then
 			return a.Nest
 		end
 	end
@@ -198,10 +238,56 @@ local function speedOf(agent: Agent, isCarrier: boolean, t: number, agents: { Ag
 	local atHome, intruding = false, false
 	if agents then -- solo durante la persecución
 		local here = nestOf(agents, agent.Pos)
-		atHome = here == agent.Nest
+		atHome = here ~= nil and here == agent.Nest
 		intruding = here ~= nil and here ~= agent.Nest
 	end
+	if agent.IsFox then
+		local speed = Config.Movement.BaseWalkSpeed * Config.ForestThieves.SpeedMultiplier
+		return if intruding then speed * Config.Chase.IntruderSpeedMultiplier else speed
+	end
 	return Economy.walkSpeed(agent.Bot.Upgrades.Boots or 0, isCarrier, agent.SprintUntil > t, atHome, intruding)
+end
+
+local function newAgent(bot: Bot, nest: number, pos: Point, isFox: boolean): Agent
+	return {
+		Bot = bot,
+		Key = if isFox then "fox" .. bot.Id else tostring(bot.Id),
+		Nest = nest,
+		IsFox = isFox,
+		Pos = pos,
+		Heat = 0,
+		Capacity = Economy.bagCapacity(bot.Upgrades.Bag or 0, bot.Payer),
+		Affinity = 0,
+		Attempts = 0,
+		LastAttemptAt = -100,
+		HoldStart = nil,
+		Target = nil,
+		TargetKind = "",
+		TargetRef = nil,
+		DecideAt = 0,
+		IdleUntil = 0,
+		BumpedAt = -100,
+		BumpedTargets = {},
+		WaitUntil = 0,
+		Pursue = false,
+		PursueChase = nil,
+		SeenCarrierPos = nil,
+		SeenAt = -100,
+		SprintUntil = -100,
+		StunnedUntil = -100,
+		SprintReadyAt = 0,
+		DoorUsed = false,
+		Partners = {},
+		Carrying = nil,
+		WonThisRound = false,
+		Shields = 0,
+		Collected = { Ember = 0, Firefly = 0, LuckyBlock = 0, Geyser = 0, Dropped = 0 },
+		Deposited = 0,
+		Steals = 0,
+		Bumps = 0,
+		LuckyBlocks = 0,
+		PactsBroken = 0,
+	}
 end
 
 -- Simula una ronda. bots: participantes; rng: dados; t0: hora de inicio (para eventos).
@@ -217,7 +303,7 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	end
 
 	-- Preparación ---------------------------------------------------------------------
-	local agents: { Agent } = {}
+	local agents: { Agent } = {} -- solo jugadores (los zorros van aparte)
 	local byKey: { [string]: Agent } = {}
 	local nests = {}
 	for i = 1, Config.Nest.Count do
@@ -226,39 +312,7 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	Rng.shuffle(rng, nests)
 	for i, bot in bots do
 		local nest = nests[i]
-		local agent: Agent = {
-			Bot = bot,
-			Key = tostring(bot.Id),
-			Nest = nest,
-			Pos = nestInner(nest),
-			Heat = 0,
-			Capacity = Economy.bagCapacity(bot.Upgrades.Bag or 0, bot.Payer),
-			Affinity = 0,
-			Attempts = 0,
-			LastAttemptAt = -100,
-			HoldStart = nil,
-			Target = nil,
-			TargetKind = "",
-			TargetRef = nil,
-			DecideAt = 0,
-			IdleUntil = 0,
-			BumpedAt = -100,
-			WaitUntil = 0,
-			Pursue = false,
-			SeenCarrierPos = nil,
-			SeenAt = -100,
-			SprintUntil = -100,
-			StunnedUntil = -100,
-			SprintReadyAt = 0,
-			DoorUsed = false,
-			Partners = {},
-			Collected = { Ember = 0, Firefly = 0, LuckyBlock = 0, Geyser = 0, Dropped = 0 },
-			Deposited = 0,
-			Steals = 0,
-			Bumps = 0,
-			LuckyBlocks = 0,
-			PactsBroken = 0,
-		}
+		local agent = newAgent(bot, nest, nestInner(nest), false)
 		table.insert(agents, agent)
 		byKey[agent.Key] = agent
 	end
@@ -303,9 +357,13 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	local reached: number = 0
 	local t: number = 0
 	local incubationTime = Config.Round.IncubationTime
+	local rainStart = incubationTime * Config.Round.GoldenRainAt
+	local rainEnd = rainStart + Config.Round.GoldenRainSeconds
 	local doorClosed: { [number]: number } = {}
+	local foxes: { Agent } = {}
+	local chases: { Chase } = {}
 
-	local function record(phase: string, carrier: Agent?)
+	local function record(phaseName: string)
 		if not opts.Record then
 			return
 		end
@@ -313,18 +371,39 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 		for _, a in agents do
 			table.insert(positions, { math.floor(a.Pos.X * 10) / 10, math.floor(a.Pos.Z * 10) / 10, a.Heat })
 		end
+		local carriers = {}
+		local loose = {}
+		for _, c in chases do
+			if not c.Done then
+				if c.Carrier then
+					table.insert(carriers, c.Carrier.Key)
+				else
+					table.insert(loose, { math.floor(c.LoosePos.X), math.floor(c.LoosePos.Z) })
+				end
+			end
+		end
+		local foxPositions = {}
+		for _, f in foxes do
+			table.insert(foxPositions, { math.floor(f.Pos.X * 10) / 10, math.floor(f.Pos.Z * 10) / 10 })
+		end
 		table.insert(frames, {
 			T = math.floor(t * 10) / 10,
-			Phase = phase,
+			Phase = phaseName,
 			P = positions,
-			C = if carrier then carrier.Key else nil,
+			C = carriers,
+			L = if #loose > 0 then loose else nil,
+			F = if #foxPositions > 0 then foxPositions else nil,
 			Bar = math.floor(bar),
 		})
 	end
 
+	local function raining(): boolean
+		return Config.Round.GoldenRainSeconds > 0 and t >= rainStart and t < rainEnd
+	end
+
 	local function sourceValue(source: Source): number
 		if source.Kind == "Ember" then
-			return Config.Heat.Ember.Amount
+			return Config.Heat.Ember.Amount * (if raining() then Config.Round.GoldenRainMultiplier else 1)
 		elseif source.Kind == "Firefly" then
 			return Config.Heat.Firefly.Amount
 		elseif source.Kind == "LuckyBlock" then
@@ -369,6 +448,18 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 		end
 	end
 
+	-- ¿Se puede empujar a esta víctima? (protección tras un empujón, misma víctima y novatos)
+	local function canBump(agent: Agent, victim: Agent): boolean
+		if t - victim.BumpedAt < Config.Heat.BumpCooldown then
+			return false
+		end
+		if t - (agent.BumpedTargets[victim.Key] or -1000) < Config.Heat.BumpSameTargetCooldown then
+			return false
+		end
+		local played = victim.Bot.RoundsPlayed
+		return not (played and played < Config.Heat.NewPlayerProtectionRounds)
+	end
+
 	-- Decide qué hacer en la incubación.
 	local function decide(agent: Agent)
 		local arch = agent.Bot.Arch
@@ -390,7 +481,7 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 		if rng() < arch.BumpDesire then
 			for _, other in agents do
 				if other ~= agent and not agent.Partners[other.Key] and other.Heat >= other.Capacity
-					and t - other.BumpedAt >= Config.Heat.BumpCooldown and dist(agent.Pos, other.Pos) < 35 then
+					and canBump(agent, other) and dist(agent.Pos, other.Pos) < 35 then
 					agent.Target, agent.TargetKind, agent.TargetRef = other.Pos, "Bump", other
 					return
 				end
@@ -431,7 +522,12 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	local dt = 0.5
 	local bumpsTotal, geyserActivations = 0, 0
 	local nextFrame: number = 0
+	local rainAnnounced = false
 	while t < incubationTime and bar < goal do
+		if raining() and not rainAnnounced then
+			rainAnnounced = true
+			event(t, "✨ ¡Lluvia de brasas doradas! Las brasas valen el doble un rato")
+		end
 		for _, s in sources do
 			if not s.Available and s.RespawnAt <= t and not s.Expires then
 				s.Available = true
@@ -477,7 +573,8 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 				if not s.Available then
 					agent.Target = nil
 				elseif reach <= TOUCH then
-					local added = give(agent, if s.Kind == "LuckyBlock" then Rng.int(rng, Config.Heat.LuckyBlock.Min, Config.Heat.LuckyBlock.Max) else (s.Amount or sourceValue(s)))
+					local amount = if s.Kind == "LuckyBlock" then Rng.int(rng, Config.Heat.LuckyBlock.Min, Config.Heat.LuckyBlock.Max) else (s.Amount or sourceValue(s))
+					local added = give(agent, amount)
 					if added > 0 then
 						s.Available = false
 						agent.Collected[s.Kind == "Dropped" and "Dropped" or s.Kind] += added
@@ -520,10 +617,11 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 				end
 			elseif kind == "Bump" then
 				local victim = agent.TargetRef :: Agent
-				if victim.Heat < victim.Capacity or t - victim.BumpedAt < Config.Heat.BumpCooldown then
+				if victim.Heat < victim.Capacity or not canBump(agent, victim) then
 					agent.Target = nil
 				elseif reach <= Config.Heat.BumpRange then
 					victim.BumpedAt = t
+					agent.BumpedTargets[victim.Key] = t
 					local dropped = math.floor(victim.Heat * Config.Heat.BumpDropFraction)
 					victim.Heat -= dropped
 					agent.Bumps += 1
@@ -547,7 +645,7 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 			end
 		end
 		if t >= nextFrame then
-			record("Incubation", nil)
+			record("Incubation")
 			nextFrame += 1
 		end
 		t += dt
@@ -560,272 +658,494 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	end
 
 	-- 2. ECLOSIÓN Y ELECCIÓN -----------------------------------------------------------
-	local rarity = Rarity.roll(rng, luck, minRarity)
-	local genes = Genes.rollSet(rng, rarity)
 	local entries = {}
 	local totalAffinity: number = 0
 	for _, a in agents do
-		table.insert(entries, { Key = a.Key, Affinity = a.Affinity, Min = Election.pityMin(a.Bot.RoundsSinceChosen or 0) })
+		table.insert(entries, {
+			Key = a.Key,
+			Affinity = a.Affinity,
+			Min = Election.minFor(a.Bot.RoundsSinceChosen or 0, a.Bot.RoundsPlayed or math.huge),
+		})
 		totalAffinity += a.Affinity
 	end
-	local chosenKey, chances = Election.pick(entries, Config.Election.MinChance, rng)
-	local chosen = byKey[chosenKey :: string]
-	-- Puesto del elegido por Afinidad (1 = el que más aportó).
-	local rank = 1
-	for _, a in agents do
-		if a.Affinity > chosen.Affinity then
-			rank += 1
-		end
-	end
+	local count = Economy.creatureCount(#agents)
+	local chosenKeys, chances = Election.pickMany(entries, Config.Election.MinChance, count, rng)
 	phase = "Eclosión"
-	local chanceText = string.gsub(string.format("%.1f", chances[chosen.Key] * 100), "%.", ",")
-	event(0, string.format("¡Eclosión! Sale una criatura %s y el huevo elige a %s (%s %%)", Rarity.Info[rarity].DisplayName, chosen.Bot.Name, chanceText))
+	for index, key in chosenKeys do
+		local chosen = byKey[key]
+		local rarity = Rarity.roll(rng, luck, minRarity)
+		-- Puesto del elegido por Afinidad (1 = el que más aportó).
+		local rank = 1
+		for _, a in agents do
+			if a.Affinity > chosen.Affinity then
+				rank += 1
+			end
+		end
+		table.insert(chases, {
+			Index = index,
+			Rarity = rarity,
+			Genes = Genes.rollSet(rng, rarity),
+			Chosen = chosen,
+			ChosenChance = chances[key],
+			ChosenRank = rank,
+			Carrier = chosen,
+			LoosePos = chosen.Pos,
+			ImmuneUntil = 0,
+			HomeStreak = 0,
+			Done = false,
+			Secured = false,
+			Overtime = false,
+			Winner = nil,
+			Steals = 0,
+			Carriers = { [chosen.Key] = true },
+			FirstHome = nil,
+			LastChange = 0,
+			Drops = 0,
+		})
+		chosen.Carrying = chases[#chases]
+		local chanceText = string.gsub(string.format("%.1f", chances[key] * 100), "%.", ",")
+		event(0, string.format("¡Eclosión! Criatura %s para %s (%s %%)", Rarity.Info[rarity].DisplayName, chosen.Bot.Name, chanceText))
+	end
 	for i = 1, Config.Round.HatchTime do
 		t += 1
 		if i % 2 == 0 then
-			record("Hatch", nil)
+			record("Hatch")
 		end
 	end
 
 	-- 3. PERSECUCIÓN -----------------------------------------------------------------
 	local chaseTime = if opts.BloodMoon then Config.Round.BloodMoonChaseTime else Config.Round.ChaseTime
 	local chaseStart = t
-	local carrier = chosen
-	local immuneUntil = t + Config.Chase.StartImmunitySeconds
-	local steals, passes, doors, betrayals = 0, 0, 0, 0
-	local carriers: { [string]: boolean } = { [carrier.Key] = true }
-	local firstHome: number? = nil
+	local passes, doors, betrayals, shieldBlocks, foxDrops = 0, 0, 0, 0, 0
+	local allCarriers: { [string]: boolean } = {}
 	local timeInNest: number = 0
-	local lastChange = t
-	local homeStreak = 0 -- segundos seguidos del portador actual en su nido
-	local secured = false
+	for _, c in chases do
+		c.ImmuneUntil = t + Config.Chase.StartImmunitySeconds
+		c.LastChange = t
+		allCarriers[c.Chosen.Key] = true
+	end
+	-- Escudos de Afinidad: los da el Calor depositado en esta ronda.
+	for _, a in agents do
+		a.Shields = Economy.shields(a.Affinity)
+	end
 
-	local function choosePursuers()
-		for _, a in agents do
-			if a == carrier then
-				a.Pursue = false
-			elseif carrier.Partners[a.Key] then
-				a.Pursue = rng() < a.Bot.Arch.Betray
-			else
-				a.Pursue = rng() < a.Bot.Arch.ChaseDesire
+	-- Zorros del bosque en servidores pequeños: salen del borde del mapa.
+	if Config.ForestThieves.Enabled and #agents < Config.ForestThieves.FillTo then
+		local foxCount = math.min(Config.ForestThieves.MaxCount, Config.ForestThieves.FillTo - #agents)
+		for i = 1, foxCount do
+			local foxBot: Bot = { Id = 1000 + i, Name = "Zorro " .. i, Arch = FOX_ARCH, Upgrades = {}, Payer = false }
+			local fox = newAgent(foxBot, 0, MapLayout.polar(rng() * math.pi * 2, MapLayout.Radius - 8), true)
+			fox.Pursue = true
+			table.insert(foxes, fox)
+		end
+		event(0, string.format("🦊 %d zorros salen del bosque a por las criaturas", foxCount))
+	end
+
+	local function activeChases(): { Chase }
+		local list: { Chase } = {}
+		for _, c in chases do
+			if not c.Done then
+				table.insert(list, c)
 			end
-			a.HoldStart = nil
+		end
+		return list
+	end
+
+	local function chasePos(c: Chase): Point
+		return if c.Carrier then c.Carrier.Pos else c.LoosePos
+	end
+
+	-- A qué criatura va cada uno (la más cercana que le interese).
+	local function choosePursuit(a: Agent)
+		a.HoldStart = nil
+		if a.IsFox then
+			local best, bestDistance = nil :: Chase?, math.huge
+			for _, c in activeChases() do
+				if c.Carrier then -- los zorros solo van a por criaturas que alguien lleva
+					local d = dist(a.Pos, c.Carrier.Pos)
+					if d < bestDistance then
+						best, bestDistance = c, d
+					end
+				end
+			end
+			a.PursueChase = best
+			a.Pursue = best ~= nil
+			return
+		end
+		if a.Carrying or a.WonThisRound then
+			a.Pursue, a.PursueChase = false, nil
+			return
+		end
+		local best, bestDistance = nil :: Chase?, math.huge
+		for _, c in activeChases() do
+			local carrier = c.Carrier
+			local interested = if carrier == nil then true
+				elseif carrier.Partners[a.Key] then rng() < a.Bot.Arch.Betray
+				else true
+			if interested then
+				local d = dist(a.Pos, chasePos(c))
+				if d < bestDistance then
+					best, bestDistance = c, d
+				end
+			end
+		end
+		a.PursueChase = best
+		-- Una criatura suelta cerca atrae a cualquiera; si no, según las ganas de perseguir.
+		a.Pursue = best ~= nil and ((best.Carrier == nil and bestDistance < 60) or rng() < a.Bot.Arch.ChaseDesire)
+	end
+	local function reassignAll()
+		for _, a in agents do
+			choosePursuit(a)
+		end
+		for _, f in foxes do
+			choosePursuit(f)
 		end
 	end
-	choosePursuers()
+
+	local function setCarrier(c: Chase, agent: Agent)
+		if c.Carrier then
+			c.Carrier.Carrying = nil
+		end
+		c.Carrier = agent
+		agent.Carrying = c
+		c.Carriers[agent.Key] = true
+		allCarriers[agent.Key] = true
+		c.ImmuneUntil = t + Config.Chase.ImmunityAfterSteal
+		c.HomeStreak = 0
+		c.LastChange = t
+		reassignAll()
+	end
+
+	local function finish(c: Chase, winner: Agent?)
+		c.Done = true
+		c.Winner = winner
+		if winner then
+			winner.WonThisRound = true
+			winner.Carrying = nil
+		elseif c.Carrier then
+			c.Carrier.Carrying = nil
+		end
+		reassignAll()
+	end
+
+	reassignAll()
 	phase = "Persecución"
 	local nextReconsider = t + 10
 	dt = 0.25
 	nextFrame = t
 	local chaseEnd = chaseStart + chaseTime
 	local overtimeEnd = chaseEnd + Config.Chase.OvertimeSeconds
-	local overtime = false
-	local overtimeUsed = false
-	-- Ventaja del elegido: los demás no se mueven hasta pasados unos segundos.
+	local overtimeStarted = false
+	-- Ventaja de los elegidos: los demás (y los zorros) no se mueven hasta pasados unos segundos.
 	for _, a in agents do
-		if a ~= carrier then
+		if not a.Carrying then
 			a.StunnedUntil = t + Config.Chase.HeadStartSeconds
 		end
 	end
+	for _, f in foxes do
+		f.StunnedUntil = t + Config.Chase.HeadStartSeconds
+	end
 
-	while t < chaseEnd or (overtime and t < overtimeEnd) do
+	-- Intento de robo (o de recoger la criatura suelta) del agente `a` sobre la persecución `c`.
+	local function tryTake(a: Agent, c: Chase, d: number)
+		local carrier = c.Carrier
+		if not carrier then
+			-- Criatura suelta: recogerla cuesta PICKUP_HOLD segundos al lado.
+			if a.IsFox or d > TOUCH then
+				a.HoldStart = nil
+				return
+			end
+			if not a.HoldStart then
+				a.HoldStart = t
+			elseif t - (a.HoldStart :: number) >= PICKUP_HOLD then
+				event(t - chaseStart, string.format("%s recoge la criatura del suelo", a.Bot.Name))
+				setCarrier(c, a)
+			end
+			return
+		end
+		local inside = MapLayout.insideNest(carrier.Nest, carrier.Pos)
+		local keepRange = Config.Chase.StealRange + (if Config.Chase.TapSteal then ChaseRules.DistanceTolerance else 0)
+		if d > keepRange then
+			a.HoldStart = nil -- se ha escapado del tira y afloja
+			return
+		end
+		if not a.HoldStart then
+			if d > Config.Chase.StealRange then
+				return
+			end
+			a.HoldStart = t
+			if t - a.LastAttemptAt > 2 then
+				a.LastAttemptAt = t
+				a.Attempts += 1
+			end
+			return
+		end
+		if not Config.Chase.TapSteal and rng() < (1 - a.Bot.Arch.HoldSkill) * dt then
+			a.HoldStart = nil -- se le escapa el dedo (solo cuando hay que mantener el botón)
+			return
+		end
+		if t - (a.HoldStart :: number) < ChaseRules.holdTime(inside) then
+			return
+		end
+		local check = ChaseRules.canSteal(t, a.HoldStart, c.ImmuneUntil, d, inside)
+		a.HoldStart = nil
+		if check ~= "ok" then
+			return
+		end
+		-- Escudo de Afinidad: se rompe y el robo no ocurre.
+		if carrier.Shields > 0 then
+			carrier.Shields -= 1
+			c.ImmuneUntil = t + Config.Chase.ImmunityAfterSteal
+			shieldBlocks += 1
+			event(t - chaseStart, string.format("🛡️ El escudo de %s bloquea a %s", carrier.Bot.Name, a.Bot.Name))
+			return
+		end
+		carrier.StunnedUntil = t + Config.Chase.StunSeconds
+		if a.IsFox then
+			-- El zorro la tira al suelo y vuelve al bosque un rato.
+			event(t - chaseStart, string.format("🦊 Un zorro le tira la criatura al suelo a %s", carrier.Bot.Name))
+			carrier.Carrying = nil
+			c.Carrier = nil
+			c.LoosePos = MapLayout.randomNear(rng, carrier.Pos, 4)
+			c.Drops += 1
+			c.LastChange = t
+			foxDrops += 1
+			a.StunnedUntil = t + 8
+			reassignAll()
+			return
+		end
+		if carrier.Partners[a.Key] then
+			carrier.Partners[a.Key] = nil
+			a.Partners[carrier.Key] = nil
+			a.PactsBroken += 1
+			betrayals += 1
+			event(t - chaseStart, string.format("💔 %s traiciona a %s", a.Bot.Name, carrier.Bot.Name))
+		else
+			event(t - chaseStart, string.format("%s le roba la criatura a %s", a.Bot.Name, carrier.Bot.Name))
+		end
+		a.Steals += 1
+		c.Steals += 1
+		setCarrier(c, a)
+	end
+
+	while true do
+		local active = activeChases()
+		if #active == 0 then
+			break
+		end
+		if t >= chaseEnd and not overtimeStarted then
+			-- Se acaba el tiempo: gana quien esté en su nido; el resto va a la prórroga.
+			overtimeStarted = true
+			local anyOvertime = false
+			for _, c in active do
+				local carrier = c.Carrier
+				if carrier and MapLayout.insideNest(carrier.Nest, carrier.Pos) then
+					event(t - chaseStart, string.format("⏱️ %s tiene la criatura en su nido al acabar", carrier.Bot.Name))
+					finish(c, carrier)
+				elseif Config.Chase.OvertimeSeconds > 0 then
+					c.Overtime = true
+					anyOvertime = true
+				else
+					finish(c, nil)
+				end
+			end
+			if anyOvertime then
+				event(t - chaseStart, "¡Prórroga! Gana el primero que meta la criatura en su nido")
+			end
+			continue
+		end
+		if overtimeStarted and t >= overtimeEnd then
+			for _, c in active do
+				finish(c, nil)
+			end
+			break
+		end
+
 		-- Reconsiderar quién persigue cada 10 s (alguien se anima, alguien se cansa).
 		if t >= nextReconsider then
 			nextReconsider = t + 10
-			for _, a in agents do
-				if a ~= carrier and not carrier.Partners[a.Key] and not a.Pursue and rng() < a.Bot.Arch.ChaseDesire * 0.3 then
-					a.Pursue = true
-				end
-			end
+			reassignAll()
 		end
 
-		-- Portador
-		local inside = MapLayout.insideNest(carrier.Nest, carrier.Pos)
-		local nearest, nearestDist = nil :: Agent?, math.huge
-		for _, a in agents do
-			if a.Pursue then
-				local d = dist(a.Pos, carrier.Pos)
-				if d < nearestDist then
-					nearest, nearestDist = a, d
-				end
-			end
-		end
-		if nearestDist < 15 and t >= carrier.SprintReadyAt then
-			carrier.SprintUntil = t + Config.Chase.SprintDuration
-			carrier.SprintReadyAt = t + Config.Chase.SprintCooldown
-		end
-		-- Relevo a un aliado cuando un ladrón casi completa el robo.
-		if nearest and nearest.HoldStart and t - nearest.HoldStart > 0.7 and rng() < carrier.Bot.Arch.Social * 0.5 then
-			for key in carrier.Partners do
-				local ally = byKey[key]
-				if ally and dist(ally.Pos, carrier.Pos) <= Config.Chase.PassRange then
-					event(t - chaseStart, string.format("%s pasa el relevo a %s", carrier.Bot.Name, ally.Bot.Name))
-					lastChange = t
-					carrier = ally
-					carriers[ally.Key] = true
-					immuneUntil = t + Config.Chase.ImmunityAfterSteal
-					homeStreak = 0
-					passes += 1
-					choosePursuers()
-					break
-				end
-			end
-		end
-		inside = MapLayout.insideNest(carrier.Nest, carrier.Pos)
-		local carrierTarget: Point
-		if inside then
-			if not firstHome then
-				firstHome = t - chaseStart
-			end
-			timeInNest += dt
-			homeStreak += dt
-			if ChaseRules.isSecured(homeStreak) then
-				secured = true
-				event(t - chaseStart, string.format("🔒 %s asegura la criatura en su nido", carrier.Bot.Name))
-				break
-			end
-			-- Puerta: una vez por ronda cuando se acercan ladrones desde fuera.
-			if not carrier.DoorUsed and nearest and nearestDist < 25 and not MapLayout.insideNest(carrier.Nest, nearest.Pos) then
-				carrier.DoorUsed = true
-				doorClosed[carrier.Nest] = t + Config.Chase.DoorCloseTime
-				doors += 1
-				event(t - chaseStart, string.format("%s cierra la puerta de su nido", carrier.Bot.Name))
-			end
-			-- Huir dentro del nido: el punto más alejado de los perseguidores.
-			local center = MapLayout.nestCenter(carrier.Nest)
-			local angle = MapLayout.nestAngle(carrier.Nest)
-			local half = MapLayout.NestSize / 2 - 2
-			local best, bestScore = center, -1
-			for _, offset in { { 0, 0 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
-				local r, tg = offset[1] * half, offset[2] * half
-				local candidate = {
-					X = center.X + r * math.cos(angle) - tg * math.sin(angle),
-					Z = center.Z + r * math.sin(angle) + tg * math.cos(angle),
-				}
-				local score = math.huge
-				for _, a in agents do
-					if a.Pursue then
-						score = math.min(score, dist(a.Pos, candidate))
-					end
-				end
-				if score > bestScore then
-					best, bestScore = candidate, score
-				end
-			end
-			carrierTarget = best
-		else
-			homeStreak = 0
-			carrierTarget = MapLayout.nestCenter(carrier.Nest)
-		end
-		local way = waypoint(carrier, agents, carrierTarget, doorClosed, t)
-		if way and carrier.StunnedUntil <= t then
-			carrier.Pos = step(carrier.Pos, way, speedOf(carrier, true, t, agents) * dt)
-		end
-
-		-- Perseguidores
-		for _, a in agents do
-			if a == carrier or not a.Pursue or a.StunnedUntil > t then
-				a.HoldStart = nil
+		-- Portadores
+		for _, c in active do
+			local carrier = c.Carrier
+			if not carrier then
 				continue
 			end
-			if t - a.SeenAt >= a.Bot.Arch.Reaction or not a.SeenCarrierPos then
-				a.SeenCarrierPos = { X = carrier.Pos.X, Z = carrier.Pos.Z }
-				a.SeenAt = t
-			end
-			local target = a.SeenCarrierPos :: Point
-			local d = dist(a.Pos, carrier.Pos)
-			if d > Config.Chase.StealRange * 0.6 then
-				local w = waypoint(a, agents, target, doorClosed, t)
-				if w then
-					a.Pos = step(a.Pos, w, speedOf(a, false, t, agents) * dt)
-				end
-				d = dist(a.Pos, carrier.Pos)
-			end
-			-- Mantener el botón de robar.
-			if d <= Config.Chase.StealRange then
-				if not a.HoldStart then
-					a.HoldStart = t
-					if t - a.LastAttemptAt > 2 then
-						a.LastAttemptAt = t
-						a.Attempts += 1
-					end
-				elseif rng() < (1 - a.Bot.Arch.HoldSkill) * dt then
-					a.HoldStart = nil -- se le escapa el dedo
-				elseif t - (a.HoldStart :: number) >= ChaseRules.holdTime(inside) then
-					local check = ChaseRules.canSteal(t, a.HoldStart, immuneUntil, d, inside)
-					a.HoldStart = nil
-					if check == "ok" then
-						if carrier.Partners[a.Key] then
-							carrier.Partners[a.Key] = nil
-							a.Partners[carrier.Key] = nil
-							a.PactsBroken += 1
-							betrayals += 1
-							event(t - chaseStart, string.format("💔 %s traiciona a %s", a.Bot.Name, carrier.Bot.Name))
-						else
-							event(t - chaseStart, string.format("%s le roba la criatura a %s", a.Bot.Name, carrier.Bot.Name))
+			local nearest, nearestDist = nil :: Agent?, math.huge
+			for _, list in { agents, foxes } do
+				for _, a in list do
+					if a.Pursue and a.PursueChase == c then
+						local d = dist(a.Pos, carrier.Pos)
+						if d < nearestDist then
+							nearest, nearestDist = a, d
 						end
-						a.Steals += 1
-						steals += 1
-						carrier.StunnedUntil = t + Config.Chase.StunSeconds
-						lastChange = t
-						carrier = a
-						carriers[a.Key] = true
-						immuneUntil = t + Config.Chase.ImmunityAfterSteal
-						homeStreak = 0
-						choosePursuers()
+					end
+				end
+			end
+			if nearestDist < 15 and t >= carrier.SprintReadyAt then
+				carrier.SprintUntil = t + Config.Chase.SprintDuration
+				carrier.SprintReadyAt = t + Config.Chase.SprintCooldown
+			end
+			-- Relevo a un aliado cuando un ladrón casi completa el robo.
+			if nearest and nearest.HoldStart and t - nearest.HoldStart > 0.7 and rng() < carrier.Bot.Arch.Social * 0.5 then
+				for key in carrier.Partners do
+					local ally = byKey[key]
+					if ally and not ally.Carrying and not ally.WonThisRound and dist(ally.Pos, carrier.Pos) <= Config.Chase.PassRange then
+						event(t - chaseStart, string.format("%s pasa el relevo a %s", carrier.Bot.Name, ally.Bot.Name))
+						passes += 1
+						setCarrier(c, ally)
 						break
 					end
 				end
+				carrier = c.Carrier :: Agent
+			end
+			local inside = MapLayout.insideNest(carrier.Nest, carrier.Pos)
+			local carrierTarget: Point
+			if inside then
+				if not c.FirstHome then
+					c.FirstHome = t - chaseStart
+				end
+				timeInNest += dt
+				c.HomeStreak += dt
+				if ChaseRules.isSecured(c.HomeStreak) then
+					c.Secured = true
+					event(t - chaseStart, string.format("🔒 %s asegura la criatura en su nido", carrier.Bot.Name))
+					finish(c, carrier)
+					continue
+				end
+				if c.Overtime then
+					event(t - chaseStart, string.format("⚡ %s gana en la prórroga", carrier.Bot.Name))
+					finish(c, carrier)
+					continue
+				end
+				-- Puerta: una vez por ronda cuando se acercan ladrones desde fuera.
+				if not carrier.DoorUsed and nearest and nearestDist < 25 and not MapLayout.insideNest(carrier.Nest, nearest.Pos) then
+					carrier.DoorUsed = true
+					doorClosed[carrier.Nest] = t + Config.Chase.DoorCloseTime
+					doors += 1
+					event(t - chaseStart, string.format("%s cierra la puerta de su nido", carrier.Bot.Name))
+				end
+				-- Huir dentro del nido: el punto más alejado de los perseguidores.
+				local center = MapLayout.nestCenter(carrier.Nest)
+				local angle = MapLayout.nestAngle(carrier.Nest)
+				local half = MapLayout.NestSize / 2 - 2
+				local best, bestScore = center, -1
+				for _, offset in { { 0, 0 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
+					local r, tg = offset[1] * half, offset[2] * half
+					local candidate = {
+						X = center.X + r * math.cos(angle) - tg * math.sin(angle),
+						Z = center.Z + r * math.sin(angle) + tg * math.cos(angle),
+					}
+					local score = math.huge
+					for _, list in { agents, foxes } do
+						for _, a in list do
+							if a.Pursue and a.PursueChase == c then
+								score = math.min(score, dist(a.Pos, candidate))
+							end
+						end
+					end
+					if score > bestScore then
+						best, bestScore = candidate, score
+					end
+				end
+				carrierTarget = best
 			else
-				a.HoldStart = nil
+				c.HomeStreak = 0
+				carrierTarget = MapLayout.nestCenter(carrier.Nest)
+			end
+			local way = waypoint(carrier, agents, carrierTarget, doorClosed, t)
+			if way and carrier.StunnedUntil <= t then
+				carrier.Pos = step(carrier.Pos, way, speedOf(carrier, true, t, agents) * dt)
+			end
+		end
+
+		-- Perseguidores (jugadores y zorros)
+		for _, list in { agents, foxes } do
+			for _, a in list do
+				local c = a.PursueChase
+				if a.Carrying or not a.Pursue or not c or c.Done or a.StunnedUntil > t then
+					a.HoldStart = nil
+					continue
+				end
+				local targetNow = chasePos(c)
+				if t - a.SeenAt >= a.Bot.Arch.Reaction or not a.SeenCarrierPos then
+					a.SeenCarrierPos = { X = targetNow.X, Z = targetNow.Z }
+					a.SeenAt = t
+				end
+				local target = a.SeenCarrierPos :: Point
+				local d = dist(a.Pos, targetNow)
+				local close = if c.Carrier then Config.Chase.StealRange * 0.6 else 1
+				if d > close then
+					local w = waypoint(a, agents, target, doorClosed, t)
+					if w then
+						a.Pos = step(a.Pos, w, speedOf(a, false, t, agents) * dt)
+					end
+					d = dist(a.Pos, chasePos(c))
+				end
+				tryTake(a, c, d)
+				if c.Done or a.Carrying then
+					continue
+				end
 			end
 		end
 
 		if t >= nextFrame then
-			record("Chase", carrier)
+			record(if overtimeStarted then "Overtime" else "Chase")
 			nextFrame += 0.5
 		end
 		t += dt
-
-		local home = MapLayout.insideNest(carrier.Nest, carrier.Pos)
-		if overtime and ChaseRules.overtimeWin(true, home) then
-			event(t - chaseStart, string.format("⚡ %s gana en la prórroga", carrier.Bot.Name))
-			break
-		end
-		if not overtime and t >= chaseEnd and Config.Chase.OvertimeSeconds > 0 and not home then
-			overtime = true
-			overtimeUsed = true
-			event(t - chaseStart, "¡Prórroga! Gana el primero que meta la criatura en su nido")
-		end
 	end
 
 	-- 4. RESULTADOS -----------------------------------------------------------------
-	local winner: Agent? = if secured or ChaseRules.carrierWins(MapLayout.insideNest(carrier.Nest, carrier.Pos)) then carrier else nil
 	local participants = {}
 	for _, a in agents do
 		table.insert(participants, { Key = a.Key, Affinity = a.Affinity, StealAttempts = a.Attempts })
 	end
-	local partnerKeys = {}
-	if winner then
-		for key in winner.Partners do
-			table.insert(partnerKeys, key)
+	local outcomes: { Rewards.Outcome } = {}
+	for _, c in chases do
+		local winner = c.Winner
+		local partnerKeys = {}
+		if winner then
+			for key in winner.Partners do
+				table.insert(partnerKeys, key)
+			end
+			event(t - chaseStart, string.format("🏆 %s se queda la criatura %s", winner.Bot.Name, Rarity.Info[c.Rarity].DisplayName))
+		else
+			event(t - chaseStart, string.format("La criatura %s escapa", Rarity.Info[c.Rarity].DisplayName))
 		end
+		table.insert(outcomes, { Winner = if winner then winner.Key else nil, Partners = partnerKeys, Chosen = c.Chosen.Key })
 	end
-	local rewards = Rewards.compute(participants, if winner then winner.Key else nil, partnerKeys, chosen.Key)
-	if winner then
-		event(t - chaseStart, string.format("🏆 %s se queda la criatura %s", winner.Bot.Name, Rarity.Info[rarity].DisplayName))
-	else
-		event(t - chaseStart, string.format("La criatura escapa: %s no estaba en su nido", carrier.Bot.Name))
-	end
-	record("Results", carrier)
+	local rewards = Rewards.compute(participants, outcomes)
+	record("Results")
 
 	local perBot: { [number]: BotResult } = {}
 	for _, a in agents do
 		local reward = rewards[a.Key]
+		local won, copies = {}, {}
+		for _, index in reward.Won do
+			table.insert(won, chases[index].Genes)
+		end
+		for _, index in reward.Copies do
+			table.insert(copies, Genes.commonCopy(chases[index].Genes, rng))
+		end
+		local kept = false
+		for _, o in outcomes do
+			if o.Winner and table.find(o.Partners, a.Key) then
+				kept = true
+			end
+		end
+		local isChosen = false
+		for _, c in chases do
+			if c.Chosen == a then
+				isChosen = true
+			end
+		end
 		perBot[a.Bot.Id] = {
 			Dust = reward.Dust,
-			Genes = if reward.Creature then genes else nil,
-			Copy = if reward.Copy then Genes.commonCopy(genes, rng) else nil,
+			Won = won,
+			Copies = copies,
 			ChosenEgg = reward.ChosenEgg,
 			Deposited = a.Deposited,
 			Affinity = a.Affinity,
@@ -834,48 +1154,69 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 			Attempts = a.Attempts,
 			Bumps = a.Bumps,
 			PactsBroken = a.PactsBroken,
-			PactKept = winner ~= nil and table.find(partnerKeys, a.Key) ~= nil,
+			PactKept = kept,
 			Collected = a.Collected,
-			Chosen = a == chosen,
-			Chance = chances[a.Key],
-			Won = a == winner,
+			Chosen = isChosen,
+			Chance = chances[a.Key] or 0,
 		}
+	end
+
+	-- Una línea por criatura (para las estadísticas de la persecución).
+	local chaseList = {}
+	local steals = 0
+	for _, c in chases do
+		steals += c.Steals
+		local carrier = c.Winner or c.Carrier
+		local carriersCount = 0
+		for _ in c.Carriers do
+			carriersCount += 1
+		end
+		table.insert(chaseList, {
+			Rarity = c.Rarity,
+			ChosenArch = c.Chosen.Bot.Arch.Key,
+			ChosenRank = c.ChosenRank,
+			ChosenChance = c.ChosenChance,
+			ChosenShare = if totalAffinity > 0 then c.Chosen.Affinity / totalAffinity else 0,
+			WinnerArch = if c.Winner then c.Winner.Bot.Arch.Key else nil,
+			WinnerId = if c.Winner then c.Winner.Bot.Id else nil,
+			WinnerIsChosen = c.Winner == c.Chosen,
+			Escaped = c.Winner == nil,
+			Secured = c.Secured,
+			Overtime = c.Overtime,
+			Steals = c.Steals,
+			Carriers = carriersCount,
+			Drops = c.Drops,
+			FirstHomeSeconds = c.FirstHome,
+			FinalDistanceToNest = if carrier then MapLayout.distance(carrier.Pos, MapLayout.nestCenter(carrier.Nest)) else 0,
+			LastChangeAgo = t - c.LastChange,
+		})
 	end
 
 	local summary: { [string]: any } = {
 		Players = #agents,
+		Creatures = #chases,
+		Foxes = #foxes,
 		IncubationSeconds = incubationDuration,
 		BarFraction = fraction,
 		EarlyFull = bar >= goal,
 		MinRarity = minRarity,
-		Rarity = rarity,
-		ChosenId = chosen.Bot.Id,
-		ChosenArch = chosen.Bot.Arch.Key,
-		ChosenRank = rank,
-		ChosenShare = if totalAffinity > 0 then chosen.Affinity / totalAffinity else 0,
-		ChosenChance = chances[chosen.Key],
+		Chases = chaseList,
 		Steals = steals,
 		Passes = passes,
 		Doors = doors,
 		Betrayals = betrayals,
+		ShieldBlocks = shieldBlocks,
+		FoxDrops = foxDrops,
 		Deals = dealsFormed,
 		Bumps = bumpsTotal,
 		Geysers = geyserActivations,
 		Carriers = 0,
-		FirstHomeSeconds = firstHome,
 		CarrierNestSeconds = timeInNest,
-		WinnerId = if winner then winner.Bot.Id else nil,
-		WinnerArch = if winner then winner.Bot.Arch.Key else nil,
-		WinnerIsChosen = winner == chosen,
-		Escaped = winner == nil,
-		Secured = secured,
-		Overtime = overtimeUsed,
-		FinalDistanceToNest = MapLayout.distance(carrier.Pos, MapLayout.nestCenter(carrier.Nest)),
-		LastChangeAgo = t - lastChange,
+		Overtime = overtimeStarted and t > chaseEnd,
 		ChaseSeconds = t - chaseStart,
 		DurationSeconds = t + Config.Round.ResultsTime + Config.Round.IntermissionTime,
 	}
-	for _ in carriers do
+	for _ in allCarriers do
 		summary.Carriers += 1
 	end
 

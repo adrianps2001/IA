@@ -133,6 +133,7 @@ local function execute(session: Session)
 	DataService.markChanged(a)
 	DataService.markChanged(b)
 	close(session, nil)
+	-- refreshDisplay también quita de las favoritas lo que se ha ido en el intercambio.
 	NestService.refreshDisplay(a)
 	NestService.refreshDisplay(b)
 	AnnouncementService.player(a, "🤝 Intercambio completado con " .. b.DisplayName, "quest")

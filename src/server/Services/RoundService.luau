@@ -1,6 +1,8 @@
 --!strict
--- Bucle de ronda de ~12 minutos (GDD 4): Incubación -> Eclosión y Elección -> Persecución ->
--- Resultados (criatura para quien la mete en su nido, polvo de consolación para el resto).
+-- Bucle de ronda de ~6 minutos (GDD v2): Incubación (con lluvia dorada a mitad) -> Eclosión
+-- y Elección de uno o varios elegidos -> Persecución (una por criatura) -> Resultados ->
+-- (Noche de Saqueo: fase de saqueo). Criatura para quien la mete en su nido, polvo de
+-- consolación para el resto (si participó).
 
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -8,6 +10,7 @@ local Players = game:GetService("Players")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Creature = require(Shared.Creature)
+local Economy = require(Shared.Economy)
 local Election = require(Shared.Election)
 local Events = require(Shared.Events)
 local Genes = require(Shared.Genes)
@@ -98,26 +101,66 @@ local function secondsText(seconds: number): string
 	return if seconds >= 60 and seconds % 60 == 0 then string.format("%d minutos", seconds // 60) else string.format("%d segundos", seconds)
 end
 
-local function runElection(players: { Player }): (Player?, { [string]: number })
-	local entries = {}
-	local byKey: { [string]: Player } = {}
+-- Inactividad (GDD v2): quién se ha movido hace poco. Los inactivos no pueden ser elegidos
+-- (mientras haya alguien activo) ni cobran consuelo.
+local lastMoved: { [Player]: number } = {}
+local lastPosition: { [Player]: Vector3 } = {}
+
+local function isActive(player: Player): boolean
+	if not Config.Election.RequireActivity then
+		return true
+	end
+	return HeatService.affinity(player) > 0 or os.clock() - (lastMoved[player] or -math.huge) < Config.Election.ActivitySeconds
+end
+
+local function trackActivity()
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") then
+			local last = lastPosition[player]
+			if not last or (root.Position - last).Magnitude > 4 then
+				lastMoved[player] = os.clock()
+				lastPosition[player] = root.Position
+			end
+		end
+	end
+end
+
+-- Elige `count` jugadores distintos (uno por criatura).
+local function runElection(players: { Player }, count: number): ({ Player }, { [string]: number })
+	local candidates = {}
 	for _, player in players do
+		if isActive(player) then
+			table.insert(candidates, player)
+		end
+	end
+	if #candidates == 0 then
+		candidates = players -- todos inactivos: mejor elegir a alguien que a nadie
+	end
+	local entries: { Election.Entry } = {}
+	local byKey: { [string]: Player } = {}
+	for _, player in candidates do
 		local key = tostring(player.UserId)
 		byKey[key] = player
 		local profile = DataService.get(player)
 		local waited = if profile then profile.Stats.RoundsSinceChosen or 0 else 0
-		table.insert(entries, { Key = key, Affinity = HeatService.affinity(player), Min = Election.pityMin(waited) })
+		local played = if profile then profile.Stats.RoundsPlayed or 0 else 0
+		table.insert(entries, { Key = key, Affinity = HeatService.affinity(player), Min = Election.minFor(waited, played) })
 	end
-	local chosenKey, chances = Election.pick(entries, Config.Election.MinChance, rng)
-	return if chosenKey then byKey[chosenKey] else nil, chances
+	local keys, chances = Election.pickMany(entries, Config.Election.MinChance, count, rng)
+	local chosen = {}
+	for _, key in keys do
+		table.insert(chosen, byKey[key])
+	end
+	return chosen, chances
 end
 
-local function hatch(players: { Player }, bloodMoon: boolean): (Player?, Genes.GeneSet)
-	local genes = EggService.rollCreature(bloodMoon)
-	local chosen, chances = runElection(players)
-	local preview = Creature.new("preview", genes, "Hatch", os.time())
+local function hatch(players: { Player }, bloodMoon: boolean): { ChaseService.Start }
+	local count = Economy.creatureCount(#players)
+	local chosen, chances = runElection(players, count)
 
-	-- Orden de la ruleta: todos los jugadores con su probabilidad.
+	-- Ruleta: todos los jugadores con su probabilidad; el cliente enseña los favoritos.
 	local order = {}
 	for _, player in players do
 		table.insert(order, {
@@ -127,23 +170,40 @@ local function hatch(players: { Player }, bloodMoon: boolean): (Player?, Genes.G
 		})
 	end
 
-	RoundState.set("ChosenUserId", if chosen then chosen.UserId else 0)
-	-- Suerte acumulada: el elegido vuelve a empezar; los demás suman una ronda de espera.
+	local starts: { ChaseService.Start } = {}
+	local picks = {}
+	local ids = {}
+	for _, player in chosen do
+		local genes = EggService.rollCreature(bloodMoon)
+		local preview = Creature.new("preview", genes, "Hatch", os.time())
+		table.insert(starts, { Chosen = player, Genes = genes })
+		table.insert(ids, tostring(player.UserId))
+		table.insert(picks, {
+			UserId = player.UserId,
+			Name = player.DisplayName,
+			Genes = genes,
+			CreatureName = Creature.name(preview),
+			Rarity = preview.Rarity,
+		})
+		if Rarity.tier(preview.Rarity) >= Rarity.tier("Mythic") then
+			AnnouncementService.global(string.format("¡Ha nacido una criatura %s en un servidor!", Rarity.Info[preview.Rarity].DisplayName))
+		end
+	end
+
+	RoundState.set("ChosenUserIds", table.concat(ids, ","))
+	RoundState.set("ChosenUserId", if chosen[1] then chosen[1].UserId else 0)
+	RoundState.set("CreatureName", if picks[1] then picks[1].CreatureName else "")
+	RoundState.set("CreatureRarity", if picks[1] then picks[1].Rarity else "")
+	-- Suerte acumulada: los elegidos vuelven a empezar; los demás suman una ronda de espera.
 	for _, player in players do
 		local profile = DataService.get(player)
 		if profile then
-			profile.Stats.RoundsSinceChosen = if player == chosen then 0 else (profile.Stats.RoundsSinceChosen or 0) + 1
+			profile.Stats.RoundsSinceChosen = if table.find(chosen, player) then 0 else (profile.Stats.RoundsSinceChosen or 0) + 1
 		end
 	end
-	RoundState.set("CreatureName", Creature.name(preview))
-	RoundState.set("CreatureRarity", preview.Rarity)
 	Remotes.event("HatchSequence"):FireAllClients({
 		Order = order,
-		ChosenUserId = if chosen then chosen.UserId else 0,
-		ChosenName = if chosen then chosen.DisplayName else "",
-		Genes = genes,
-		CreatureName = Creature.name(preview),
-		Rarity = preview.Rarity,
+		Picks = picks,
 		Duration = Config.Round.HatchTime,
 	})
 
@@ -154,18 +214,10 @@ local function hatch(players: { Player }, bloodMoon: boolean): (Player?, Genes.G
 			AnalyticsHelper.funnel(player, 3, "Primera eclosión")
 		end
 	end
-
-	if Rarity.tier(preview.Rarity) >= Rarity.tier("Mythic") then
-		AnnouncementService.global(string.format("¡Ha nacido una criatura %s en un servidor!", Rarity.Info[preview.Rarity].DisplayName))
-	end
-	return chosen, genes
+	return starts
 end
 
-local function awardResults(players: { Player }, result: ChaseService.ChaseResult, chosen: Player)
-	local genes = result.Genes
-	-- Si el ganador se fue justo al acabar, la criatura cuenta como escapada.
-	local winner = if result.Winner and result.Winner.Parent and genes then result.Winner else nil
-
+local function awardResults(players: { Player }, results: { ChaseService.Outcome })
 	local participants: { Rewards.Participant } = {}
 	local byKey: { [string]: Player } = {}
 	for _, player in players do
@@ -176,33 +228,41 @@ local function awardResults(players: { Player }, result: ChaseService.ChaseResul
 				Key = key,
 				Affinity = HeatService.affinity(player),
 				StealAttempts = ChaseService.stealAttempts(player),
+				Active = isActive(player),
 			})
 		end
 	end
-	local partnerKeys = {}
-	for _, partner in result.Partners do
-		table.insert(partnerKeys, tostring(partner.UserId))
+	local outcomes: { Rewards.Outcome } = {}
+	for _, result in results do
+		local partnerKeys = {}
+		for _, partner in result.Partners do
+			table.insert(partnerKeys, tostring(partner.UserId))
+		end
+		table.insert(outcomes, {
+			Winner = if result.Winner then tostring(result.Winner.UserId) else nil,
+			Partners = partnerKeys,
+			Chosen = tostring(result.Chosen.UserId),
+		})
+		local winner = result.Winner
+		if winner then
+			DataService.addStat(winner, "Wins", 1)
+			QuestService.progress(winner, "WinCreature", 1)
+			ChaseService.keepPacts(winner)
+			local preview = Creature.new("preview", result.Genes, "Hatch", os.time())
+			AnnouncementService.server(string.format("🏆 ¡%s se queda con %s!", winner.DisplayName, Creature.name(preview)), "rare")
+		else
+			AnnouncementService.server("Una criatura se escapó: nadie la tenía en su nido al acabar el tiempo.", "info")
+		end
 	end
-	local rewards = Rewards.compute(participants, if winner then tostring(winner.UserId) else nil, partnerKeys, tostring(chosen.UserId))
-
-	if winner and genes then
-		DataService.addStat(winner, "Wins", 1)
-		QuestService.progress(winner, "WinCreature", 1)
-		ChaseService.keepPacts(winner)
-		AnnouncementService.server(
-			string.format("🏆 ¡%s se queda con %s!", winner.DisplayName, tostring(RoundState.get("CreatureName") or "la criatura")),
-			"rare"
-		)
-	else
-		AnnouncementService.server("La criatura se escapó: nadie la tenía en su nido al acabar el tiempo.", "info")
-	end
+	local rewards = Rewards.compute(participants, outcomes)
 
 	for key, reward in rewards do
 		local player = byKey[key]
-		if reward.Creature and genes then
-			NestService.giveCreature(player, genes, "Hatch")
-		elseif reward.Copy and genes then
-			NestService.giveCreature(player, Genes.commonCopy(genes, rng), "Copy")
+		for _, index in reward.Won do
+			NestService.giveCreature(player, results[index].Genes, "Hatch")
+		end
+		for _, index in reward.Copies do
+			NestService.giveCreature(player, Genes.commonCopy(results[index].Genes, rng), "Copy")
 			AnnouncementService.player(player, "Tu aliado ganó: recibes tu parte del polvo y una copia común.", "quest")
 		end
 		if reward.ChosenEgg then
@@ -211,12 +271,34 @@ local function awardResults(players: { Player }, result: ChaseService.ChaseResul
 		end
 		local dust = math.floor(reward.Dust * PartyService.dustMultiplier(player))
 		DataService.addDust(player, dust)
-		if not reward.Creature then
+		if #reward.Won == 0 and dust > 0 then
 			AnnouncementService.player(player, string.format("+%d Polvo de cáscara de consuelo", dust))
+		elseif #reward.Won == 0 then
+			AnnouncementService.player(player, "Sin consuelo: no has participado en la ronda.")
 		end
 		DataService.addStat(player, "RoundsPlayed", 1)
 		QuestService.progress(player, "PlayRounds", 1)
 	end
+end
+
+-- Lluvia de brasas doradas a mitad de la incubación (GDD v2): un objetivo común en mitad de
+-- la fase más larga. HeatService multiplica el Calor de las brasas mientras dura.
+local function scheduleGoldenRain(round: number, incubation: number)
+	if Config.Round.GoldenRainSeconds <= 0 then
+		return
+	end
+	task.delay(incubation * Config.Round.GoldenRainAt, function()
+		if roundNumber ~= round or RoundState.phase() ~= "Incubation" then
+			return
+		end
+		RoundState.set("GoldenRain", true)
+		AnnouncementService.server(string.format("✨ ¡Lluvia de brasas doradas! Valen x%d durante %d s", Config.Round.GoldenRainMultiplier, Config.Round.GoldenRainSeconds), "threshold")
+		task.delay(Config.Round.GoldenRainSeconds, function()
+			if roundNumber == round then
+				RoundState.set("GoldenRain", false)
+			end
+		end)
+	end)
 end
 
 local function playRound()
@@ -226,6 +308,7 @@ local function playRound()
 	local bloodMoon = RoundService.isBloodMoon()
 	RoundState.set("BloodMoon", bloodMoon)
 	RoundState.set("LootNight", Events.isLootNight(os.time()) or Testing.enabled("ForceLootNight"))
+	RoundState.set("GoldenRain", false)
 	LootService.resetRound()
 
 	-- Preparados
@@ -233,12 +316,14 @@ local function playRound()
 	HeatService.resetRound()
 	EggService.reset(#readyPlayers())
 	RoundState.set("ChosenUserId", 0)
+	RoundState.set("ChosenUserIds", "")
 	RoundState.set("CarrierUserId", 0)
+	RoundState.set("Carriers", "")
 	local intermission = Testing.duration(Config.Round.IntermissionTime)
 	setPhase("Intermission", intermission)
 	setMood("Intermission")
 	if bloodMoon then
-		AnnouncementService.server("🌕 ¡LUNA DE SANGRE! Huevos de rareza mínima Épica y persecución de 5 minutos.", "rare")
+		AnnouncementService.server(string.format("🌕 ¡LUNA DE SANGRE! Huevos de rareza mínima Épica y persecución de %s.", secondsText(Config.Round.BloodMoonChaseTime)), "rare")
 	end
 	waitPhase(intermission)
 
@@ -247,26 +332,46 @@ local function playRound()
 	setPhase("Incubation", incubation)
 	setMood("Incubation")
 	HeatService.setActive(true)
+	scheduleGoldenRain(roundNumber, incubation)
 	waitPhase(incubation, EggService.isFull)
 	HeatService.setActive(false)
+	RoundState.set("GoldenRain", false)
 
 	local players = readyPlayers()
 	if #players == 0 then
 		return
 	end
 
-	-- Eclosión y Elección
+	-- Eclosión y Elección: una criatura por cada pocos jugadores (Economy.creatureCount).
 	setPhase("Hatch", Config.Round.HatchTime)
 	setMood("Hatch")
-	local chosen, genes = hatch(players, bloodMoon)
+	local starts = hatch(players, bloodMoon)
 	waitPhase(Config.Round.HatchTime)
 
-	-- Si el elegido se fue durante el espectáculo, se repite la Elección entre los presentes.
+	-- Si un elegido se fue durante la eclosión, su criatura va a otro jugador presente.
 	players = readyPlayers()
-	if not chosen or not chosen.Parent then
-		chosen = runElection(players)
+	local valid: { ChaseService.Start } = {}
+	for _, start in starts do
+		if start.Chosen.Parent then
+			table.insert(valid, start)
+		else
+			local taken = {}
+			for _, s in valid do
+				table.insert(taken, s.Chosen)
+			end
+			local pool = {}
+			for _, player in players do
+				if not table.find(taken, player) then
+					table.insert(pool, player)
+				end
+			end
+			local replacement = runElection(pool, 1)[1]
+			if replacement then
+				table.insert(valid, { Chosen = replacement, Genes = start.Genes })
+			end
+		end
 	end
-	if not chosen then
+	if #valid == 0 then
 		return
 	end
 
@@ -274,14 +379,28 @@ local function playRound()
 	local chaseTime = Testing.duration(if bloodMoon then Config.Round.BloodMoonChaseTime else Config.Round.ChaseTime)
 	setPhase("Chase", chaseTime)
 	setMood("Chase")
-	AnnouncementService.server(string.format("¡El huevo ha elegido a %s! Tenéis %s para robársela.", chosen.DisplayName, secondsText(math.floor(chaseTime))), "threshold")
-	ChaseService.begin(chosen, genes)
+	local names = {}
+	for _, start in valid do
+		table.insert(names, start.Chosen.DisplayName)
+	end
+	AnnouncementService.server(
+		string.format(
+			"¡El huevo ha elegido a %s! Tenéis %s para robár%s.",
+			table.concat(names, " y a "),
+			secondsText(math.floor(chaseTime)),
+			if #valid == 1 then "sela" else "selas"
+		),
+		"threshold"
+	)
+	ChaseService.begin(valid, function(player)
+		return Economy.shields(HeatService.affinity(player))
+	end)
 	if Config.Chase.HeadStartSeconds > 0 then
-		AnnouncementService.server(string.format("¡%s tiene %d s de ventaja!", chosen.DisplayName, Config.Chase.HeadStartSeconds), "info")
+		AnnouncementService.server(string.format("¡Los elegidos tienen %d s de ventaja!", Config.Chase.HeadStartSeconds), "info")
 	end
 	waitPhase(chaseTime, ChaseService.isOver)
 
-	-- Prórroga (gol de oro): si el portador no está en su nido, gana el primero que llegue.
+	-- Prórroga (gol de oro): gana el primero que meta su criatura en su nido.
 	if ChaseService.startOvertime() then
 		local overtime = Testing.duration(Config.Chase.OvertimeSeconds)
 		setPhase("Overtime", overtime)
@@ -290,12 +409,19 @@ local function playRound()
 	end
 
 	-- Resultados
-	local result = ChaseService.finish()
-	local results = Testing.duration(Config.Round.ResultsTime)
-	setPhase("Results", results)
+	local results = ChaseService.finish()
+	local resultsTime = Testing.duration(Config.Round.ResultsTime)
+	setPhase("Results", resultsTime)
 	setMood("Incubation")
-	awardResults(readyPlayers(), result, chosen)
-	waitPhase(results)
+	awardResults(readyPlayers(), results)
+	waitPhase(resultsTime)
+
+	-- Noche de Saqueo: fase propia tras los resultados (GDD v2).
+	if RoundState.get("LootNight") and Config.Events.LootNight.Enabled then
+		local loot = Testing.duration(Config.Events.LootNight.PhaseSeconds)
+		setPhase("Loot", loot)
+		waitPhase(loot)
+	end
 end
 
 function RoundService.init()
@@ -305,14 +431,27 @@ function RoundService.init()
 	RoundState.set("Phase", "Waiting")
 	RoundState.set("PhaseEndsAt", 0)
 	RoundState.set("CarrierUserId", 0)
+	RoundState.set("Carriers", "")
 	RoundState.set("ChosenUserId", 0)
+	RoundState.set("ChosenUserIds", "")
 	RoundState.set("BloodMoon", false)
+	RoundState.set("GoldenRain", false)
 	RoundState.set("ServerLuckEndsAt", 0)
 end
 
 function RoundService.start()
 	Players.PlayerAdded:Connect(function(player)
 		AnalyticsHelper.funnel(player, 1, "Entrar")
+	end)
+	Players.PlayerRemoving:Connect(function(player)
+		lastMoved[player] = nil
+		lastPosition[player] = nil
+	end)
+	task.spawn(function()
+		while true do
+			trackActivity()
+			task.wait(5)
+		end
 	end)
 
 	task.spawn(function()

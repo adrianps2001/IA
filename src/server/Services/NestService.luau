@@ -101,12 +101,39 @@ function NestService.giveCreature(player: Player, genes: Genes.GeneSet, origin: 
 end
 
 -- Muestra en el nido las criaturas que producen (hasta 12 modelos).
+-- Compañero (GDD v2): la primera favorita acompaña a su dueño en la ronda. El servidor solo
+-- publica sus genes; cada cliente dibuja el modelo (CompanionController). Solo estética.
+function NestService.updateCompanion(player: Player)
+	local profile = DataService.get(player)
+	local id = profile and profile.Favorites[1]
+	local creature = if profile and id then PlayerData.findCreature(profile, id) else nil
+	player:SetAttribute("CompanionGenes", if creature then HttpService:JSONEncode(creature.Genes) else nil)
+end
+
+-- Quita de las favoritas las criaturas que ya no tiene (liberadas, intercambiadas, saqueadas).
+function NestService.onFavoritesChanged(player: Player)
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	local valid = {}
+	for _, id in profile.Favorites do
+		if PlayerData.findCreature(profile, id) then
+			table.insert(valid, id)
+		end
+	end
+	profile.Favorites = valid
+	NestService.updateCompanion(player)
+end
+
 function NestService.refreshDisplay(player: Player)
 	local profile = DataService.get(player)
 	local nest = NestService.nestOf(player)
 	if not profile or not nest then
 		return
 	end
+	-- Cualquier cambio de criaturas pasa por aquí: mantener las favoritas al día.
+	NestService.onFavoritesChanged(player)
 	local active = Creature.sortByIncome(profile.Creatures)
 	local slots = math.min(DataService.nestSlots(player), MAX_DISPLAYED)
 	local ids = {}
@@ -406,16 +433,37 @@ local function release(player: Player, ids: any)
 	if type(ids) ~= "table" or #ids > 2 then
 		return
 	end
+	local profile = DataService.get(player)
 	local clean = {}
 	for _, id in ids do
-		if type(id) == "string" then
+		-- Las favoritas no se liberan (hay que quitarles la estrella antes).
+		if type(id) == "string" and profile and not table.find(profile.Favorites, id) then
 			table.insert(clean, id)
 		end
 	end
 	local released = releaseIds(player, clean)
 	if released == 0 then
-		AnnouncementService.player(player, "Esa criatura no se puede liberar.")
+		AnnouncementService.player(player, "Esa criatura no se puede liberar (las Secretas y las favoritas ⭐ no se liberan).")
 	end
+end
+
+-- Favoritas: marcar o desmarcar con ⭐ (como mucho Config.Favorites.Max).
+local function toggleFavorite(player: Player, id: any)
+	local profile = DataService.get(player)
+	if not profile or type(id) ~= "string" or not PlayerData.findCreature(profile, id) then
+		return
+	end
+	local index = table.find(profile.Favorites, id)
+	if index then
+		table.remove(profile.Favorites, index)
+	elseif #profile.Favorites >= Config.Favorites.Max then
+		AnnouncementService.player(player, string.format("Solo puedes tener %d favoritas. Quita la estrella a otra antes.", Config.Favorites.Max))
+		return
+	else
+		table.insert(profile.Favorites, id)
+	end
+	DataService.markChanged(player)
+	NestService.onFavoritesChanged(player)
 end
 
 local function releaseStored(player: Player)
@@ -423,7 +471,7 @@ local function releaseStored(player: Player)
 	if not profile then
 		return
 	end
-	local released = releaseIds(player, Economy.bulkReleaseIds(profile.Creatures, DataService.nestSlots(player)))
+	local released = releaseIds(player, Economy.bulkReleaseIds(profile.Creatures, DataService.nestSlots(player), profile.Favorites))
 	if released == 0 then
 		AnnouncementService.player(player, "No hay criaturas guardadas que liberar.")
 	end
@@ -497,7 +545,8 @@ local function rebirth(player: Player)
 		return
 	end
 	profile.Generation += 1
-	profile.Creatures = {}
+	-- GDD v2: las favoritas sobreviven a la Nueva generación.
+	profile.Creatures = Economy.keptOnRebirth(profile.Creatures, profile.Favorites)
 	profile.Coins = 0
 	profile.Upgrades.Nest = 0
 	player:SetAttribute("Upgrade_Nest", 0)
@@ -522,9 +571,15 @@ local function onLoaded(player: Player, profile: Profile)
 		AnnouncementService.player(player, string.format("Tu nido produjo %d Monedas mientras no estabas.", earned), "rare")
 	end
 
-	-- Primera vez: un huevo común de regalo para que el nido no empiece vacío.
+	-- Primera vez: una criatura común de regalo para que el nido no empiece vacío y un huevo
+	-- de bienvenida que nace en 2 minutos (GDD v2: el novato ve pronto el ciclo del nido).
 	if #profile.Creatures == 0 and profile.Generation == 0 and profile.Stats.RoundsPlayed == 0 then
 		NestService.giveCreature(player, Genes.rollSet(rng, "Common"), "Starter")
+		if Config.Incubator.WelcomeEggSeconds > 0 and #profile.Incubator == 0 then
+			local range = Config.EggRanges.Welcome
+			addEgg(player, "Welcome", Config.Incubator.WelcomeEggSeconds, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName)
+			AnnouncementService.player(player, "🥚 ¡Tienes un huevo de bienvenida en la incubadora! Nace en 2 minutos.", "quest")
+		end
 	end
 
 	if player.Character then
@@ -572,6 +627,7 @@ function NestService.start()
 	Remotes.event("RequestUpgrade").OnServerEvent:Connect(upgrade)
 	Remotes.event("RequestRebirth").OnServerEvent:Connect(rebirth)
 	Remotes.event("RequestRelease").OnServerEvent:Connect(release)
+	Remotes.event("ToggleFavorite").OnServerEvent:Connect(toggleFavorite)
 	Remotes.event("RequestReleaseStored").OnServerEvent:Connect(releaseStored)
 	Remotes.event("RequestBuyDecoration").OnServerEvent:Connect(buyDecoration)
 	Remotes.event("RequestBreed").OnServerEvent:Connect(function(player, idA, idB)

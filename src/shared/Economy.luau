@@ -121,7 +121,8 @@ end
 
 -- Criaturas que libera "liberar guardadas": las que no producen (fuera de las `slots`
 -- mejores) de rareza baja, empezando por las peores y sin bajar de KeepAtLeast en total.
-function Economy.bulkReleaseIds(creatures: { Creature.Creature }, slots: number): { string }
+-- Las favoritas nunca se liberan.
+function Economy.bulkReleaseIds(creatures: { Creature.Creature }, slots: number, favorites: { string }?): { string }
 	local sorted = Creature.sortByIncome(creatures)
 	local maxTier = Rarity.tier(Config.Release.BulkMaxRarity :: Rarity.RarityName)
 	local allowed = math.max(#sorted - Config.Release.KeepAtLeast, 0)
@@ -131,11 +132,23 @@ function Economy.bulkReleaseIds(creatures: { Creature.Creature }, slots: number)
 			break
 		end
 		local creature = sorted[index]
-		if Rarity.tier(creature.Rarity) <= maxTier and Economy.releaseDust(creature.Rarity) then
+		local favorite = favorites ~= nil and table.find(favorites, creature.Id) ~= nil
+		if not favorite and Rarity.tier(creature.Rarity) <= maxTier and Economy.releaseDust(creature.Rarity) then
 			table.insert(ids, creature.Id)
 		end
 	end
 	return ids
+end
+
+-- Nueva generación (GDD v2): las favoritas sobreviven; el resto del nido se vacía.
+function Economy.keptOnRebirth(creatures: { Creature.Creature }, favorites: { string }): { Creature.Creature }
+	local kept = {}
+	for _, creature in creatures do
+		if table.find(favorites, creature.Id) and #kept < Config.Favorites.Max then
+			table.insert(kept, creature)
+		end
+	end
+	return kept
 end
 
 export type Decoration = { Id: string, Name: string, Currency: string, Cost: number, Beauty: number }
@@ -173,6 +186,23 @@ function Economy.partyShare(amount: number, others: number): (number, number)
 	end
 	local each = math.floor(amount * Config.Party.HeatShare / others)
 	return amount - each * others, each
+end
+
+-- Criaturas que salen en una ronda con `players` jugadores (GDD v2). Lo que cuenta es
+-- cuántos persiguen a cada portador: se añade una criatura por cada PlayersPerCreature
+-- perseguidores, entre 1 y MaxCreatures.
+function Economy.creatureCount(players: number): number
+	local r = Config.Round
+	return math.clamp(math.ceil((players - 1) / r.PlayersPerCreature), 1, r.MaxCreatures)
+end
+
+-- Escudos de Afinidad con los que empieza la persecución quien depositó `affinity` de Calor.
+function Economy.shields(affinity: number): number
+	local s = Config.Shields
+	if not s.Enabled or s.HeatPerShield <= 0 then
+		return 0
+	end
+	return math.clamp(math.floor(affinity / s.HeatPerShield), 0, s.Max)
 end
 
 -- Polvo de cáscara de consolación según Afinidad e intentos de robo (GDD 5.5).

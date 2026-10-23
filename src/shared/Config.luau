@@ -4,20 +4,30 @@
 
 local Config = {}
 
+-- GDD v2: rondas de ~6 minutos (antes ~12) para que una sesión tenga el doble de rondas.
 Config.Round = {
-	IncubationTime = 480, -- fase de recoger Calor (s); el huevo eclosiona antes si la barra llega al 100 %
-	HatchTime = 30, -- espectáculo de eclosión y Elección
-	ChaseTime = 180, -- persecución
-	BloodMoonChaseTime = 300,
-	ResultsTime = 15,
-	IntermissionTime = 15,
+	IncubationTime = 210, -- fase de recoger Calor (s); el huevo eclosiona antes si la barra llega al 100 %
+	HatchTime = 10, -- eclosión y Elección: el foco salta entre los favoritos y se para (antes 30 s)
+	ChaseTime = 120, -- persecución
+	BloodMoonChaseTime = 180,
+	ResultsTime = 8, -- los resultados siguen en pantalla mientras empieza la siguiente ronda
+	IntermissionTime = 6,
+	-- Varias criaturas por ronda: una más por cada PlayersPerCreature perseguidores, hasta
+	-- MaxCreatures (2-6 jugadores: 1; 7-11: 2; 12 o más: 3). Con una sola criatura para 12
+	-- jugadores, el elegido solo la conservaba el 10 % de las veces.
+	PlayersPerCreature = 5,
+	MaxCreatures = 3,
+	-- Evento a mitad de la incubación: lluvia de brasas doradas (más Calor durante un rato).
+	GoldenRainAt = 0.5, -- fracción de la incubación en la que empieza
+	GoldenRainSeconds = 25,
+	GoldenRainMultiplier = 2, -- las brasas valen el doble
 	MinPlayers = 1, -- en producción, 4+; con 1 se puede probar en Studio
 	MaxPlayers = 16,
 	-- Calor para llenar la barra = BarGoalBase + BarGoalPerPlayer × jugadores. Las fuentes
 	-- son fijas, así que cada jugador extra aporta menos: por eso hay una parte fija.
 	-- Ajustado con el simulador (sim/): la barra acaba de media entre el 55 y el 70 %.
-	BarGoalBase = 6000,
-	BarGoalPerPlayer = 1150,
+	BarGoalBase = 1800, -- GDD v2: incubación de 3,5 min (antes 6000 + 1150 para 8 min)
+	BarGoalPerPlayer = 650,
 	BarGoalMin = 1200,
 }
 
@@ -33,10 +43,12 @@ Config.Heat = {
 	BagBaseCapacity = 100,
 	BagCapacityPerLevel = 100, -- nivel 10 = 1.000
 	BagMaxLevel = 10,
-	BagGamePassMultiplier = 1.5,
+	BagGamePassMultiplier = 1, -- GDD v2: ningún pase da más Calor (antes la Bolsa Grande daba 1,5)
 	DepositRadius = 20,
 	BumpDropFraction = 0.25, -- empujar a alguien con la bolsa llena le hace soltar un 25 %
-	BumpCooldown = 6,
+	BumpCooldown = 6, -- segundos de protección tras recibir un empujón
+	BumpSameTargetCooldown = 30, -- el mismo jugador no puede empujar a la misma víctima más a menudo
+	NewPlayerProtectionRounds = 5, -- en sus primeras rondas, a un novato no se le puede empujar
 	BumpRange = 9,
 	Ember = { Amount = 5, Respawn = 8, Count = 60 },
 	Firefly = { Amount = 8, Respawn = 12, Count = 20 },
@@ -49,6 +61,12 @@ Config.Election = {
 	-- Suerte acumulada: cada ronda sin ser elegido sube tu mínimo, hasta PityMaxChance.
 	PityPerRound = 0.02,
 	PityMaxChance = 0.12,
+	-- Jugadores inactivos: solo pueden ser elegidos (y cobrar consuelo) quienes depositaron
+	-- algo o se movieron en los últimos ActivitySeconds. Evita que un AFK arruine la ronda.
+	RequireActivity = true,
+	ActivitySeconds = 60,
+	-- En sus primeras NewPlayerRounds rondas, el novato tiene el mínimo máximo (PityMaxChance).
+	NewPlayerRounds = 1,
 }
 
 Config.Chase = {
@@ -61,12 +79,15 @@ Config.Chase = {
 	SprintCooldown = 8,
 	PassRange = 12,
 	DoorCloseTime = 10,
-	ShieldsPerRound = 1,
+	-- Robo por toque (GDD v2): un toque empieza un tira y afloja de StealHoldTime segundos que
+	-- el servidor cuenta mientras el ladrón siga a menos de StealRange. Con false, como antes:
+	-- hay que mantener el botón (incómodo en móvil y con todos moviéndose).
+	TapSteal = true,
 	-- Defensa en casa: dentro de su propio nido, robar al portador cuesta este múltiplo de tiempo.
 	HomeHoldMultiplier = 1.5,
 	-- Asegurar: si el portador aguanta estos segundos seguidos en su nido, gana y la
 	-- persecución termina (0 = desactivado; solo cuenta el nido al acabar el tiempo).
-	SecureSeconds = 25,
+	SecureSeconds = 30,
 	-- Territorio: durante la persecución, quien entra en un nido ajeno va a esta fracción de
 	-- velocidad, y el portador dentro de su propio nido no sufre la penalización de portador.
 	IntruderSpeedMultiplier = 0.6,
@@ -79,8 +100,33 @@ Config.Chase = {
 	StartImmunitySeconds = 10,
 	-- Prórroga (gol de oro): si al acabar el portador no está en su nido, se sigue jugando
 	-- hasta este máximo; gana el primero que meta la criatura en su nido (0 = desactivada).
-	OvertimeSeconds = 45,
+	OvertimeSeconds = 30,
 }
+
+-- Escudos de Afinidad (GDD v2): cada HeatPerShield de Calor depositado en la ronda da un
+-- escudo (hasta Max). Si te quitan la criatura teniendo un escudo, el escudo se rompe y el
+-- robo no ocurre. Así recoger Calor también ayuda en la persecución. Sustituye al Escudo
+-- de Cáscara de pago.
+Config.Shields = {
+	Enabled = true,
+	HeatPerShield = 800,
+	Max = 1,
+}
+
+-- Ladrones del bosque (GDD v2): en servidores con menos de FillTo jugadores aparecen zorros
+-- que persiguen a los portadores. Si completan el tira y afloja, la criatura cae al suelo
+-- (nunca se la quedan). Dan tensión a los servidores pequeños.
+Config.ForestThieves = {
+	Enabled = true,
+	FillTo = 6,
+	MaxCount = 3,
+	SpeedMultiplier = 0.95,
+	Reaction = 0.8, -- segundos que tardan en reaccionar a dónde va el portador
+}
+
+-- Favoritas: hasta Max criaturas marcadas con ⭐. No se pueden liberar, sobreviven a la Nueva
+-- generación y la primera te acompaña en la ronda (solo estética).
+Config.Favorites = { Max = 3 }
 
 Config.Movement = {
 	BaseWalkSpeed = 16,
@@ -123,6 +169,9 @@ Config.Incubator = {
 	FastPassMultiplier = 0.5,
 	PersonalEggCostDust = 100,
 	PersonalEggSeconds = 300,
+	-- GDD v2: al entrar por primera vez, además de la criatura de regalo, un huevo que nace
+	-- enseguida para que el novato vea pronto el ciclo del nido.
+	WelcomeEggSeconds = 120,
 }
 
 -- Tiempo de cría (s) según la rareza más alta de los padres.
@@ -142,7 +191,9 @@ Config.Breeding = {
 
 -- Escala global de precios en Monedas (mejoras, cría y Nueva generación). Es el mando
 -- principal para frenar o acelerar la progresión; se ajusta con el simulador (sim/).
-Config.PriceScale = 1
+-- GDD v2: con rondas más cortas y varias criaturas por ronda se gana unas 2,5 veces más
+-- producción por hora; con 2,5 la progresión vuelve al ritmo de antes (Nueva generación en semanas).
+Config.PriceScale = 2.5
 
 Config.Upgrades = {
 	-- Primeros niveles baratos (se compran en la primera sesión) y últimos muy caros (metas
@@ -166,7 +217,7 @@ Config.Sinks = { Release = true, Decorations = true }
 -- Liberar criaturas a cambio de Polvo de cáscara (sumidero de criaturas sobrantes).
 Config.Release = {
 	Dust = { Common = 2, Rare = 8, Epic = 30, Legendary = 120, Mythic = 500 } :: { [string]: number }, -- las Secretas no se liberan
-	BulkMaxRarity = "Common", -- "liberar guardadas" solo toca esta rareza o menos
+	BulkMaxRarity = "Rare", -- "liberar guardadas" solo toca esta rareza o menos (v2: casi no salen Comunes)
 	KeepAtLeast = 40, -- la liberación en bloque nunca baja de aquí (lo que pide la Nueva generación)
 }
 
@@ -221,7 +272,9 @@ Config.Quests = {
 
 Config.Events = {
 	-- Luna de Sangre: sábados de 20:00 a 21:00 UTC.
-	BloodMoon = { WeekDay = 7, StartHour = 20, Hours = 1, MinRarity = "Epic" },
+	-- Luna de Sangre: sábados en tres franjas (02:00, 12:00 y 20:00 UTC) para que llegue a
+	-- jugadores de todas las zonas horarias.
+	BloodMoon = { WeekDay = 7, StartHours = { 2, 12, 20 }, Hours = 1, MinRarity = "Epic" },
 	-- Noche de Saqueo: sábados y domingos de 21:00 a 23:00 UTC. Durante la Incubación se
 	-- puede saquear una criatura expuesta en un nido ajeno si su dueño no está dentro.
 	-- Con OwnerLoses = false (versión prudente) el dueño no pierde nada: el ladrón se lleva
@@ -236,6 +289,9 @@ Config.Events = {
 		PerRound = 1, -- saqueos por jugador y ronda
 		NestCooldown = 90, -- segundos que un nido queda protegido tras un saqueo
 		OwnerLoses = false,
+		-- GDD v2: el saqueo es una fase propia de PhaseSeconds tras los resultados, en vez de
+		-- competir con la incubación (antes había que elegir entre recoger Calor o vigilar).
+		PhaseSeconds = 60,
 	},
 	-- Huevo Comunitario: todos los servidores llenan una barra global cada mes. Al llenarse,
 	-- quien haya aportado al menos MinContribution recibe la criatura conmemorativa del mes
@@ -251,7 +307,7 @@ Config.Events = {
 
 -- IDs reales de Roblox: sustituir los 0 tras crear los pases y productos en el Creator Hub.
 Config.GamePasses = {
-	BigBag = 0,
+	EmberTrail = 0, -- estela de brasas (estética). Sustituye a la Bolsa Grande (+50 % de Calor)
 	VipNest = 0,
 	AutoDeposit = 0,
 	DoubleCoins = 0,
@@ -262,7 +318,6 @@ Config.GamePasses = {
 Config.DevProducts = {
 	ServerLuck = 0,
 	GoldenOffering = 0,
-	ShellShield = 0,
 	BreedReroll = 0,
 	SeasonEgg = 0,
 	CoinsSmall = 0,
@@ -278,6 +333,7 @@ Config.EggRanges = {
 	Streak = { Min = "Rare", Max = "Legendary" },
 	Season = { Min = "Rare", Max = "Legendary" },
 	Chosen = { Min = "Rare", Max = "Epic" }, -- premio al elegido que pierde
+	Welcome = { Min = "Common", Max = "Rare" }, -- huevo de bienvenida
 }
 
 Config.ServerLuck = { Seconds = 15 * 60, Luck = 2 }

@@ -10,6 +10,7 @@ local Config = require(Shared.Config)
 local Economy = require(Shared.Economy)
 local Genes = require(Shared.Genes)
 local MapLayout = require(Shared.MapLayout)
+local RoundState = require(Shared.RoundState)
 
 local AnalyticsHelper = require(script.Parent.Parent.Util.Analytics)
 local AnnouncementService = require(script.Parent.AnnouncementService)
@@ -65,7 +66,8 @@ end
 function HeatService.capacity(player: Player): number
 	local profile = DataService.get(player)
 	local level = if profile then profile.Upgrades.Bag else 0
-	return Economy.bagCapacity(level, MonetizationService.hasPass(player, "BigBag"))
+	-- GDD v2: ningún pase da más capacidad (la antigua Bolsa Grande era pagar por ganar).
+	return Economy.bagCapacity(level, false)
 end
 
 local function sync(player: Player)
@@ -202,15 +204,29 @@ local function spawnSource(
 	return p
 end
 
+local EMBER_COLOR = Color3.fromRGB(255, 120, 30)
+local GOLDEN_COLOR = Color3.fromRGB(255, 215, 60)
+local embers: { Part } = {}
+
 local function spawnEmbers()
 	local def = Config.Heat.Ember
 	for _ = 1, def.Count do
-		spawnSource("Ember", Color3.fromRGB(255, 120, 30), Vector3.new(1.4, 1.4, 1.4), Enum.PartType.Ball, function()
+		local ember = spawnSource("Ember", EMBER_COLOR, Vector3.new(1.4, 1.4, 1.4), Enum.PartType.Ball, function()
 			return MapService.randomGroundPoint(MapLayout.SourceRing.Min, MapLayout.SourceRing.Max)
 		end, def.Respawn, function(player)
-			return HeatService.give(player, def.Amount) > 0
+			-- Lluvia de brasas doradas (RoundService): valen más durante un rato.
+			local amount = def.Amount * (if RoundState.get("GoldenRain") then Config.Round.GoldenRainMultiplier else 1)
+			return HeatService.give(player, amount) > 0
 		end)
+		table.insert(embers, ember)
 	end
+	RoundState.changed("GoldenRain"):Connect(function()
+		local golden = RoundState.get("GoldenRain") == true
+		for _, ember in embers do
+			ember.Color = if golden then GOLDEN_COLOR else EMBER_COLOR
+			ember.Material = if golden then Enum.Material.Neon else ember.Material
+		end
+	end)
 end
 
 local function spawnFireflies()
@@ -386,6 +402,15 @@ local function dropEmbers(position: Vector3, amount: number)
 	end
 end
 
+-- Quién empujó a quién y cuándo (para no acosar siempre a la misma víctima).
+local bumpedPairs: { [Player]: { [Player]: number } } = {}
+
+-- Los novatos no pueden ser empujados en sus primeras rondas.
+local function isProtected(player: Player): boolean
+	local profile = DataService.get(player)
+	return profile ~= nil and (profile.Stats.RoundsPlayed or 0) < Config.Heat.NewPlayerProtectionRounds
+end
+
 local function setupBumpPrompt(player: Player, character: Model)
 	local root = character:WaitForChild("HumanoidRootPart", 10)
 	if not root then
@@ -412,6 +437,18 @@ local function setupBumpPrompt(player: Player, character: Model)
 		if now - victim.LastBumped < Config.Heat.BumpCooldown or victim.Heat < HeatService.capacity(player) then
 			return
 		end
+		-- GDD v2: protección de novatos y no acosar siempre a la misma persona.
+		if isProtected(player) then
+			AnnouncementService.player(bumper, player.DisplayName .. " es nuevo: todavía no se le puede empujar.")
+			return
+		end
+		local victims = bumpedPairs[bumper]
+		if victims and now - (victims[player] or -math.huge) < Config.Heat.BumpSameTargetCooldown then
+			AnnouncementService.player(bumper, "Ya has empujado a " .. player.DisplayName .. " hace poco.")
+			return
+		end
+		bumpedPairs[bumper] = victims or {}
+		bumpedPairs[bumper][player] = now
 		local bumperRoot = rootOf(bumper)
 		local victimRoot = rootOf(player)
 		if not bumperRoot or not victimRoot or (bumperRoot.Position - victimRoot.Position).Magnitude > Config.Heat.BumpRange + 3 then
@@ -427,7 +464,7 @@ local function setupBumpPrompt(player: Player, character: Model)
 	end)
 
 	player:GetAttributeChangedSignal("BagFull"):Connect(function()
-		prompt.Enabled = player:GetAttribute("BagFull") == true and active
+		prompt.Enabled = player:GetAttribute("BagFull") == true and active and not isProtected(player)
 	end)
 end
 
@@ -440,7 +477,7 @@ function HeatService.setActive(value: boolean)
 		local root = character and character:FindFirstChild("HumanoidRootPart")
 		local prompt = root and root:FindFirstChild("BumpPrompt")
 		if prompt and prompt:IsA("ProximityPrompt") then
-			prompt.Enabled = value and player:GetAttribute("BagFull") == true
+			prompt.Enabled = value and player:GetAttribute("BagFull") == true and not isProtected(player)
 		end
 	end
 	local depositPrompt = MapService.Egg:FindFirstChild("DepositPrompt")
@@ -505,6 +542,10 @@ function HeatService.start()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		states[player] = nil
+		bumpedPairs[player] = nil
+		for _, victims in bumpedPairs do
+			victims[player] = nil
+		end
 	end)
 
 	-- Pase Auto-Depósito y refresco de capacidad tras mejorar la bolsa.
