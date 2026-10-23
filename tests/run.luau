@@ -810,6 +810,44 @@ test("los sonidos están equilibrados (ninguno satura ni desaparece)", function(
 	expect(Sounds.Catalog.Steal.Volume > Sounds.Catalog.StepSoft.Volume * 3)
 end)
 
+test("los nidos del lobby no se solapan con sus vecinos", function()
+	local lobby = Config.Lobby
+	local radius = MapLayout.lobbyNestRadius()
+	local half = lobby.NestSize / 2 + 1
+	-- Esquinas de un nido (cuadrado mirando a la plaza) en el ángulo dado.
+	local function corners(angle: number): { { number } }
+		local cx, cz = math.cos(angle) * radius, math.sin(angle) * radius
+		local fx, fz = -math.cos(angle), -math.sin(angle) -- hacia la plaza
+		local rx, rz = -fz, fx
+		local out = {}
+		for _, s in { { 1, 1 }, { 1, -1 }, { -1, -1 }, { -1, 1 } } do
+			table.insert(out, { cx + (fx * s[1] + rx * s[2]) * half, cz + (fz * s[1] + rz * s[2]) * half })
+		end
+		return out
+	end
+	-- Distancia mínima entre los bordes de dos cuadrados (que no se cruzan): la menor distancia
+	-- de una esquina de uno a un lado del otro.
+	local function pointSegment(p: { number }, a: { number }, b: { number }): number
+		local abx, abz = b[1] - a[1], b[2] - a[2]
+		local t = math.clamp(((p[1] - a[1]) * abx + (p[2] - a[2]) * abz) / (abx * abx + abz * abz), 0, 1)
+		local dx, dz = p[1] - (a[1] + abx * t), p[2] - (a[2] + abz * t)
+		return math.sqrt(dx * dx + dz * dz)
+	end
+	local function gap(a: { { number } }, b: { { number } }): number
+		local best = math.huge
+		for _, pair in { { a, b }, { b, a } } do
+			for _, p in pair[1] do
+				for i = 1, 4 do
+					best = math.min(best, pointSegment(p, pair[2][i], pair[2][i % 4 + 1]))
+				end
+			end
+		end
+		return best
+	end
+	local step = 2 * math.pi / lobby.NestCount
+	expect(gap(corners(step), corners(2 * step)) >= lobby.NestGap - 0.01, "los nidos vecinos se tocan")
+end)
+
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))
 if failed > 0 then
 	error("hay pruebas fallidas")

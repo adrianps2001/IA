@@ -74,6 +74,7 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 
 ### Lobby
 - [ ] Apareces en **tu nido del lobby**, en la entrada, mirando a tus criaturas. El cartel del arco dice "Nido de …".
+- [ ] Los nidos no se tocan entre sí: entre las vallas de dos nidos vecinos queda un hueco (antes se solapaban por los laterales).
 - [ ] Los podios y la valla no parpadean al moverte (antes había piezas solapadas). Tus criaturas están en los **pedestales**, con su placa (nombre, rareza, producción) y el aro del color de la rareza (dorado si es favorita). Dan saltitos.
 - [ ] Primera vez (sin datos guardados): una criatura de regalo y un **huevo de bienvenida** que nace en 2 minutos. El huevo del cuenco del nido **brilla** cuando está listo.
 - [ ] El botón 🥚 **Nido** abre el panel: criaturas, incubadora, mejoras, decorar, misiones y tienda.

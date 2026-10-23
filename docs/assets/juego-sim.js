@@ -272,7 +272,6 @@
       if (!goal && S.markers.length) { var m = S.markers[S.markers.length - 1]; goal = { x: m.x, z: m.z }; }
       if (!goal && p.know) goal = p.know;
       if (!goal) { if (!p.wander || dist(p, p.wander) < 4) p.wander = { x: rnd(-110, 110), z: rnd(-110, 110) }; goal = p.wander; }
-      if (goal.c && gd < 40 && p.sprintReady <= 0) { p.sprint = CH.SprintDuration; p.sprintReady = CH.SprintCooldown; }
       var left = moveTo(p, goal.x, goal.z, dt, mult);
       if (!goal.c && left < 3) { p.know = null; if (S.markers.length && dist(p, S.markers[S.markers.length - 1]) < 4) S.markers.pop(); }
       // Recoger una criatura del suelo

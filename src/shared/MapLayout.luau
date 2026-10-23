@@ -87,4 +87,16 @@ function MapLayout.randomNear(rng: () -> number, center: Point, spread: number):
 	return { X = center.X + (rng() * 2 - 1) * spread, Z = center.Z + (rng() * 2 - 1) * spread }
 end
 
+-- Distancia de los nidos del lobby al centro de la plaza. Los nidos son cuadrados en círculo, así
+-- que donde más se acercan es en sus esquinas de dentro: se aleja el círculo hasta que entre dos
+-- vecinos quede al menos Config.Lobby.NestGap (antes, con 24 nidos a 120 studs, se solapaban).
+function MapLayout.lobbyNestRadius(): number
+	local lobby = Config.Lobby
+	local half = lobby.NestSize / 2 + 1 -- con el borde de piedra
+	local step = math.pi / lobby.NestCount -- media separación angular entre dos nidos
+	-- La esquina de dentro tiene que quedar a NestGap/2 de la bisectriz entre los dos nidos.
+	local needed = half + (lobby.NestGap / 2 + half * math.cos(step)) / math.sin(step)
+	return math.max(lobby.NestRadius, needed)
+end
+
 return MapLayout

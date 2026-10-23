@@ -15,7 +15,7 @@ El diseño completo está en [`docs/GDD.md`](docs/GDD.md) (**versión 3**: la se
 
 Los mapas (el lobby con 24 nidos y la arena con el huevo, 16 campamentos y el parkour) se generan por código al arrancar el servidor, así que no hace falta ningún archivo de mapa. En Studio el lobby y la arena están en el mismo servidor; para publicar los dos lugares, mira el final de [`docs/PRUEBAS.md`](docs/PRUEBAS.md).
 
-**Último trabajo, decisiones a revisar y siguiente repaso de mejoras:** [`docs/REVISION.md`](docs/REVISION.md).
+**Último trabajo, decisiones a revisar y siguiente repaso de mejoras:** [`docs/REVISION.md`](docs/REVISION.md). **Todo lo que falta para salir al mercado** (programar, configurar en Roblox, arte y lo que hay que comprobar): [`docs/LANZAMIENTO.md`](docs/LANZAMIENTO.md).
 
 **Modo de prueba en Studio:** los jugadores Player2, Player3... juegan solos con un **piloto automático** (F8 lo activa o desactiva) y **F7** abre un panel de depuración (jugar ya, saltar fase, llenar la barra, ser el portador, dar monedas o criaturas). En Studio las fases duran el 35 % (`Config.Testing.TimeScale`). Nada de esto funciona fuera de Studio. La guía y la lista de comprobación están en [`docs/PRUEBAS.md`](docs/PRUEBAS.md).
 
