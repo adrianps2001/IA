@@ -5,3 +5,4 @@ sourcemap.json
 *.rbxm
 *.rbxmx
 globalTypes.d.luau
+__pycache__/

@@ -1,6 +1,8 @@
 --!strict
--- Reglas de la persecución (GDD 5.4) sin dependencias de Roblox: las usan ChaseService y el
+-- Reglas de la persecución (GDD 5.4, v3) sin dependencias de Roblox: las usan ChaseService y el
 -- simulador de bots, así ambos aplican exactamente las mismas condiciones.
+-- v3: ya no hay que llevar la criatura al nido. Gana quien la tenga al acabar el tiempo, y el
+-- portador solo se ve a distancia cuando "da la señal" (cada pocos segundos y al final).
 
 local Config = require("./Config")
 
@@ -13,24 +15,18 @@ ChaseRules.HoldTolerance = 0.15
 -- Margen de distancia sobre el alcance del prompt (el portador se sigue moviendo).
 ChaseRules.DistanceTolerance = 3
 
--- Segundos que hay que mantener el botón; más si el portador está dentro de su nido.
-function ChaseRules.holdTime(carrierAtHome: boolean): number
-	return Config.Chase.StealHoldTime * (if carrierAtHome then Config.Chase.HomeHoldMultiplier else 1)
+-- Segundos que el ladrón tiene que aguantar cerca del portador.
+function ChaseRules.holdTime(): number
+	return Config.Chase.StealHoldTime
 end
 
--- ¿Es válido un robo? holdStartedAt es cuándo empezó a mantener el botón (medido por el
+-- ¿Es válido un robo? holdStartedAt es cuándo empezó el tira y afloja (medido por el
 -- servidor), immuneUntil hasta cuándo es inmune el portador y distance la separación actual.
-function ChaseRules.canSteal(
-	now: number,
-	holdStartedAt: number?,
-	immuneUntil: number,
-	distance: number,
-	carrierAtHome: boolean?
-): StealCheck
+function ChaseRules.canSteal(now: number, holdStartedAt: number?, immuneUntil: number, distance: number): StealCheck
 	if not holdStartedAt then
 		return "noHold"
 	end
-	if now - holdStartedAt < ChaseRules.holdTime(carrierAtHome == true) - ChaseRules.HoldTolerance then
+	if now - holdStartedAt < ChaseRules.holdTime() - ChaseRules.HoldTolerance then
 		return "tooShort"
 	end
 	if now < immuneUntil then
@@ -42,19 +38,28 @@ function ChaseRules.canSteal(
 	return "ok"
 end
 
--- El portador gana solo si al acabar el tiempo está dentro de su propio nido.
-function ChaseRules.carrierWins(insideOwnNest: boolean): boolean
-	return insideOwnNest
+-- Señal del portador: cada RevealEvery segundos, durante RevealSeconds, todos ven dónde está
+-- (a través de los árboles). En los últimos FinalRevealSeconds se le ve todo el rato.
+-- elapsed = segundos desde que empezó la persecución; remaining = segundos que quedan.
+function ChaseRules.isRevealed(elapsed: number, remaining: number): boolean
+	local c = Config.Chase
+	if remaining <= c.FinalRevealSeconds then
+		return true
+	end
+	if c.RevealEvery <= 0 then
+		return true
+	end
+	return elapsed % c.RevealEvery >= c.RevealEvery - c.RevealSeconds
 end
 
--- Durante la prórroga, entrar en el propio nido con la criatura da la victoria al instante.
-function ChaseRules.overtimeWin(inOvertime: boolean, insideOwnNest: boolean): boolean
-	return inOvertime and insideOwnNest
-end
-
--- ¿Ha asegurado ya la criatura? homeSeconds = segundos seguidos dentro de su nido.
-function ChaseRules.isSecured(homeSeconds: number): boolean
-	return Config.Chase.SecureSeconds > 0 and homeSeconds >= Config.Chase.SecureSeconds
+-- Segundos hasta la próxima señal (0 si ya se le ve).
+function ChaseRules.nextReveal(elapsed: number, remaining: number): number
+	if ChaseRules.isRevealed(elapsed, remaining) then
+		return 0
+	end
+	local c = Config.Chase
+	local untilCycle = c.RevealEvery - c.RevealSeconds - elapsed % c.RevealEvery
+	return math.min(untilCycle, remaining - c.FinalRevealSeconds)
 end
 
 return ChaseRules

@@ -1,6 +1,7 @@
 --!strict
 -- Pruebas de la lógica pura (sin Roblox). Ejecutar con: luau tests/run.luau
 
+local ArenaLayout = require("../src/shared/ArenaLayout")
 local ChaseRules = require("../src/shared/ChaseRules")
 local Config = require("../src/shared/Config")
 local Creature = require("../src/shared/Creature")
@@ -257,7 +258,7 @@ end)
 
 test("Economy: velocidades de persecución", function()
 	expect(near(Economy.walkSpeed(0, false, false), 16))
-	expect(near(Economy.walkSpeed(0, true, false), 16 * 0.9))
+	expect(near(Economy.walkSpeed(0, true, false), 16 * Config.Chase.CarrierSpeedMultiplier))
 	expect(near(Economy.walkSpeed(10, false, false), 16 * 1.1))
 	expect(near(Economy.walkSpeed(99, false, false), 16 * 1.1))
 end)
@@ -364,30 +365,86 @@ test("ChaseRules.canSteal valida pulsación, inmunidad y distancia", function()
 	expect(ChaseRules.canSteal(10, 10 - hold, 0, 2) == "ok")
 end)
 
-test("ChaseRules: defensa en casa, asegurar y prórroga", function()
-	local hold = Config.Chase.StealHoldTime
-	expect(near(ChaseRules.holdTime(false), hold))
-	expect(near(ChaseRules.holdTime(true), hold * Config.Chase.HomeHoldMultiplier))
-	-- En casa, la pulsación normal no basta si el multiplicador es mayor que 1.
-	if Config.Chase.HomeHoldMultiplier > 1.2 then
-		expect(ChaseRules.canSteal(10, 10 - hold, 0, 2, true) == "tooShort")
+test("ChaseRules: señal del portador cada pocos segundos y al final", function()
+	local c = Config.Chase
+	local total = 120
+	local revealedTime, transitions = 0, 0
+	local previous = false
+	local step = 0.1
+	for i = 0, total / step - 1 do
+		local elapsed = i * step
+		local value = ChaseRules.isRevealed(elapsed, total - elapsed)
+		if value then
+			revealedTime += step
+		end
+		if value ~= previous then
+			transitions += 1
+		end
+		previous = value
+		if not value then
+			local wait = ChaseRules.nextReveal(elapsed, total - elapsed)
+			expect(wait > 0 and wait <= c.RevealEvery, "la próxima señal llega dentro de un ciclo")
+			expect(ChaseRules.isRevealed(elapsed + wait + 0.01, total - elapsed - wait - 0.01), "y llega cuando dice")
+		else
+			expect(ChaseRules.nextReveal(elapsed, total - elapsed) == 0)
+		end
 	end
-	expect(ChaseRules.canSteal(10, 10 - ChaseRules.holdTime(true), 0, 2, true) == "ok")
-	if Config.Chase.SecureSeconds > 0 then
-		expect(not ChaseRules.isSecured(Config.Chase.SecureSeconds - 1))
-		expect(ChaseRules.isSecured(Config.Chase.SecureSeconds))
-	end
-	expect(ChaseRules.overtimeWin(true, true) and not ChaseRules.overtimeWin(false, true) and not ChaseRules.overtimeWin(true, false))
+	-- Se le ve una parte del tiempo (RevealSeconds de cada RevealEvery) más el final entero.
+	local expected = (total - c.FinalRevealSeconds) * c.RevealSeconds / c.RevealEvery + c.FinalRevealSeconds
+	expect(math.abs(revealedTime - expected) < c.RevealEvery, string.format("visible %.1f s (esperado ~%.1f)", revealedTime, expected))
+	expect(transitions >= 2 * math.floor((total - c.FinalRevealSeconds) / c.RevealEvery), "parpadea muchas veces")
+	expect(ChaseRules.isRevealed(total - 1, 1), "al final se le ve siempre")
+	expect(not ChaseRules.isRevealed(0, total), "al empezar está escondido")
+	expect(near(ChaseRules.holdTime(), c.StealHoldTime))
 end)
 
-test("Economy: territorio y meta de la barra", function()
-	local base = Economy.walkSpeed(0, false, false)
-	expect(near(Economy.walkSpeed(0, false, false, false, true), base * Config.Chase.IntruderSpeedMultiplier))
-	if Config.Chase.HomeCarrierFullSpeed then
-		expect(near(Economy.walkSpeed(0, true, false, true, false), base))
-	end
+test("Economy: meta de la barra", function()
 	expect(Economy.barGoal(12) == math.max(Config.Round.BarGoalMin, Config.Round.BarGoalBase + 12 * Config.Round.BarGoalPerPlayer))
 	expect(Economy.barGoal(16) > Economy.barGoal(4))
+end)
+
+test("ArenaLayout: árboles sin solaparse, rampas que llegan arriba y enlaces cortos de saltar", function()
+	local arena = ArenaLayout.get()
+	expect(#arena.Trees == 12 and #arena.Links > 12 and #arena.Rides == 8)
+	for i, a in arena.Trees do
+		-- Lejos del claro del huevo y de los nidos.
+		local d = math.sqrt(a.X * a.X + a.Z * a.Z)
+		expect(d - ArenaLayout.rampRadius(a) > MapLayout.ClearingRadius + 10, "el claro del huevo sigue igual")
+		expect(d + ArenaLayout.rampRadius(a) < MapLayout.NestRadius - 6, "no pisa los nidos")
+		for j, b in arena.Trees do
+			if i < j then
+				local dist = math.sqrt((a.X - b.X) ^ 2 + (a.Z - b.Z) ^ 2)
+				expect(dist > ArenaLayout.rampRadius(a) + ArenaLayout.rampRadius(b) + 3, "árboles separados")
+			end
+		end
+		if a.Ramp then
+			local points = ArenaLayout.rampPoints(a)
+			expect(near(points[#points].Y, a.Decks[#a.Decks], 1e-6), "la rampa acaba en la plataforma de arriba")
+			for k = 2, #points do
+				local p, q = points[k - 1], points[k]
+				local run = math.sqrt((p.X - q.X) ^ 2 + (p.Z - q.Z) ^ 2)
+				expect((q.Y - p.Y) / run < math.tan(math.rad(30)), "pendiente que se sube andando")
+			end
+		else
+			expect(a.Ladder, "si no hay rampa, hay escalera")
+		end
+	end
+	for _, link in arena.Links do
+		if link.Kind == "Stones" then
+			local a, b = ArenaLayout.linkEnds(arena, link)
+			local points = ArenaLayout.stonePoints(arena, link)
+			local previous = a
+			table.insert(points, b)
+			for _, p in points do
+				-- Un salto normal (JumpPower 50, 16 studs/s) cubre ~8 studs y sube ~7.
+				local gap = math.sqrt((p.X - previous.X) ^ 2 + (p.Z - previous.Z) ^ 2) - 4
+				expect(gap < 6, "piedras a distancia de salto")
+				expect(p.Y - previous.Y < 4, "sin escalones imposibles")
+				previous = p
+			end
+		end
+	end
+	expect(#ArenaLayout.deckSpots() > 0)
 end)
 
 test("Rewards: ganador, aliado y consolación", function()

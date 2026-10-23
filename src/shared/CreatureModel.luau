@@ -1,66 +1,76 @@
 --!strict
 -- Ensambla el modelo 3D de una criatura a partir de sus genes (GDD 8: criaturas modulares).
--- Solo piezas primitivas: barato en móvil y miles de combinaciones con poco arte.
+-- El aspecto está en CreatureStyles (GDD v3): se elige con Config.Creatures.Style
+-- ("Chibi" por defecto, "Classic" las de la v1). Cambiar de estilo no toca nada más.
+--
+-- Modelos de un artista: si existe ReplicatedStorage.CreatureArt con un Model llamado como el
+-- gen de cuerpo (body_round, body_lava...) o "Default", se usa una copia de ese modelo:
+-- * debe tener PrimaryPart (el cuerpo) y mirar hacia -Z;
+-- * las piezas llamadas "Body" se tiñen con el color del cuerpo, "Accent" con el de la
+--   cabeza y "Pattern" con el del patrón.
+-- Lo común (aura, luz, mutaciones, etiqueta) se añade igual a cualquier estilo.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(script.Parent.Config)
 local Creature = require(script.Parent.Creature)
 local Genes = require(script.Parent.Genes)
 local Rarity = require(script.Parent.Rarity)
+local Parts = require(script.Parent.CreatureStyles.Parts)
+
+type Style = { build: (Model, Genes.GeneSet, number, Color3) -> BasePart }
+
+local STYLES: { [string]: Style } = {
+	Chibi = require(script.Parent.CreatureStyles.Chibi) :: Style,
+	Classic = require(script.Parent.CreatureStyles.Classic) :: Style,
+}
+
+export type Options = {
+	Label: boolean?, -- etiqueta flotante con nombre y rareza (por defecto, sí)
+}
 
 local CreatureModel = {}
 
-local function rgb(color: { number }): Color3
-	return Color3.fromRGB(color[1], color[2], color[3])
-end
-
-local function part(name: string, shape: Enum.PartType, size: Vector3, color: Color3, parent: Instance): Part
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Shape = shape
-	p.Size = size
-	p.Color = color
-	p.Material = Enum.Material.SmoothPlastic
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.CanCollide = false
-	p.CanQuery = false
-	p.CanTouch = false
-	p.Massless = true
-	p.Anchored = true
-	p.Parent = parent
-	return p
-end
-
-local BODY_SHAPES: { [string]: Vector3 } = {
-	body_round = Vector3.new(3, 3, 3),
-	body_chubby = Vector3.new(3.6, 3, 3.6),
-	body_long = Vector3.new(2.4, 2.4, 4),
-	body_tiny = Vector3.new(2.2, 2.2, 2.2),
-	body_fluffy = Vector3.new(3.4, 3.2, 3.4),
-	body_crystal = Vector3.new(2.8, 3.4, 2.8),
-	body_lava = Vector3.new(3.2, 3, 3.2),
-	body_jelly = Vector3.new(3.4, 2.6, 3.4),
-	body_stone = Vector3.new(3.4, 3.4, 3.4),
-	body_cloud = Vector3.new(4, 2.6, 3.4),
-	body_star = Vector3.new(3.2, 3.2, 3.2),
-	body_void = Vector3.new(3.2, 3.2, 3.2),
-}
-
-local BODY_MATERIALS: { [string]: Enum.Material } = {
-	body_crystal = Enum.Material.Glass,
-	body_lava = Enum.Material.Neon,
-	body_jelly = Enum.Material.Glass,
-	body_stone = Enum.Material.Slate,
-	body_star = Enum.Material.Neon,
-	body_void = Enum.Material.Neon,
-}
-
--- Devuelve un modelo anclado con PrimaryPart "Body". scale permite miniaturas.
-function CreatureModel.build(creature: Creature.Creature, scale: number?): Model
-	local s = scale or 1
-	local genes = creature.Genes
-	local body = Genes.get(genes.Body)
+local function fromArt(model: Model, genes: Genes.GeneSet, s: number, bodyColor: Color3): BasePart?
+	local folder = ReplicatedStorage:FindFirstChild("CreatureArt")
+	local template = folder and (folder:FindFirstChild(genes.Body) or folder:FindFirstChild("Default"))
+	if not template or not template:IsA("Model") or not template.PrimaryPart then
+		return nil
+	end
+	local copy = template:Clone()
+	copy:ScaleTo(copy:GetScale() * s)
 	local head = Genes.get(genes.Head)
 	local pattern = Genes.get(genes.Pattern)
+	for _, descendant in copy:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanQuery = false
+			descendant.CanTouch = false
+			descendant.Massless = true
+			if descendant.Name == "Body" then
+				descendant.Color = bodyColor
+			elseif descendant.Name == "Accent" and head then
+				descendant.Color = Parts.rgb(head.Color)
+			elseif descendant.Name == "Pattern" and pattern then
+				descendant.Color = Parts.rgb(pattern.Color)
+			end
+		end
+	end
+	local body = copy.PrimaryPart :: BasePart
+	for _, child in copy:GetChildren() do
+		child.Parent = model
+	end
+	copy:Destroy()
+	model.PrimaryPart = body
+	return body
+end
+
+-- Devuelve un modelo anclado con PrimaryPart "Body". scale permite miniaturas.
+function CreatureModel.build(creature: Creature.Creature, scale: number?, options: Options?): Model
+	local s = scale or 1
+	local genes = creature.Genes
+	local bodyGene = Genes.get(genes.Body)
 	local aura = Genes.get(genes.Aura)
 	local mutation = genes.Mutation
 
@@ -70,94 +80,45 @@ function CreatureModel.build(creature: Creature.Creature, scale: number?): Model
 	local model = Instance.new("Model")
 	model.Name = Creature.name(creature)
 
-	local bodyColor = if body then rgb(body.Color) else Color3.new(1, 1, 1)
+	local bodyColor = if bodyGene then Parts.rgb(bodyGene.Color) else Color3.new(1, 1, 1)
 	if mutation == "mut_golden" then
 		bodyColor = Color3.fromRGB(255, 200, 40)
 	elseif mutation == "mut_inverted" then
 		bodyColor = Color3.new(1 - bodyColor.R, 1 - bodyColor.G, 1 - bodyColor.B)
 	end
 
-	-- Una pieza Ball siempre es una esfera perfecta; para las formas alargadas se usa un
-	-- bloque con malla esférica, que se estira con el tamaño (igual que el huevo gigante).
-	local bodyPart = part("Body", Enum.PartType.Block, (BODY_SHAPES[genes.Body] or Vector3.new(3, 3, 3)) * s, bodyColor, model)
-	local bodyMesh = Instance.new("SpecialMesh")
-	bodyMesh.MeshType = Enum.MeshType.Sphere
-	bodyMesh.Parent = bodyPart
-	bodyPart.Material = BODY_MATERIALS[genes.Body] or Enum.Material.SmoothPlastic
-	model.PrimaryPart = bodyPart
-
-	local headSize = 2 * s
-	local headPart = part("Head", Enum.PartType.Ball, Vector3.new(headSize, headSize, headSize), bodyColor, model)
-	headPart.CFrame = bodyPart.CFrame * CFrame.new(0, bodyPart.Size.Y * 0.45, -bodyPart.Size.Z * 0.35)
-	headPart.Material = bodyPart.Material
-
-	-- Ojos
-	for _, side in { -1, 1 } do
-		local eye = part("Eye", Enum.PartType.Ball, Vector3.new(0.45, 0.45, 0.45) * s, Color3.new(0.05, 0.05, 0.05), model)
-		eye.CFrame = headPart.CFrame * CFrame.new(side * 0.45 * s, 0.2 * s, -headSize * 0.45)
-		if genes.Head == "head_cyclops" and side == 1 then
-			eye:Destroy()
-		end
+	local bodyPart = fromArt(model, genes, s, bodyColor)
+	if not bodyPart then
+		local style = STYLES[Config.Creatures.Style] or STYLES.Chibi
+		bodyPart = style.build(model, genes, s, bodyColor)
 	end
-
-	-- Rasgo de la cabeza: una pieza con el color del gen.
-	if head then
-		local crest = part("Crest", Enum.PartType.Block, Vector3.new(0.6, 0.6, 0.9) * s, rgb(head.Color), model)
-		if genes.Head == "head_beak" then
-			crest.CFrame = headPart.CFrame * CFrame.new(0, -0.1 * s, -headSize * 0.6)
-		elseif genes.Head == "head_halo" then
-			crest.Shape = Enum.PartType.Cylinder
-			crest.Size = Vector3.new(0.15, 2.2, 2.2) * s
-			crest.Material = Enum.Material.Neon
-			crest.CFrame = headPart.CFrame * CFrame.new(0, headSize * 0.8, 0) * CFrame.Angles(0, 0, math.rad(90))
-		else
-			crest.Size = Vector3.new(0.5, 1.1, 0.5) * s
-			crest.CFrame = headPart.CFrame * CFrame.new(0, headSize * 0.6, 0)
-		end
-		if Rarity.tier(head.Rarity) >= 4 then
-			crest.Material = Enum.Material.Neon
-		end
-	end
-
-	-- Patrón: manchas del color del gen sobre el cuerpo.
-	if pattern and pattern.Id ~= "pattern_plain" then
-		local spots = 3 + Rarity.tier(pattern.Rarity)
-		for i = 1, spots do
-			local angle = (i / spots) * math.pi * 2
-			local spot = part("Pattern", Enum.PartType.Ball, Vector3.new(0.9, 0.9, 0.9) * s, rgb(pattern.Color), model)
-			spot.CFrame = bodyPart.CFrame
-				* CFrame.Angles(0, angle, 0)
-				* CFrame.new(0, (i % 2 - 0.5) * 0.6 * s, bodyPart.Size.X * 0.42)
-			if Rarity.tier(pattern.Rarity) >= 4 then
-				spot.Material = Enum.Material.Neon
-			end
-		end
-	end
+	local body = bodyPart :: BasePart
+	model.PrimaryPart = body
 
 	-- Aura: partículas del color del gen.
 	if aura and aura.Id ~= "aura_none" then
 		local emitter = Instance.new("ParticleEmitter")
-		emitter.Color = ColorSequence.new(rgb(aura.Color))
+		emitter.Color = ColorSequence.new(Parts.rgb(aura.Color))
 		emitter.LightEmission = 0.8
 		emitter.Rate = 6 + 6 * Rarity.tier(aura.Rarity)
 		emitter.Lifetime = NumberRange.new(0.8, 1.4)
 		emitter.Speed = NumberRange.new(1, 3)
 		emitter.SpreadAngle = Vector2.new(180, 180)
 		emitter.Size = NumberSequence.new(0.3 * s, 0)
-		emitter.Parent = bodyPart
+		emitter.Parent = body
 	end
 
 	-- Mutaciones visibles.
 	if mutation == "mut_ghost" then
 		for _, p in model:GetDescendants() do
-			if p:IsA("BasePart") then
-				p.Transparency = 0.45
+			if p:IsA("BasePart") and p.Transparency < 1 then
+				p.Transparency = math.max(p.Transparency, 0.45)
 			end
 		end
 	elseif mutation == "mut_shiny" or mutation == "mut_golden" then
-		bodyPart.Reflectance = 0.35
+		body.Reflectance = 0.35
 	elseif mutation == "mut_glow" or mutation == "mut_cosmic" or mutation == "mut_rainbow" then
-		bodyPart.Material = Enum.Material.Neon
+		body.Material = Enum.Material.Neon
 	end
 	if mutation == "mut_rainbow" then
 		model:SetAttribute("Rainbow", true) -- el cliente anima el color
@@ -166,33 +127,42 @@ function CreatureModel.build(creature: Creature.Creature, scale: number?): Model
 	local rarityInfo = Rarity.Info[creature.Rarity]
 	if rarityInfo.Tier >= 3 then
 		local light = Instance.new("PointLight")
-		light.Color = rgb(rarityInfo.Color)
+		light.Color = Parts.rgb(rarityInfo.Color)
 		light.Range = 6 + rarityInfo.Tier * 2
 		light.Brightness = 1.5
-		light.Parent = bodyPart
+		light.Parent = body
 	end
 
 	-- Etiqueta con nombre y rareza.
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "Label"
-	billboard.Size = UDim2.fromOffset(160, 40)
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, bodyPart.Size.Y + 1.5, 0)
-	billboard.MaxDistance = 80
-	billboard.AlwaysOnTop = false
-	billboard.Parent = bodyPart
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.FredokaOne
-	label.TextScaled = true
-	label.TextColor3 = rgb(rarityInfo.Color)
-	label.TextStrokeTransparency = 0.3
-	label.Text = string.format("%s\n%s", model.Name, rarityInfo.DisplayName)
-	label.Parent = billboard
+	if not options or options.Label ~= false then
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "Label"
+		billboard.Size = UDim2.fromOffset(160, 40)
+		billboard.StudsOffsetWorldSpace = Vector3.new(0, body.Size.Y + 1.5, 0)
+		billboard.MaxDistance = 80
+		billboard.AlwaysOnTop = false
+		billboard.Parent = body
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.FredokaOne
+		label.TextScaled = true
+		label.TextColor3 = Parts.rgb(rarityInfo.Color)
+		label.TextStrokeTransparency = 0.3
+		label.Text = string.format("%s\n%s", model.Name, rarityInfo.DisplayName)
+		label.Parent = billboard
+	end
 
 	model:SetAttribute("CreatureId", creature.Id)
 	model:SetAttribute("Rarity", creature.Rarity)
 	return model
+end
+
+-- Altura del pivote sobre la base del modelo: con model:PivotTo(suelo * CFrame.new(0, esto, 0))
+-- la criatura queda de pie sobre el suelo.
+function CreatureModel.footOffset(model: Model): number
+	local cf, size = model:GetBoundingBox()
+	return model:GetPivot().Position.Y - (cf.Position.Y - size.Y / 2)
 end
 
 -- Mueve el modelo entero (todas las piezas están ancladas).

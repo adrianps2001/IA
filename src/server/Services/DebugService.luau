@@ -16,6 +16,7 @@ local CommunityService = require(script.Parent.CommunityService)
 local DataService = require(script.Parent.DataService)
 local EggService = require(script.Parent.EggService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
+local MatchmakingService = require(script.Parent.MatchmakingService)
 local NestService = require(script.Parent.NestService)
 local RoundService = require(script.Parent.RoundService)
 
@@ -26,6 +27,10 @@ local random = Random.new()
 local commands: { [string]: (Player, any) -> () } = {
 	SkipPhase = function()
 		RoundService.skipPhase()
+	end,
+	StartMatch = function(player)
+		MatchmakingService.join(player)
+		MatchmakingService.forceLaunch()
 	end,
 	Coins = function(player)
 		DataService.addCoins(player, 1_000_000)

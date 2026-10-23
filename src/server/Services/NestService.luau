@@ -13,6 +13,7 @@ local CreatureModel = require(Shared.CreatureModel)
 local DecorationModel = require(Shared.DecorationModel)
 local Economy = require(Shared.Economy)
 local Genes = require(Shared.Genes)
+local Place = require(Shared.Place)
 local PlayerData = require(Shared.PlayerData)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
@@ -20,47 +21,60 @@ local Remotes = require(Shared.Remotes)
 local AnnouncementService = require(script.Parent.AnnouncementService)
 local DataService = require(script.Parent.DataService)
 local MapService = require(script.Parent.MapService)
+local MatchService = require(script.Parent.MatchService)
 local MonetizationService = require(script.Parent.MonetizationService)
 local QuestService = require(script.Parent.QuestService)
 
 type Profile = PlayerData.Profile
+type Display = { Signature: string, Folder: Folder }
 
 local NestService = {}
-
-local MAX_DISPLAYED = 12
 
 local random = Random.new()
 local function rng(): number
 	return random:NextNumber()
 end
 
-local owners: { [number]: Player } = {} -- índice de nido -> dueño
-local displays: { [Player]: { Signature: string, Folder: Folder } } = {}
-local decorated: { [Player]: { Signature: string, Folder: Folder } } = {}
-local doorUsed: { [Player]: boolean } = {}
+local lobbyOwners: { [number]: Player } = {} -- índice de nido del lobby -> dueño
+local arenaOwners: { [number]: Player } = {} -- índice de campamento de la arena -> dueño
+local lobbyDisplays: { [Player]: Display } = {}
+local arenaDisplays: { [Player]: Display } = {}
+local decorated: { [Player]: Display } = {}
 
 local function newId(): string
 	return HttpService:GenerateGUID(false)
 end
 
+-- Nido del lobby (el de verdad: tienda, criaturas, decoración).
+function NestService.lobbyNestOf(player: Player): MapService.Nest?
+	local index = player:GetAttribute("LobbyNestIndex")
+	return if type(index) == "number" then MapService.LobbyNests[index] else nil
+end
+
+-- Campamento de la arena (donde apareces en la partida).
 function NestService.nestOf(player: Player): MapService.Nest?
 	local index = player:GetAttribute("NestIndex")
-	if type(index) == "number" then
-		return MapService.Nests[index]
+	return if type(index) == "number" then MapService.Nests[index] else nil
+end
+
+-- Dónde "vive" ahora: en la partida, su campamento; si no, su nido del lobby.
+function NestService.currentNest(player: Player): MapService.Nest?
+	if MatchService.inMatch(player) then
+		return NestService.nestOf(player)
 	end
-	return nil
+	return NestService.lobbyNestOf(player)
 end
 
+-- Dueño de un nido del lobby (los "me gusta" se dan allí).
 function NestService.ownerOf(index: number): Player?
-	return owners[index]
+	return lobbyOwners[index]
 end
 
--- Índice del nido que contiene esa posición (o nil si está fuera de todos).
+-- Índice del campamento de la arena que contiene esa posición (o nil).
 function NestService.nestIndexAt(position: Vector3): number?
 	for _, nest in MapService.Nests do
 		local localPos = nest.Origin:PointToObjectSpace(position)
-		local half = nest.Size / 2
-		if math.abs(localPos.X) <= half and math.abs(localPos.Z) <= half and localPos.Y < 20 then
+		if Vector3.new(localPos.X, 0, localPos.Z).Magnitude <= nest.Size / 2 + 1 and localPos.Y < 20 then
 			return nest.Index
 		end
 	end
@@ -75,6 +89,11 @@ function NestService.isInsideOwnNest(player: Player): boolean
 		return false
 	end
 	return NestService.nestIndexAt(root.Position) == nest.Index
+end
+
+-- Las acciones del nido (tienda, mejoras, cría, liberar, decorar...) se hacen en el lobby.
+function NestService.canManage(player: Player): boolean
+	return Place.hasLobby() and not MatchService.inMatch(player)
 end
 
 local function notifyRare(player: Player, creature: Creature.Creature)
@@ -100,9 +119,8 @@ function NestService.giveCreature(player: Player, genes: Genes.GeneSet, origin: 
 	return creature
 end
 
--- Muestra en el nido las criaturas que producen (hasta 12 modelos).
--- Compañero (GDD v2): la primera favorita acompaña a su dueño en la ronda. El servidor solo
--- publica sus genes; cada cliente dibuja el modelo (CompanionController). Solo estética.
+-- Compañero (GDD v2): la primera favorita acompaña a su dueño. El servidor solo publica sus
+-- genes; cada cliente dibuja el modelo (CosmeticsController). Solo estética.
 function NestService.updateCompanion(player: Player)
 	local profile = DataService.get(player)
 	local id = profile and profile.Favorites[1]
@@ -126,29 +144,121 @@ function NestService.onFavoritesChanged(player: Player)
 	NestService.updateCompanion(player)
 end
 
-function NestService.refreshDisplay(player: Player)
-	local profile = DataService.get(player)
-	local nest = NestService.nestOf(player)
-	if not profile or not nest then
+-- Qué criaturas se lucen: primero las favoritas y luego las que más producen (del nido).
+local function showcase(player: Player, profile: Profile, count: number): { Creature.Creature }
+	local list: { Creature.Creature } = {}
+	for _, id in profile.Favorites do
+		local creature = PlayerData.findCreature(profile, id)
+		if creature and #list < count then
+			table.insert(list, creature)
+		end
+	end
+	local active = Creature.sortByIncome(profile.Creatures)
+	local slots = DataService.nestSlots(player)
+	for i = 1, math.min(slots, #active) do
+		if #list >= count then
+			break
+		end
+		if not table.find(list, active[i]) then
+			table.insert(list, active[i])
+		end
+	end
+	return list
+end
+
+-- Pone las criaturas en los pedestales del nido. lootable: prompts de la Noche de Saqueo.
+local function fillPedestals(player: Player, profile: Profile, nest: MapService.Nest, store: { [Player]: Display }, lootable: boolean)
+	local list = showcase(player, profile, #nest.Pedestals)
+	local ids = {}
+	for _, creature in list do
+		table.insert(ids, creature.Id)
+	end
+	local signature = table.concat(ids, ",") .. "|" .. table.concat(profile.Favorites, ",")
+	local current = store[player]
+	if current and current.Signature == signature then
 		return
 	end
-	-- Cualquier cambio de criaturas pasa por aquí: mantener las favoritas al día.
-	NestService.onFavoritesChanged(player)
-	local active = Creature.sortByIncome(profile.Creatures)
-	local slots = math.min(DataService.nestSlots(player), MAX_DISPLAYED)
-	local ids = {}
-	for i = 1, math.min(slots, #active) do
-		table.insert(ids, active[i].Id)
+	if current then
+		current.Folder:Destroy()
 	end
-	local signature = table.concat(ids, ",")
+	local folder = Instance.new("Folder")
+	folder.Name = "Creatures"
+	folder.Parent = nest.Model
+	store[player] = { Signature = signature, Folder = folder }
 
+	local multiplier = Economy.incomeMultiplier(profile.Generation, player:GetAttribute("Pass_DoubleCoins") == true, player:GetAttribute("Pass_Club") == true)
+	for i, pedestal in nest.Pedestals do
+		local creature = list[i]
+		local rim = nest.Rims[i]
+		local plate = nest.Plates[i]
+		if not creature then
+			if rim then
+				rim.Color = Color3.fromRGB(120, 120, 120)
+			end
+			if plate then
+				plate.Text = ""
+			end
+			continue
+		end
+		local info = Rarity.Info[creature.Rarity]
+		local color = Color3.fromRGB(info.Color[1], info.Color[2], info.Color[3])
+		local favorite = table.find(profile.Favorites, creature.Id) ~= nil
+		if rim then
+			rim.Color = if favorite then Color3.fromRGB(255, 210, 60) else color
+		end
+		if plate then
+			plate.Text = string.format("%s%s\n%s · %s/s", if favorite then "⭐ " else "", Creature.name(creature), info.DisplayName, Economy.short(Creature.baseIncome(creature) * multiplier))
+			plate.TextColor3 = color
+		end
+		-- En el lobby la placa ya dice el nombre: sin etiqueta flotante encima.
+		local model = CreatureModel.build(creature, 0.8, { Label = nest.Kind == "Arena" })
+		model:SetAttribute("Idle", true) -- el cliente la anima (respira y mira alrededor)
+		model:PivotTo(pedestal * CFrame.new(0, CreatureModel.footOffset(model), 0))
+		model:SetAttribute("CreatureId", creature.Id)
+		model:SetAttribute("OwnerUserId", player.UserId)
+		if Rarity.tier(creature.Rarity) >= Rarity.tier("Legendary") then
+			-- Foco desde arriba para las más raras.
+			local body = model.PrimaryPart
+			if body then
+				local spot = Instance.new("SpotLight")
+				spot.Face = Enum.NormalId.Top
+				spot.Angle = 50
+				spot.Range = 14
+				spot.Brightness = 3
+				spot.Color = color
+				spot.Parent = body
+			end
+		end
+		local body = model.PrimaryPart
+		if lootable and body and Config.Events.LootNight.Enabled then
+			-- Para la Noche de Saqueo: LootService activa este prompt cuando toca.
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "LootPrompt"
+			prompt.ActionText = "Saquear"
+			prompt.ObjectText = Creature.name(creature)
+			prompt.HoldDuration = Config.Events.LootNight.HoldSeconds
+			prompt.MaxActivationDistance = Config.Events.LootNight.MaxDistance - 2
+			prompt.RequiresLineOfSight = false
+			prompt.Enabled = false
+			prompt.Parent = body
+			CollectionService:AddTag(prompt, "LootPrompt")
+		end
+		model.Parent = folder
+	end
+end
+
+local function refreshLobbyNest(player: Player, profile: Profile)
+	local nest = NestService.lobbyNestOf(player)
+	if not nest then
+		return
+	end
 	local beauty = Economy.beauty(profile.Decorations)
 	nest.Sign.Text = string.format(
-		"Nido de %s\n%d criaturas · %d/s%s",
+		"Nido de %s\n%d criaturas · ❤ %d%s",
 		player.DisplayName,
 		#profile.Creatures,
-		math.floor(DataService.incomePerSecond(player)),
-		if beauty > 0 then string.format(" · ✨%d", beauty) else ""
+		profile.Stats.LikesReceived or 0,
+		if beauty > 0 then string.format(" · ✨ %d", beauty) else ""
 	)
 
 	local decorSignature = table.concat(profile.Decorations, ",")
@@ -169,114 +279,155 @@ function NestService.refreshDisplay(player: Player)
 		end
 	end
 
-	local current = displays[player]
-	if current and current.Signature == signature then
-		return
-	end
-	if current then
-		current.Folder:Destroy()
-	end
-
-	local folder = Instance.new("Folder")
-	folder.Name = "Creatures"
-	folder.Parent = nest.Model
-	displays[player] = { Signature = signature, Folder = folder }
-
-	local columns = 4
-	local spacing = 5.5
-	for i = 1, #ids do
-		local creature = active[i]
-		local model = CreatureModel.build(creature, 0.8)
-		local col = (i - 1) % columns
-		local row = math.floor((i - 1) / columns)
-		local offset = CFrame.new((col - (columns - 1) / 2) * spacing, 2.6, 7 - row * spacing)
-		model:PivotTo(nest.Origin * offset) -- de frente a la entrada
-		-- Para la Noche de Saqueo: LootService activa este prompt cuando toca.
-		model:SetAttribute("CreatureId", creature.Id)
-		model:SetAttribute("OwnerUserId", player.UserId)
-		local body = model.PrimaryPart
-		if body and Config.Events.LootNight.Enabled then
-			local prompt = Instance.new("ProximityPrompt")
-			prompt.Name = "LootPrompt"
-			prompt.ActionText = "Saquear"
-			prompt.ObjectText = Creature.name(creature)
-			prompt.HoldDuration = Config.Events.LootNight.HoldSeconds
-			prompt.MaxActivationDistance = Config.Events.LootNight.MaxDistance - 2
-			prompt.RequiresLineOfSight = false
-			prompt.Enabled = false
-			prompt.Parent = body
-			CollectionService:AddTag(prompt, "LootPrompt")
+	-- El huevo del cuenco brilla si hay huevos listos para recoger.
+	local egg = nest.Incubator
+	if egg then
+		local ready = false
+		for _, entry in profile.Incubator do
+			if entry.ReadyAt <= os.time() then
+				ready = true
+			end
 		end
-		model.Parent = folder
+		egg.Material = if ready then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		egg.Color = if ready then Color3.fromRGB(255, 220, 120) elseif #profile.Incubator > 0 then Color3.fromRGB(250, 240, 220) else Color3.fromRGB(150, 140, 130)
+		local light = egg:FindFirstChild("ReadyLight")
+		if light and light:IsA("PointLight") then
+			light.Enabled = ready
+		end
 	end
 
+	fillPedestals(player, profile, nest, lobbyDisplays, false)
 end
 
-local function assignNest(player: Player)
-	for index = 1, #MapService.Nests do
-		if not owners[index] then
-			owners[index] = player
-			player:SetAttribute("NestIndex", index)
-			-- La posición viaja como atributo: con StreamingEnabled el cliente puede no tener
-			-- cargado el modelo del nido cuando está lejos (la flecha del HUD la necesita).
-			player:SetAttribute("NestPosition", MapService.Nests[index].Origin.Position)
+local function refreshArenaNest(player: Player, profile: Profile)
+	local nest = NestService.nestOf(player)
+	if not nest then
+		return
+	end
+	nest.Sign.Text = player.DisplayName
+	fillPedestals(player, profile, nest, arenaDisplays, true)
+end
+
+function NestService.refreshDisplay(player: Player)
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	-- Cualquier cambio de criaturas pasa por aquí: mantener las favoritas al día.
+	NestService.onFavoritesChanged(player)
+	refreshLobbyNest(player, profile)
+	refreshArenaNest(player, profile)
+end
+
+local function clearDisplay(store: { [Player]: Display }, player: Player)
+	local display = store[player]
+	if display then
+		display.Folder:Destroy()
+		store[player] = nil
+	end
+end
+
+local function assignLobbyNest(player: Player)
+	if NestService.lobbyNestOf(player) then
+		return
+	end
+	for index = 1, #MapService.LobbyNests do
+		if not lobbyOwners[index] then
+			lobbyOwners[index] = player
+			player:SetAttribute("LobbyNestIndex", index)
 			return
 		end
 	end
-	warn("[NestService] No quedan nidos libres para " .. player.Name)
+	warn("[NestService] No quedan nidos libres en el lobby para " .. player.Name)
 end
 
-local function releaseNest(player: Player)
-	local nest = NestService.nestOf(player)
+local function releaseLobbyNest(player: Player)
+	local nest = NestService.lobbyNestOf(player)
 	if nest then
-		owners[nest.Index] = nil
+		lobbyOwners[nest.Index] = nil
 		nest.Sign.Text = "Nido libre"
-		nest.Door.CanCollide = false
-		nest.Door.Transparency = 1
+		for i, rim in nest.Rims do
+			rim.Color = Color3.fromRGB(120, 120, 120)
+			if nest.Plates[i] then
+				nest.Plates[i].Text = ""
+			end
+		end
+		if nest.Incubator then
+			nest.Incubator.Material = Enum.Material.SmoothPlastic
+			nest.Incubator.Color = Color3.fromRGB(150, 140, 130)
+		end
 	end
-	local display = displays[player]
-	if display then
-		display.Folder:Destroy()
-		displays[player] = nil
-	end
+	player:SetAttribute("LobbyNestIndex", nil)
+	clearDisplay(lobbyDisplays, player)
 	local decor = decorated[player]
 	if decor then
 		decor.Folder:Destroy()
 		decorated[player] = nil
 	end
-	doorUsed[player] = nil
+end
+
+local function assignArenaNest(player: Player)
+	if NestService.nestOf(player) then
+		return
+	end
+	for index = 1, #MapService.Nests do
+		if not arenaOwners[index] then
+			arenaOwners[index] = player
+			player:SetAttribute("NestIndex", index)
+			return
+		end
+	end
+	warn("[NestService] No quedan campamentos libres en la arena para " .. player.Name)
+end
+
+local function releaseArenaNest(player: Player)
+	local nest = NestService.nestOf(player)
+	if nest then
+		arenaOwners[nest.Index] = nil
+		nest.Sign.Text = ""
+		for _, rim in nest.Rims do
+			rim.Color = Color3.fromRGB(120, 120, 120)
+		end
+	end
+	player:SetAttribute("NestIndex", nil)
+	clearDisplay(arenaDisplays, player)
+end
+
+-- La flecha del HUD necesita la posición (con StreamingEnabled el modelo puede no estar cargado).
+local function publishNestPosition(player: Player)
+	local nest = NestService.currentNest(player)
+	player:SetAttribute("NestPosition", if nest then nest.Origin.Position else nil)
 end
 
 local function spawnAtNest(player: Player, character: Model)
-	local nest = NestService.nestOf(player)
+	local nest = NestService.currentNest(player)
 	if not nest then
 		return
 	end
 	task.defer(function()
 		if character.Parent then
-			character:PivotTo(nest.Spawn.CFrame * CFrame.new(0, 3, 0)) -- mirando hacia el huevo
+			character:PivotTo(nest.Spawn.CFrame * CFrame.new(0, 3, 0))
 		end
 	end)
 end
 
--- Cierra la puerta del nido 10 s, una vez por ronda (GDD 5.4).
-function NestService.closeDoor(player: Player): boolean
-	local nest = NestService.nestOf(player)
-	if not nest or doorUsed[player] then
-		return false
+-- Al entrar o salir de una partida (modo combinado): cambiar de nido y reaparecer allí.
+local function onMatchChanged(player: Player)
+	if not DataService.get(player) then
+		return
 	end
-	doorUsed[player] = true
-	nest.Door.CanCollide = true
-	nest.Door.Transparency = 0.4
-	task.delay(Config.Chase.DoorCloseTime, function()
-		nest.Door.CanCollide = false
-		nest.Door.Transparency = 1
-	end)
-	return true
-end
-
-function NestService.resetRound()
-	table.clear(doorUsed)
+	if MatchService.inMatch(player) then
+		assignArenaNest(player)
+	else
+		releaseArenaNest(player)
+	end
+	publishNestPosition(player)
+	NestService.refreshDisplay(player)
+	if player.Character then
+		task.spawn(function()
+			player:LoadCharacterAsync()
+		end)
+	end
 end
 
 -- Incubadora ------------------------------------------------------------------------------
@@ -353,6 +504,7 @@ local function collectEggs(player: Player)
 			local creature = NestService.giveCreature(player, genes :: Genes.GeneSet, egg.Kind)
 			if creature then
 				hatched += 1
+				AnnouncementService.sound(player, "Hatch")
 				AnnouncementService.player(
 					player,
 					string.format("¡Ha nacido %s (%s)!", Creature.name(creature), Rarity.Info[creature.Rarity].DisplayName),
@@ -499,6 +651,7 @@ local function buyDecoration(player: Player, id: any)
 		DataService.addDust(player, -cost)
 	end
 	table.insert(profile.Decorations, def.Id)
+	AnnouncementService.sound(player, "Purchase")
 	DataService.markChanged(player)
 	NestService.refreshDisplay(player)
 	AnnouncementService.player(player, string.format("¡%s colocada en tu nido!", def.Name), "rare")
@@ -522,6 +675,7 @@ local function upgrade(player: Player, name: any)
 		return
 	end
 	DataService.addCoins(player, -cost)
+	AnnouncementService.sound(player, "Purchase")
 	profile.Upgrades[name] = level + 1
 	player:SetAttribute("Upgrade_" .. name, level + 1)
 	DataService.markChanged(player)
@@ -558,7 +712,16 @@ end
 -- Ciclo de vida ---------------------------------------------------------------------------
 
 local function onLoaded(player: Player, profile: Profile)
-	assignNest(player)
+	if Place.hasLobby() then
+		assignLobbyNest(player)
+	end
+	if MatchService.inMatch(player) then
+		assignArenaNest(player)
+	end
+	publishNestPosition(player)
+	player:GetAttributeChangedSignal("InMatch"):Connect(function()
+		onMatchChanged(player)
+	end)
 	for name, level in profile.Upgrades do
 		player:SetAttribute("Upgrade_" .. name, level)
 	end
@@ -617,24 +780,38 @@ end
 
 function NestService.start()
 	DataService.onLoaded(onLoaded)
+	local function releaseAll(player: Player)
+		releaseLobbyNest(player)
+		releaseArenaNest(player)
+	end
 	DataService.onReleasing(function(player)
-		releaseNest(player)
+		releaseAll(player)
 	end)
-	Players.PlayerRemoving:Connect(releaseNest)
+	Players.PlayerRemoving:Connect(releaseAll)
 
-	Remotes.event("RequestBuyEgg").OnServerEvent:Connect(buyPersonalEgg)
-	Remotes.event("RequestCollectEggs").OnServerEvent:Connect(collectEggs)
-	Remotes.event("RequestUpgrade").OnServerEvent:Connect(upgrade)
-	Remotes.event("RequestRebirth").OnServerEvent:Connect(rebirth)
-	Remotes.event("RequestRelease").OnServerEvent:Connect(release)
-	Remotes.event("ToggleFavorite").OnServerEvent:Connect(toggleFavorite)
-	Remotes.event("RequestReleaseStored").OnServerEvent:Connect(releaseStored)
-	Remotes.event("RequestBuyDecoration").OnServerEvent:Connect(buyDecoration)
-	Remotes.event("RequestBreed").OnServerEvent:Connect(function(player, idA, idB)
+	-- Todo lo del nido se hace en el lobby (GDD v3); en la partida se avisa.
+	local function managed(handler: (Player, ...any) -> ()): (Player, ...any) -> ()
+		return function(player: Player, ...: any)
+			if not NestService.canManage(player) then
+				AnnouncementService.player(player, "🏡 Eso se hace en tu nido del lobby, al acabar la partida.")
+				return
+			end
+			handler(player, ...)
+		end
+	end
+	Remotes.event("RequestBuyEgg").OnServerEvent:Connect(managed(buyPersonalEgg))
+	Remotes.event("RequestCollectEggs").OnServerEvent:Connect(managed(collectEggs))
+	Remotes.event("RequestUpgrade").OnServerEvent:Connect(managed(upgrade))
+	Remotes.event("RequestRebirth").OnServerEvent:Connect(managed(rebirth))
+	Remotes.event("RequestRelease").OnServerEvent:Connect(managed(release))
+	Remotes.event("ToggleFavorite").OnServerEvent:Connect(managed(toggleFavorite))
+	Remotes.event("RequestReleaseStored").OnServerEvent:Connect(managed(releaseStored))
+	Remotes.event("RequestBuyDecoration").OnServerEvent:Connect(managed(buyDecoration))
+	Remotes.event("RequestBreed").OnServerEvent:Connect(managed(function(player, idA, idB)
 		if type(idA) == "string" and type(idB) == "string" then
 			startBreed(player, idA, idB, false)
 		end
-	end)
+	end))
 
 	-- Producción por segundo. Solo actualiza el atributo; la vista completa se envía
 	-- cuando cambia algo estructural.

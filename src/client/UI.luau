@@ -71,6 +71,9 @@ function UI.label(props: { [string]: any }, parent: Instance?): TextLabel
 	return l
 end
 
+-- Sonido de clic de todos los botones (lo pone SoundController; UI no depende de él).
+UI.onClickSound = nil :: (() -> ())?
+
 function UI.button(props: { [string]: any }, parent: Instance?, onClick: (() -> ())?): TextButton
 	local b = Instance.new("TextButton")
 	b.BackgroundColor3 = UI.Colors.Accent
@@ -87,6 +90,10 @@ function UI.button(props: { [string]: any }, parent: Instance?, onClick: (() -> 
 	b.Parent = parent
 	if onClick then
 		b.Activated:Connect(function()
+			local sound = UI.onClickSound
+			if sound then
+				sound()
+			end
 			onClick()
 		end)
 	end

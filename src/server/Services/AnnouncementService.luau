@@ -13,14 +13,39 @@ local AnnouncementService = {}
 
 local announcement: RemoteEvent
 local notify: RemoteEvent
+local sound: RemoteEvent
 
 -- style: "info" | "threshold" | "rare" | "global"
 function AnnouncementService.server(text: string, style: string?)
 	announcement:FireAllClients(text, style or "info")
 end
 
+-- Solo para quien está jugando la partida (en el modo combinado, el lobby no se entera de
+-- los robos de la arena).
+function AnnouncementService.match(text: string, style: string?)
+	for _, player in Players:GetPlayers() do
+		if player:GetAttribute("InMatch") == true then
+			announcement:FireClient(player, text, style or "info")
+		end
+	end
+end
+
 function AnnouncementService.player(player: Player, text: string, style: string?)
 	notify:FireClient(player, text, style or "info")
+end
+
+-- Sonido del catálogo (Sounds.luau) para un jugador; con position suena en 3D allí.
+function AnnouncementService.sound(player: Player, name: string, position: Vector3?)
+	sound:FireClient(player, name, position)
+end
+
+-- Sonido para todos los de la partida (robos, géiseres, escudos...).
+function AnnouncementService.matchSound(name: string, position: Vector3?)
+	for _, player in Players:GetPlayers() do
+		if player:GetAttribute("InMatch") == true then
+			sound:FireClient(player, name, position)
+		end
+	end
 end
 
 function AnnouncementService.global(text: string)
@@ -38,6 +63,7 @@ end
 function AnnouncementService.init()
 	announcement = Remotes.event("Announcement")
 	notify = Remotes.event("Notify")
+	sound = Remotes.event("PlaySound")
 end
 
 function AnnouncementService.start()

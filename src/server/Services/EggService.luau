@@ -8,6 +8,7 @@ local Economy = require(Shared.Economy)
 local Genes = require(Shared.Genes)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
+local Place = require(Shared.Place)
 local RoundState = require(Shared.RoundState)
 
 local AnnouncementService = require(script.Parent.AnnouncementService)
@@ -76,7 +77,7 @@ function EggService.addHeat(amount: number)
 		reached = index
 		RoundState.set("MinRarity", minRarity)
 		RoundState.set("Luck", luck)
-		AnnouncementService.server(
+		AnnouncementService.match(
 			string.format(
 				"¡El huevo está al %d %%! Rareza mínima: %s",
 				math.floor(Config.Thresholds[index].Fraction * 100),
@@ -141,6 +142,9 @@ function EggService.init()
 end
 
 function EggService.start()
+	if not Place.hasArena() then
+		return
+	end
 	EggService.reset(1)
 
 	-- El cliente elige gen antes de comprar la Ofrenda Dorada (un recibo no lleva parámetros).

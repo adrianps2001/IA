@@ -13,6 +13,7 @@ local UI = require(script.Parent.Parent.UI)
 local DebugController = {}
 
 local BUTTONS = {
+	{ "🚀 Jugar ya (sin esperar a la cola)", "StartMatch" },
 	{ "⏭ Saltar fase", "SkipPhase" },
 	{ "🔥 Llenar la barra", "FillBar" },
 	{ "🥚 Ser el portador", "BecomeCarrier" },

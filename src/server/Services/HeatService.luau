@@ -9,7 +9,9 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Economy = require(Shared.Economy)
 local Genes = require(Shared.Genes)
+local ArenaLayout = require(Shared.ArenaLayout)
 local MapLayout = require(Shared.MapLayout)
+local Place = require(Shared.Place)
 local RoundState = require(Shared.RoundState)
 
 local AnalyticsHelper = require(script.Parent.Parent.Util.Analytics)
@@ -36,6 +38,7 @@ local active = false
 -- Recolocan las fuentes que nadie ha cogido (se llaman al empezar cada ronda).
 local relocators: { () -> () } = {}
 local states: { [Player]: PlayerState } = {}
+local fullHintAt: { [Player]: number } = {}
 
 local function state(player: Player): PlayerState
 	local s = states[player]
@@ -91,6 +94,10 @@ function HeatService.give(player: Player, amount: number): number
 	if added > 0 then
 		s.Heat += added
 		sync(player)
+	elseif amount > 0 and os.clock() - (fullHintAt[player] or 0) > 6 then
+		-- Con la bolsa llena las fuentes no se recogen: se avisa (sin repetirlo a cada roce).
+		fullHintAt[player] = os.clock()
+		AnnouncementService.player(player, "🎒 Tu bolsa está llena: lleva el Calor al huevo.")
 	end
 	return added
 end
@@ -113,7 +120,7 @@ function HeatService.deposit(player: Player)
 		local offering = (Genes.Offerings :: any)[s.Offering]
 		if offering then
 			EggService.addOffering(offering.Slot, offering.Gene)
-			AnnouncementService.server(string.format("%s ha ofrendado un %s al huevo.", player.DisplayName, tostring(offering.DisplayName)), "info")
+			AnnouncementService.match(string.format("%s ha ofrendado un %s al huevo.", player.DisplayName, tostring(offering.DisplayName)), "info")
 		end
 		s.Offering = nil
 	end
@@ -172,7 +179,8 @@ local function spawnSource(
 	local function place()
 		local point = position()
 		for _ = 1, 8 do
-			if MapService.isClear(point, 2.5) then
+			-- En lo alto de los árboles (Y > 0) no hay troncos con los que chocar.
+			if point.Y > 1 or MapService.isClear(point, 2.5) then
 				break
 			end
 			point = position()
@@ -186,6 +194,16 @@ local function spawnSource(
 			place()
 		end
 	end)
+	-- Ocultar la pieza no basta: los "?" de los bloques de suerte (SurfaceGui) y las luces
+	-- se seguían viendo. Se apaga todo lo que cuelga de ella.
+	local function setVisible(visible: boolean)
+		p.Transparency = if visible then 0 else 1
+		for _, child in p:GetDescendants() do
+			if child:IsA("SurfaceGui") or child:IsA("BillboardGui") or child:IsA("Light") or child:IsA("ParticleEmitter") then
+				child.Enabled = visible
+			end
+		end
+	end
 	p.Touched:Connect(function(hit)
 		if taken or not active or not hit:IsA("BasePart") then
 			return
@@ -193,10 +211,12 @@ local function spawnSource(
 		local player = playerFromPart(hit)
 		if player and onCollect(player, p) then
 			taken = true
-			p.Transparency = 1
+			setVisible(false)
+			p:SetAttribute("Taken", true)
 			task.delay(respawn, function()
 				place()
-				p.Transparency = 0
+				setVisible(true)
+				p:SetAttribute("Taken", nil)
 				taken = false
 			end)
 		end
@@ -210,8 +230,15 @@ local embers: { Part } = {}
 
 local function spawnEmbers()
 	local def = Config.Heat.Ember
+	local treeSpots = ArenaLayout.deckSpots()
 	for _ = 1, def.Count do
 		local ember = spawnSource("Ember", EMBER_COLOR, Vector3.new(1.4, 1.4, 1.4), Enum.PartType.Ball, function()
+			-- GDD v3: una parte de las brasas sale en las plataformas de los árboles (premio
+			-- por subir al parkour también durante la incubación).
+			if random:NextNumber() < Config.Arena.EmbersOnTrees then
+				local spot = treeSpots[random:NextInteger(1, #treeSpots)]
+				return Vector3.new(spot.X + random:NextNumber(-1.5, 1.5), spot.Y, spot.Z + random:NextNumber(-1.5, 1.5))
+			end
 			return MapService.randomGroundPoint(MapLayout.SourceRing.Min, MapLayout.SourceRing.Max)
 		end, def.Respawn, function(player)
 			-- Lluvia de brasas doradas (RoundService): valen más durante un rato.
@@ -262,6 +289,7 @@ local function spawnLuckyBlocks()
 				return false
 			end
 			QuestService.progress(player, "LuckyBlock", 1)
+			AnnouncementService.sound(player, "Lucky")
 			AnnouncementService.player(player, string.format("¡Bloque de suerte! +%d Calor", added), if amount >= 40 then "rare" else "info")
 			return true
 		end)
@@ -340,6 +368,7 @@ local function spawnGeysers()
 			cooldownUntil = now + def.Cooldown
 			table.clear(activators)
 			steam:Emit(60)
+			AnnouncementService.matchSound("Geyser", geyser.Position)
 			for _, p in ready do
 				local added = HeatService.give(p, def.Amount)
 				AnnouncementService.player(p, string.format("¡Géiser en equipo! +%d Calor", added))
@@ -459,6 +488,7 @@ local function setupBumpPrompt(player: Player, character: Model)
 		victim.Heat -= dropped
 		sync(player)
 		dropEmbers(victimRoot.Position, dropped)
+		AnnouncementService.matchSound("Bump", victimRoot.Position)
 		victimRoot.AssemblyLinearVelocity += (victimRoot.Position - bumperRoot.Position).Unit * 40 + Vector3.new(0, 20, 0)
 		AnnouncementService.player(player, string.format("¡%s te ha empujado! Se te cayeron %d de Calor.", bumper.DisplayName, dropped))
 	end)
@@ -504,6 +534,9 @@ end
 function HeatService.init() end
 
 function HeatService.start()
+	if not Place.hasArena() then
+		return
+	end
 	local depositPrompt = Instance.new("ProximityPrompt")
 	depositPrompt.Name = "DepositPrompt"
 	depositPrompt.ActionText = "Depositar Calor"
@@ -542,6 +575,7 @@ function HeatService.start()
 	end
 	Players.PlayerRemoving:Connect(function(player)
 		states[player] = nil
+		fullHintAt[player] = nil
 		bumpedPairs[player] = nil
 		for _, victims in bumpedPairs do
 			victims[player] = nil

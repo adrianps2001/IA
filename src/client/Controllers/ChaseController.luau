@@ -1,5 +1,5 @@
 --!strict
--- Controles de la persecución: esprint, relevo y puerta (solo portador), respuesta a tratos
+-- Controles de la persecución: esprint y relevo (solo portador), respuesta a tratos
 -- y ocultar los prompts que cuelgan del propio personaje (no te puedes robar a ti mismo).
 
 local ContextActionService = game:GetService("ContextActionService")
@@ -27,10 +27,6 @@ local function pass()
 	Remotes.event("RequestPass"):FireServer()
 end
 
-local function closeDoor()
-	Remotes.event("RequestCloseDoor"):FireServer()
-end
-
 local function bindCarrierActions(isCarrier: boolean)
 	carrierPanel.Visible = isCarrier
 	if isCarrier then
@@ -46,16 +42,9 @@ local function bindCarrierActions(isCarrier: boolean)
 			end
 			return Enum.ContextActionResult.Sink
 		end, false, Enum.KeyCode.Q, Enum.KeyCode.ButtonL1)
-		ContextActionService:BindAction("Door", function(_, state)
-			if state == Enum.UserInputState.Begin then
-				closeDoor()
-			end
-			return Enum.ContextActionResult.Sink
-		end, false, Enum.KeyCode.R, Enum.KeyCode.ButtonR1)
 	else
 		ContextActionService:UnbindAction("Sprint")
 		ContextActionService:UnbindAction("Pass")
-		ContextActionService:UnbindAction("Door")
 	end
 end
 
@@ -84,14 +73,13 @@ function ChaseController.start()
 		Name = "CarrierActions",
 		AnchorPoint = Vector2.new(1, 1),
 		Position = UDim2.new(1, -8, 1, -8),
-		Size = UDim2.fromOffset(150, 170),
+		Size = UDim2.fromOffset(150, 112),
 		BackgroundTransparency = 1,
 		Visible = false,
 	}, gui)
 	UI.list(carrierPanel, 8)
 	UI.button({ Size = UDim2.new(1, 0, 0, 50), Text = "⚡ Esprint", LayoutOrder = 1 }, carrierPanel, sprint)
 	UI.button({ Size = UDim2.new(1, 0, 0, 50), Text = "🤝 Relevo", LayoutOrder = 2, BackgroundColor3 = UI.Colors.Good }, carrierPanel, pass)
-	UI.button({ Size = UDim2.new(1, 0, 0, 50), Text = "🚪 Puerta", LayoutOrder = 3, BackgroundColor3 = UI.Colors.PanelLight }, carrierPanel, closeDoor)
 
 	dealPanel = UI.frame({
 		Name = "Deal",

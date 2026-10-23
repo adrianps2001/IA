@@ -2,11 +2,16 @@
 -- Simula una ronda completa (GDD 4-5) con bots en el plano del mapa:
 -- Incubación (Calor, géiseres, empujones, depósitos, lluvia dorada) -> Eclosión (Elección de
 -- uno o varios elegidos) -> Persecución (una por criatura: robos por toque, escudos,
--- inmunidad, esprint, relevo, puerta, zorros del bosque) -> Premios.
+-- inmunidad, esprint, relevo, zorros del bosque) -> Premios.
+-- GDD v3: gana quien tenga la criatura al acabar. El portador huye a escondites (las
+-- plataformas de los árboles gigantes); los ladrones solo saben dónde está si lo ven (a menos
+-- de SIGHT studs, los árboles tapan el resto) o durante la señal (ChaseRules.isRevealed).
 -- Usa los módulos reales del juego (Config, Economy, Election, Genes, Rarity, ChaseRules,
--- Rewards, MapLayout) para que las reglas sean idénticas a las del servidor.
--- Simplificaciones: sin física ni árboles; las paredes solo cuentan en la entrada del nido.
+-- Rewards, MapLayout, ArenaLayout) para que las reglas sean idénticas a las del servidor.
+-- Simplificaciones: en el plano (sin alturas ni física); trepar, saltar y las tirolinas no
+-- se simulan.
 
+local ArenaLayout = require("../src/shared/ArenaLayout")
 local Config = require("../src/shared/Config")
 local ChaseRules = require("../src/shared/ChaseRules")
 local Economy = require("../src/shared/Economy")
@@ -44,14 +49,11 @@ type Chase = {
 	Carrier: Agent?, -- nil = la criatura está suelta en LoosePos
 	LoosePos: Point,
 	ImmuneUntil: number,
-	HomeStreak: number,
 	Done: boolean,
-	Secured: boolean,
-	Overtime: boolean,
 	Winner: Agent?,
 	Steals: number,
 	Carriers: { [string]: boolean },
-	FirstHome: number?,
+	HideTarget: Point?, -- escondite al que va el portador
 	LastChange: number,
 	Drops: number, -- veces que un zorro la tiró al suelo
 }
@@ -81,10 +83,11 @@ type Agent = {
 	PursueChase: Chase?,
 	SeenCarrierPos: Point?,
 	SeenAt: number,
+	SearchPos: Point?, -- buscando alrededor de donde se le vio
+	SearchUntil: number,
 	SprintUntil: number,
 	StunnedUntil: number,
 	SprintReadyAt: number,
-	DoorUsed: boolean,
 	Partners: { [string]: boolean },
 	Carrying: Chase?,
 	WonThisRound: boolean,
@@ -197,55 +200,23 @@ local function nestInner(index: number): Point
 	return MapLayout.polar(MapLayout.nestAngle(index), MapLayout.NestRadius - MapLayout.NestSize / 2 + 2.5)
 end
 
-local function nestOf(agents: { Agent }, point: Point): number?
-	for _, a in agents do
-		if a.Nest > 0 and MapLayout.insideNest(a.Nest, point) then
-			return a.Nest
-		end
-	end
-	return nil
-end
-
--- Siguiente punto del camino: a un nido solo se entra y se sale por la entrada.
-local function waypoint(agent: Agent, agents: { Agent }, target: Point, doorClosed: { [number]: number }, t: number): Point?
-	local here = nestOf(agents, agent.Pos)
-	local there = nestOf(agents, target)
-	if here and here ~= there then
-		-- salir por la entrada
-		if (doorClosed[here] or 0) > t then
-			return nil
-		end
-		local inner = nestInner(here)
-		if dist(agent.Pos, inner) > 1.5 then
-			return inner
-		end
-		return MapLayout.nestEntrance(here)
-	end
-	if there and here ~= there then
-		local entrance = MapLayout.nestEntrance(there)
-		if dist(agent.Pos, entrance) > 1.5 then
-			return entrance
-		end
-		if (doorClosed[there] or 0) > t then
-			return nil -- puerta cerrada: esperar fuera
-		end
-		return nestInner(there)
-	end
-	return target
-end
-
-local function speedOf(agent: Agent, isCarrier: boolean, t: number, agents: { Agent }?): number
-	local atHome, intruding = false, false
-	if agents then -- solo durante la persecución
-		local here = nestOf(agents, agent.Pos)
-		atHome = here ~= nil and here == agent.Nest
-		intruding = here ~= nil and here ~= agent.Nest
-	end
+local function speedOf(agent: Agent, isCarrier: boolean, t: number): number
 	if agent.IsFox then
-		local speed = Config.Movement.BaseWalkSpeed * Config.ForestThieves.SpeedMultiplier
-		return if intruding then speed * Config.Chase.IntruderSpeedMultiplier else speed
+		return Config.Movement.BaseWalkSpeed * Config.ForestThieves.SpeedMultiplier
 	end
-	return Economy.walkSpeed(agent.Bot.Upgrades.Boots or 0, isCarrier, agent.SprintUntil > t, atHome, intruding)
+	return Economy.walkSpeed(agent.Bot.Upgrades.Boots or 0, isCarrier, agent.SprintUntil > t)
+end
+
+-- Tiempo que se pierde por partida entre la cola del lobby y los dos teletransportes (s).
+local MATCH_OVERHEAD = 35
+
+-- A cuánto se ve a alguien entre los árboles gigantes (fuera de la señal).
+local SIGHT = 35
+
+-- Escondites del parkour vistos en el plano: las plataformas de los árboles.
+local HIDE_SPOTS: { Point } = {}
+for _, spot in ArenaLayout.deckSpots() do
+	table.insert(HIDE_SPOTS, { X = spot.X, Z = spot.Z })
 end
 
 local function newAgent(bot: Bot, nest: number, pos: Point, isFox: boolean): Agent
@@ -273,10 +244,11 @@ local function newAgent(bot: Bot, nest: number, pos: Point, isFox: boolean): Age
 		PursueChase = nil,
 		SeenCarrierPos = nil,
 		SeenAt = -100,
+		SearchPos = nil,
+		SearchUntil = 0,
 		SprintUntil = -100,
 		StunnedUntil = -100,
 		SprintReadyAt = 0,
-		DoorUsed = false,
 		Partners = {},
 		Carrying = nil,
 		WonThisRound = false,
@@ -359,7 +331,6 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	local incubationTime = Config.Round.IncubationTime
 	local rainStart = incubationTime * Config.Round.GoldenRainAt
 	local rainEnd = rainStart + Config.Round.GoldenRainSeconds
-	local doorClosed: { [number]: number } = {}
 	local foxes: { Agent } = {}
 	local chases: { Chase } = {}
 
@@ -555,10 +526,7 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 			if agent.TargetKind == "Bump" then
 				target = (agent.TargetRef :: Agent).Pos
 			end
-			local way = waypoint(agent, agents, target, doorClosed, t)
-			if way then
-				agent.Pos = step(agent.Pos, way, speedOf(agent, false, t) * dt)
-			end
+			agent.Pos = step(agent.Pos, target, speedOf(agent, false, t) * dt)
 
 			local kind = agent.TargetKind
 			local reach = dist(agent.Pos, target)
@@ -716,9 +684,9 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	-- 3. PERSECUCIÓN -----------------------------------------------------------------
 	local chaseTime = if opts.BloodMoon then Config.Round.BloodMoonChaseTime else Config.Round.ChaseTime
 	local chaseStart = t
-	local passes, doors, betrayals, shieldBlocks, foxDrops = 0, 0, 0, 0, 0
+	local passes, betrayals, shieldBlocks, foxDrops = 0, 0, 0, 0
 	local allCarriers: { [string]: boolean } = {}
-	local timeInNest: number = 0
+	local revealedSeconds: number = 0
 	for _, c in chases do
 		c.ImmuneUntil = t + Config.Chase.StartImmunitySeconds
 		c.LastChange = t
@@ -811,7 +779,7 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 		c.Carriers[agent.Key] = true
 		allCarriers[agent.Key] = true
 		c.ImmuneUntil = t + Config.Chase.ImmunityAfterSteal
-		c.HomeStreak = 0
+		c.HideTarget = nil
 		c.LastChange = t
 		reassignAll()
 	end
@@ -825,7 +793,28 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 		elseif c.Carrier then
 			c.Carrier.Carrying = nil
 		end
-		reassignAll()
+	end
+
+	-- Escondite lejos de los ladrones (que el portador conoce si están cerca o hay señal).
+	local function pickHideSpot(c: Chase, carrier: Agent, revealed: boolean): Point
+		local best, bestScore = carrier.Pos, -math.huge
+		for k = 1, 10 do
+			local candidate = if k <= 7 then HIDE_SPOTS[1 + math.floor(rng() * #HIDE_SPOTS)] else MapLayout.randomInRing(rng, 30, MapLayout.NestRadius - 15)
+			local score = -dist(carrier.Pos, candidate) * 0.3
+			local nearestThief = math.huge
+			for _, list in { agents, foxes } do
+				for _, a in list do
+					if a.Pursue and a.PursueChase == c and (revealed or dist(a.Pos, carrier.Pos) < SIGHT * 1.5) then
+						nearestThief = math.min(nearestThief, dist(a.Pos, candidate))
+					end
+				end
+			end
+			score += math.min(nearestThief, 120)
+			if score > bestScore then
+				best, bestScore = candidate, score
+			end
+		end
+		return best
 	end
 
 	reassignAll()
@@ -834,8 +823,6 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	dt = 0.25
 	nextFrame = t
 	local chaseEnd = chaseStart + chaseTime
-	local overtimeEnd = chaseEnd + Config.Chase.OvertimeSeconds
-	local overtimeStarted = false
 	-- Ventaja de los elegidos: los demás (y los zorros) no se mueven hasta pasados unos segundos.
 	for _, a in agents do
 		if not a.Carrying then
@@ -863,7 +850,6 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 			end
 			return
 		end
-		local inside = MapLayout.insideNest(carrier.Nest, carrier.Pos)
 		local keepRange = Config.Chase.StealRange + (if Config.Chase.TapSteal then ChaseRules.DistanceTolerance else 0)
 		if d > keepRange then
 			a.HoldStart = nil -- se ha escapado del tira y afloja
@@ -884,10 +870,10 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 			a.HoldStart = nil -- se le escapa el dedo (solo cuando hay que mantener el botón)
 			return
 		end
-		if t - (a.HoldStart :: number) < ChaseRules.holdTime(inside) then
+		if t - (a.HoldStart :: number) < ChaseRules.holdTime() then
 			return
 		end
-		local check = ChaseRules.canSteal(t, a.HoldStart, c.ImmuneUntil, d, inside)
+		local check = ChaseRules.canSteal(t, a.HoldStart, c.ImmuneUntil, d)
 		a.HoldStart = nil
 		if check ~= "ok" then
 			return
@@ -933,32 +919,20 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 		if #active == 0 then
 			break
 		end
-		if t >= chaseEnd and not overtimeStarted then
-			-- Se acaba el tiempo: gana quien esté en su nido; el resto va a la prórroga.
-			overtimeStarted = true
-			local anyOvertime = false
+		if t >= chaseEnd then
+			-- GDD v3: gana quien la tenga al acabar el tiempo; si está suelta, se escapa.
 			for _, c in active do
 				local carrier = c.Carrier
-				if carrier and MapLayout.insideNest(carrier.Nest, carrier.Pos) then
-					event(t - chaseStart, string.format("⏱️ %s tiene la criatura en su nido al acabar", carrier.Bot.Name))
-					finish(c, carrier)
-				elseif Config.Chase.OvertimeSeconds > 0 then
-					c.Overtime = true
-					anyOvertime = true
-				else
-					finish(c, nil)
+				if carrier then
+					event(t - chaseStart, string.format("⏱️ %s tiene la criatura al acabar", carrier.Bot.Name))
 				end
-			end
-			if anyOvertime then
-				event(t - chaseStart, "¡Prórroga! Gana el primero que meta la criatura en su nido")
-			end
-			continue
-		end
-		if overtimeStarted and t >= overtimeEnd then
-			for _, c in active do
-				finish(c, nil)
+				finish(c, carrier)
 			end
 			break
+		end
+		local revealed = ChaseRules.isRevealed(t - chaseStart, chaseEnd - t)
+		if revealed then
+			revealedSeconds += dt
 		end
 
 		-- Reconsiderar quién persigue cada 10 s (alguien se anima, alguien se cansa).
@@ -967,7 +941,7 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 			reassignAll()
 		end
 
-		-- Portadores
+		-- Portadores: huyen a escondites del parkour.
 		for _, c in active do
 			local carrier = c.Carrier
 			if not carrier then
@@ -1001,67 +975,19 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 				end
 				carrier = c.Carrier :: Agent
 			end
-			local inside = MapLayout.insideNest(carrier.Nest, carrier.Pos)
-			local carrierTarget: Point
-			if inside then
-				if not c.FirstHome then
-					c.FirstHome = t - chaseStart
-				end
-				timeInNest += dt
-				c.HomeStreak += dt
-				if ChaseRules.isSecured(c.HomeStreak) then
-					c.Secured = true
-					event(t - chaseStart, string.format("🔒 %s asegura la criatura en su nido", carrier.Bot.Name))
-					finish(c, carrier)
-					continue
-				end
-				if c.Overtime then
-					event(t - chaseStart, string.format("⚡ %s gana en la prórroga", carrier.Bot.Name))
-					finish(c, carrier)
-					continue
-				end
-				-- Puerta: una vez por ronda cuando se acercan ladrones desde fuera.
-				if not carrier.DoorUsed and nearest and nearestDist < 25 and not MapLayout.insideNest(carrier.Nest, nearest.Pos) then
-					carrier.DoorUsed = true
-					doorClosed[carrier.Nest] = t + Config.Chase.DoorCloseTime
-					doors += 1
-					event(t - chaseStart, string.format("%s cierra la puerta de su nido", carrier.Bot.Name))
-				end
-				-- Huir dentro del nido: el punto más alejado de los perseguidores.
-				local center = MapLayout.nestCenter(carrier.Nest)
-				local angle = MapLayout.nestAngle(carrier.Nest)
-				local half = MapLayout.NestSize / 2 - 2
-				local best, bestScore = center, -1
-				for _, offset in { { 0, 0 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }, { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } } do
-					local r, tg = offset[1] * half, offset[2] * half
-					local candidate = {
-						X = center.X + r * math.cos(angle) - tg * math.sin(angle),
-						Z = center.Z + r * math.sin(angle) + tg * math.cos(angle),
-					}
-					local score = math.huge
-					for _, list in { agents, foxes } do
-						for _, a in list do
-							if a.Pursue and a.PursueChase == c then
-								score = math.min(score, dist(a.Pos, candidate))
-							end
-						end
-					end
-					if score > bestScore then
-						best, bestScore = candidate, score
-					end
-				end
-				carrierTarget = best
-			else
-				c.HomeStreak = 0
-				carrierTarget = MapLayout.nestCenter(carrier.Nest)
+			local hide = c.HideTarget
+			local threatened = nearest ~= nil and nearestDist < SIGHT
+			if not hide or dist(carrier.Pos, hide) < 3 and threatened or (threatened and rng() < 0.05) then
+				hide = pickHideSpot(c, carrier, revealed)
+				c.HideTarget = hide
 			end
-			local way = waypoint(carrier, agents, carrierTarget, doorClosed, t)
-			if way and carrier.StunnedUntil <= t then
-				carrier.Pos = step(carrier.Pos, way, speedOf(carrier, true, t, agents) * dt)
+			if carrier.StunnedUntil <= t and hide and dist(carrier.Pos, hide) > 1 then
+				carrier.Pos = step(carrier.Pos, hide, speedOf(carrier, true, t) * dt)
 			end
 		end
 
-		-- Perseguidores (jugadores y zorros)
+		-- Perseguidores (jugadores y zorros): solo saben dónde está el portador si lo ven
+		-- (cerca) o en la señal; si no, van a donde se le vio y buscan alrededor.
 		for _, list in { agents, foxes } do
 			for _, a in list do
 				local c = a.PursueChase
@@ -1070,29 +996,35 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 					continue
 				end
 				local targetNow = chasePos(c)
-				if t - a.SeenAt >= a.Bot.Arch.Reaction or not a.SeenCarrierPos then
+				local visible = a.IsFox or revealed or c.Carrier == nil or dist(a.Pos, targetNow) <= SIGHT
+				if visible and (t - a.SeenAt >= a.Bot.Arch.Reaction or not a.SeenCarrierPos) then
 					a.SeenCarrierPos = { X = targetNow.X, Z = targetNow.Z }
 					a.SeenAt = t
+					a.SearchPos = nil
 				end
-				local target = a.SeenCarrierPos :: Point
+				local target = a.SeenCarrierPos or targetNow
+				if not visible and dist(a.Pos, target) < 4 then
+					-- Llegó a donde lo vieron y no está: buscar por los alrededores.
+					if not a.SearchPos or t >= a.SearchUntil or dist(a.Pos, a.SearchPos :: Point) < 3 then
+						a.SearchPos = MapLayout.randomNear(rng, target, 25)
+						a.SearchUntil = t + 4
+					end
+					target = a.SearchPos :: Point
+				elseif a.SearchPos and not visible then
+					target = a.SearchPos :: Point
+				end
 				local d = dist(a.Pos, targetNow)
 				local close = if c.Carrier then Config.Chase.StealRange * 0.6 else 1
 				if d > close then
-					local w = waypoint(a, agents, target, doorClosed, t)
-					if w then
-						a.Pos = step(a.Pos, w, speedOf(a, false, t, agents) * dt)
-					end
+					a.Pos = step(a.Pos, target, speedOf(a, false, t) * dt)
 					d = dist(a.Pos, chasePos(c))
 				end
 				tryTake(a, c, d)
-				if c.Done or a.Carrying then
-					continue
-				end
 			end
 		end
 
 		if t >= nextFrame then
-			record(if overtimeStarted then "Overtime" else "Chase")
+			record("Chase")
 			nextFrame += 0.5
 		end
 		t += dt
@@ -1166,7 +1098,6 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	local steals = 0
 	for _, c in chases do
 		steals += c.Steals
-		local carrier = c.Winner or c.Carrier
 		local carriersCount = 0
 		for _ in c.Carriers do
 			carriersCount += 1
@@ -1181,13 +1112,9 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 			WinnerId = if c.Winner then c.Winner.Bot.Id else nil,
 			WinnerIsChosen = c.Winner == c.Chosen,
 			Escaped = c.Winner == nil,
-			Secured = c.Secured,
-			Overtime = c.Overtime,
 			Steals = c.Steals,
 			Carriers = carriersCount,
 			Drops = c.Drops,
-			FirstHomeSeconds = c.FirstHome,
-			FinalDistanceToNest = if carrier then MapLayout.distance(carrier.Pos, MapLayout.nestCenter(carrier.Nest)) else 0,
 			LastChangeAgo = t - c.LastChange,
 		})
 	end
@@ -1203,7 +1130,6 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 		Chases = chaseList,
 		Steals = steals,
 		Passes = passes,
-		Doors = doors,
 		Betrayals = betrayals,
 		ShieldBlocks = shieldBlocks,
 		FoxDrops = foxDrops,
@@ -1211,10 +1137,10 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 		Bumps = bumpsTotal,
 		Geysers = geyserActivations,
 		Carriers = 0,
-		CarrierNestSeconds = timeInNest,
-		Overtime = overtimeStarted and t > chaseEnd,
+		RevealedSeconds = revealedSeconds,
 		ChaseSeconds = t - chaseStart,
-		DurationSeconds = t + Config.Round.ResultsTime + Config.Round.IntermissionTime,
+		-- GDD v3: cada partida empieza y acaba en el lobby (cola y dos teletransportes).
+		DurationSeconds = t + Config.Round.ResultsTime + Config.Round.IntermissionTime + MATCH_OVERHEAD / Config.Matchmaking.RoundsPerMatch,
 	}
 	for _ in allCarriers do
 		summary.Carriers += 1

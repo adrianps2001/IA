@@ -39,19 +39,29 @@ end
 
 -- atHome: el portador está dentro de su nido; intruding: está dentro de un nido ajeno
 -- durante la persecución (ver Config.Chase).
-function Economy.walkSpeed(bootsLevel: number, isCarrier: boolean, isSprinting: boolean, atHome: boolean?, intruding: boolean?): number
+function Economy.walkSpeed(bootsLevel: number, isCarrier: boolean, isSprinting: boolean): number
 	local boots = math.clamp(bootsLevel, 0, Config.Movement.BootsMaxLevel) * Config.Movement.BootsPerLevel
 	local speed = Config.Movement.BaseWalkSpeed * (1 + boots)
-	if isCarrier and not (atHome and Config.Chase.HomeCarrierFullSpeed) then
+	if isCarrier then
 		speed *= Config.Chase.CarrierSpeedMultiplier
-	end
-	if intruding then
-		speed *= Config.Chase.IntruderSpeedMultiplier
 	end
 	if isSprinting then
 		speed *= Config.Chase.SprintMultiplier
 	end
 	return speed
+end
+
+-- Número corto para carteles en el mundo (12.5K, 3.1M), igual que UI.formatNumber.
+function Economy.short(n: number): string
+	local value = math.floor(n)
+	if value >= 1e9 then
+		return string.format("%.1fB", value / 1e9)
+	elseif value >= 1e6 then
+		return string.format("%.1fM", value / 1e6)
+	elseif value >= 1e4 then
+		return string.format("%.1fK", value / 1e3)
+	end
+	return tostring(value)
 end
 
 function Economy.nestSlots(nestLevel: number, hasVipPass: boolean): number

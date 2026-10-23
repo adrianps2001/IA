@@ -7,6 +7,7 @@
 --
 -- Añade --codegen antes del archivo para que vaya más rápido.
 
+local ArenaLayout = require("../src/shared/ArenaLayout")
 local Config = require("../src/shared/Config")
 local Rarity = require("../src/shared/Rarity")
 local Json = require("../tools/Json")
@@ -88,7 +89,12 @@ if mode == "partida" or mode == "repeticion" then
 				Chosen = r.Chosen,
 			})
 		end
-		print(Json.encode({ Seed = seed, Overrides = overrides, Summary = summary, Bots = botList, Log = extra.Log, Frames = extra.Frames, Nests = extra.Nests }))
+		-- Árboles del parkour para dibujarlos en la repetición.
+		local trees = {}
+		for _, tree in ArenaLayout.get().Trees do
+			table.insert(trees, { X = math.floor(tree.X), Z = math.floor(tree.Z), R = math.floor(tree.Radius) })
+		end
+		print(Json.encode({ Seed = seed, Overrides = overrides, Summary = summary, Bots = botList, Log = extra.Log, Frames = extra.Frames, Nests = extra.Nests, Trees = trees }))
 	else
 		print(string.format("=== Partida de prueba · semilla %d · %d bots · ajustes: %s ===\n", seed, players, overridesText))
 		for _, entry in extra.Log do
@@ -96,7 +102,7 @@ if mode == "partida" or mode == "repeticion" then
 		end
 		print("\n--- Resumen ---")
 		print(string.format("Incubación: %d s (barra al %d %%%s) · %d criatura%s%s", summary.IncubationSeconds, math.floor(summary.BarFraction * 100), if summary.EarlyFull then ", llena antes de tiempo" else "", summary.Creatures, if summary.Creatures == 1 then "" else "s", if summary.Foxes > 0 then string.format(" · %d zorros", summary.Foxes) else ""))
-		print(string.format("Persecución: %d robos, %d escudos rotos, %d relevos, %d puertas, %d traiciones, %d portadores distintos", summary.Steals, summary.ShieldBlocks, summary.Passes, summary.Doors, summary.Betrayals, summary.Carriers))
+		print(string.format("Persecución: %d robos, %d escudos rotos, %d relevos, %d traiciones, %d portadores distintos, señal %d s", summary.Steals, summary.ShieldBlocks, summary.Passes, summary.Betrayals, summary.Carriers, summary.RevealedSeconds))
 		local chaseList: { any } = summary.Chases
 		for index = 1, #chaseList do
 			local c = chaseList[index]
@@ -178,8 +184,8 @@ elseif mode == "lote" then
 	print(string.format("%d partidas de %d bots (semilla %d) · ajustes: %s", count, players, seed, overridesText))
 	print(string.format("  Incubación media: %.0f s · barra llena antes de tiempo: %.0f %% · ronda completa: %.1f min", avg("IncubationSeconds"), share(function(s) return s.EarlyFull end) * 100, avg("DurationSeconds") / 60))
 	print(string.format("  Criaturas por ronda: %.2f · zorros: %.1f · robos por criatura: %.1f · escudos rotos por ronda: %.1f · tiradas al suelo: %.2f", avg("Creatures"), avg("Foxes"), chaseAvg("Steals"), avg("ShieldBlocks"), avg("FoxDrops")))
-	print(string.format("  La criatura escapa: %.0f %% · gana el elegido: %.0f %% · asegurada: %.0f %% · prórroga: %.0f %% · persecución media: %.0f s", chaseShare(function(c) return c.Escaped end) * 100, chaseShare(function(c) return c.WinnerIsChosen end) * 100, chaseShare(function(c) return c.Secured end) * 100, chaseShare(function(c) return c.Overtime end) * 100, avg("ChaseSeconds")))
-	print(string.format("  Barra media al eclosionar: %.0f %% · rareza mínima Épica: %.0f %% · relevos: %.2f · puertas: %.2f", avg("BarFraction") * 100, share(function(s) return s.MinRarity == "Epic" end) * 100, avg("Passes"), avg("Doors")))
+	print(string.format("  La criatura escapa: %.0f %% · gana el elegido: %.0f %% · cambió de manos en los últimos 10 s: %.0f %% · persecución media: %.0f s", chaseShare(function(c) return c.Escaped end) * 100, chaseShare(function(c) return c.WinnerIsChosen end) * 100, chaseShare(function(c) return c.LastChangeAgo <= 10 end) * 100, avg("ChaseSeconds")))
+	print(string.format("  Barra media al eclosionar: %.0f %% · rareza mínima Épica: %.0f %% · relevos: %.2f", avg("BarFraction") * 100, share(function(s) return s.MinRarity == "Epic" end) * 100, avg("Passes")))
 	print(string.format("  Empujones: %.1f · géiseres: %.1f · tratos: %.1f · traiciones: %.2f", avg("Bumps"), avg("Geysers"), avg("Deals"), avg("Betrayals")))
 	-- Victorias por ronda de cada tipo de jugador (sobre las rondas jugadas por ese tipo).
 	local winners: { [string]: number } = {}

@@ -11,7 +11,6 @@ local Players = game:GetService("Players")
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Leaderboard = require(Shared.Leaderboard)
-local MapLayout = require(Shared.MapLayout)
 
 local AnnouncementService = require(script.Parent.AnnouncementService)
 local DataService = require(script.Parent.DataService)
@@ -102,23 +101,21 @@ local function refreshBoard()
 end
 
 local function buildBoard()
-	local map = workspace:FindFirstChild("Map")
-	if not map then
+	-- GDD v3: el cartel está en la plaza del lobby, mirando al portal.
+	local lobby = MapService.Lobby
+	if not lobby then
 		return
 	end
-	-- En el borde del claro del huevo, mirando hacia el huevo.
-	local spot = MapLayout.polar(math.rad(90), MapLayout.ClearingRadius - 3)
-	local position = Vector3.new(spot.X, 11, spot.Z)
 	local board = Instance.new("Part")
 	board.Name = "Leaderboard"
 	board.Anchored = true
 	board.CanCollide = false
 	board.CanQuery = false
 	board.Size = Vector3.new(22, 12, 0.6)
-	board.CFrame = CFrame.lookAt(position, Vector3.new(0, 11, 0))
+	board.CFrame = lobby.BoardCFrame
 	board.Color = Color3.fromRGB(45, 32, 28)
 	board.Material = Enum.Material.Wood
-	board.Parent = map
+	board.Parent = lobby.Folder
 	for _, side in { -1, 1 } do
 		local post = Instance.new("Part")
 		post.Name = "Post"
@@ -184,7 +181,7 @@ local function like(liker: Player, index: number)
 end
 
 local function buildLikePrompts()
-	for _, nest in MapService.Nests do
+	for _, nest in MapService.LobbyNests do
 		local post = Instance.new("Part")
 		post.Name = "LikePost"
 		post.Anchored = true
@@ -192,7 +189,7 @@ local function buildLikePrompts()
 		post.CanQuery = false
 		post.Transparency = 1
 		post.Size = Vector3.new(1, 1, 1)
-		post.CFrame = nest.Origin * CFrame.new(0, 4, -nest.Size / 2 - 2) -- delante de la entrada
+		post.CFrame = nest.Origin * CFrame.new(0, 4, -nest.Size / 2 - 2) -- delante del arco de entrada
 		post.Parent = nest.Model
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.Name = "LikePrompt"

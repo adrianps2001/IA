@@ -120,6 +120,11 @@ local function invite(player: Player, userId: any)
 	if not target or target == player then
 		return
 	end
+	-- GDD v3: las Bandadas se forman en el lobby (luego entran juntas a la partida).
+	if player:GetAttribute("InMatch") == true or target:GetAttribute("InMatch") == true then
+		AnnouncementService.player(player, "🏡 Las Bandadas se forman en el lobby.")
+		return
+	end
 	local party = partyOf[player]
 	if party and #party.Members >= Config.Party.MaxSize then
 		AnnouncementService.player(player, "Tu Bandada está completa.")
@@ -170,6 +175,80 @@ local function respond(player: Player, fromUserId: any, accept: any)
 		if member ~= player then
 			task.spawn(isFriend, player, member)
 			task.spawn(isFriend, member, player)
+		end
+	end
+end
+
+-- Bandadas al cambiar de servidor (GDD v3): se mandan en los datos del teletransporte y se
+-- rehacen al llegar. groupsOf da los UserId de cada Bandada entre esos jugadores.
+function PartyService.groupsOf(players: { Player }): { { number } }
+	local groups: { { number } } = {}
+	local seen: { [Party]: boolean } = {}
+	for _, player in players do
+		local party = partyOf[player]
+		if party and not seen[party] then
+			seen[party] = true
+			local ids = {}
+			for _, member in party.Members do
+				if table.find(players, member) then
+					table.insert(ids, member.UserId)
+				end
+			end
+			if #ids >= 2 then
+				table.insert(groups, ids)
+			end
+		end
+	end
+	return groups
+end
+
+local pendingGroups: { { number } } = {}
+
+-- Rehace las Bandadas en cuanto hay al menos dos de sus miembros en este servidor. Se puede
+-- llamar cada vez que llega alguien con los mismos grupos (no los duplica).
+function PartyService.restore(groups: any)
+	if type(groups) ~= "table" then
+		return
+	end
+	for _, group in groups do
+		if type(group) == "table" and #group <= Config.Party.MaxSize then
+			local known = false
+			for _, pending in pendingGroups do
+				if pending[1] == group[1] then
+					known = true
+				end
+			end
+			if not known then
+				table.insert(pendingGroups, group)
+			end
+		end
+	end
+	for _, group in pendingGroups do
+		local present: { Player } = {}
+		for _, id in group do
+			local member = if type(id) == "number" then Players:GetPlayerByUserId(id) else nil
+			if member then
+				table.insert(present, member)
+			end
+		end
+		if #present >= 2 then
+			local party: Party? = nil
+			for _, member in present do
+				party = party or partyOf[member]
+			end
+			if not party then
+				local created: Party = { Id = HttpService:GenerateGUID(false), Members = {} }
+				parties[created.Id] = created
+				party = created
+			end
+			assert(party)
+			for _, member in present do
+				if not partyOf[member] and #party.Members < Config.Party.MaxSize then
+					table.insert(party.Members, member)
+					partyOf[member] = party
+					setAttribute(party, member)
+				end
+			end
 		end
 	end
 end
