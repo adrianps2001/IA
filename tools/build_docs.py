@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rellena docs/index.html con código y datos reales del proyecto.
+"""Rellena docs/index.html (y docs/juego.html) con código y datos reales del proyecto.
 
 - <pre class="code" data-file="src/..." data-fn="Nombre"> copia esa función del archivo.
 - <pre class="code" data-file="src/..." data-from="texto" data-to="texto"> copia ese bloque.
@@ -20,7 +20,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PAGE = os.path.join(ROOT, "docs", "index.html")
+PAGES = [os.path.join(ROOT, "docs", "index.html"), os.path.join(ROOT, "docs", "juego.html")]
 
 PRE_RE = re.compile(r'<pre class="code"([^>]*)><code class="language-(\w+)">(.*?)</code></pre>', re.S)
 ATTR_RE = re.compile(r'([\w-]+)="([^"]*)"')
@@ -105,27 +105,33 @@ def game_data():
     return result.stdout.strip().replace("</", "<\\/")
 
 
-def build(source):
+def build(source, data):
     out = PRE_RE.sub(render_snippet, source)
     out = LOC_RE.sub(render_loc, out)
-    data = game_data()
     out = DATA_RE.sub(lambda m: m.group(1) + data + m.group(3), out)
     return out
 
 
 def main():
-    with open(PAGE, encoding="utf-8") as f:
-        source = f.read()
-    output = build(source)
-    if "--check" in sys.argv:
-        if output != source:
-            print("docs/index.html no está al día: ejecuta python3 tools/build_docs.py")
-            sys.exit(1)
-        print("docs/index.html está al día")
-        return
-    with open(PAGE, "w", encoding="utf-8") as f:
-        f.write(output)
-    print(f"docs/index.html actualizado ({len(PRE_RE.findall(output))} fragmentos de código)")
+    data = game_data()
+    stale = []
+    for page in PAGES:
+        name = os.path.relpath(page, ROOT)
+        with open(page, encoding="utf-8") as f:
+            source = f.read()
+        output = build(source, data)
+        if "--check" in sys.argv:
+            if output != source:
+                stale.append(name)
+            else:
+                print(f"{name} está al día")
+            continue
+        with open(page, "w", encoding="utf-8") as f:
+            f.write(output)
+        print(f"{name} actualizado ({len(PRE_RE.findall(output))} fragmentos de código)")
+    if stale:
+        print(f"{', '.join(stale)} no está al día: ejecuta python3 tools/build_docs.py")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -53,19 +53,28 @@ for _, link in arena.Links do
 end
 local trees = {}
 for _, tree in arena.Trees do
-	table.insert(trees, { X = tree.X, Z = tree.Z, Radius = tree.Radius, Half = ArenaLayout.deckHalf(tree), Decks = tree.Decks, Ramp = tree.Ramp, Hut = tree.Hut ~= nil })
+	table.insert(trees, { X = tree.X, Z = tree.Z, Radius = tree.Radius, Half = ArenaLayout.deckHalf(tree), Decks = tree.Decks, Ramp = tree.Ramp, Hut = tree.Hut ~= nil, HutLevel = tree.Hut })
 end
 local rides = {}
 for _, ride in arena.Rides do
-	table.insert(rides, { Kind = ride.Kind, From = { ride.From.X, ride.From.Z }, To = { ride.To.X, ride.To.Z } })
+	-- El tercer número es la altura (la página del juego dibuja el parkour en 3D).
+	table.insert(rides, { Kind = ride.Kind, From = { ride.From.X, ride.From.Z, ride.From.Y }, To = { ride.To.X, ride.To.Z, ride.To.Y } })
 end
 local trampolines = {}
 for _, t in arena.Trampolines do
-	table.insert(trampolines, { t.X, t.Z })
+	table.insert(trampolines, { t.X, t.Z, t.Y })
 end
 
 print(Json.encode({
-	Arena = { Trees = trees, Links = links, Rides = rides, Trampolines = trampolines },
+	Arena = {
+		Trees = trees,
+		Links = links,
+		Rides = rides,
+		Trampolines = trampolines,
+		DeckWidth = ArenaLayout.DeckWidth,
+		DeckSides = ArenaLayout.DeckSides,
+		MidHeight = ArenaLayout.MidHeight,
+	},
 	Config = Config,
 	Rarities = rarities,
 	Slots = Genes.Slots,
