@@ -1,6 +1,6 @@
 --!strict
 -- Geometría del parkour de la arena (GDD v3), sin dependencias de Roblox. El claro del huevo
--- no cambia; alrededor hay árboles gigantes con plataformas a tres alturas, rampas en espiral,
+-- no cambia; alrededor hay árboles gigantes con plataformas de hasta 6 pisos, rampas en espiral,
 -- escaleras, puentes, vigas estrechas, caminos de piedras flotantes, tirolinas, toboganes,
 -- setas trampolín, cabañas y arbustos para esconderse.
 -- Siempre sale igual (semilla Config.Arena.Seed): el servidor lo construye y la forma se
@@ -49,12 +49,16 @@ export type Arena = {
 
 local ArenaLayout = {}
 
-ArenaLayout.DeckWidth = 6 -- ancho de las plataformas alrededor del tronco
+ArenaLayout.DeckWidth = 5.5 -- ancho de las plataformas alrededor del tronco
 ArenaLayout.RampWidth = 5
-ArenaLayout.RampGap = 0.5 -- separación entre la plataforma y la rampa
+ArenaLayout.RampGap = 0.3 -- separación entre la plataforma y la rampa
 ArenaLayout.RampStep = math.rad(15) -- ángulo de cada tablón de la rampa
 ArenaLayout.RampSlope = math.rad(24) -- pendiente (los personajes y el pathfinding la suben andando)
-ArenaLayout.Levels = { 24, 46, 68 }
+-- Alturas de las plataformas (v3.1: el doble de alto que la primera versión, con 6 pisos).
+ArenaLayout.Levels = { 22, 44, 66, 88, 110, 132 }
+-- Las plataformas son octógonos (8 tablas alrededor del tronco). Las cuadradas tenían las
+-- esquinas tan lejos del tronco que chocaban con la rampa y con la escalera.
+ArenaLayout.DeckSides = 8
 ArenaLayout.InnerRadius = 64 -- anillo de árboles junto al claro
 ArenaLayout.OuterRadius = 100 -- anillo de árboles junto a los nidos
 
@@ -77,12 +81,31 @@ local function range(rng: () -> number, low: number, high: number): number
 	return low + rng() * (high - low)
 end
 
+-- Apotema del octógono: distancia del centro del tronco al centro de cada cara.
 function ArenaLayout.deckHalf(tree: Tree): number
 	return tree.Radius + ArenaLayout.DeckWidth
 end
 
+-- Distancia del centro a las esquinas del octógono (lo más lejos que llega la plataforma).
+function ArenaLayout.deckOuter(tree: Tree): number
+	return ArenaLayout.deckHalf(tree) / math.cos(math.pi / ArenaLayout.DeckSides)
+end
+
+-- Distancia del centro al borde de la plataforma en la dirección `angle`.
+function ArenaLayout.deckEdge(tree: Tree, angle: number): number
+	local step = 2 * math.pi / ArenaLayout.DeckSides
+	local off = angle - math.floor(angle / step + 0.5) * step -- respecto al centro de la cara más cercana
+	return ArenaLayout.deckHalf(tree) / math.cos(off)
+end
+
+-- Ángulo (de los de las caras) más cercano a `angle`: ahí se pone la escalera, pegada a una cara.
+function ArenaLayout.faceAngle(angle: number): number
+	local step = 2 * math.pi / ArenaLayout.DeckSides
+	return math.floor(angle / step + 0.5) * step
+end
+
 function ArenaLayout.rampRadius(tree: Tree): number
-	return ArenaLayout.deckHalf(tree) + ArenaLayout.RampGap + ArenaLayout.RampWidth / 2
+	return ArenaLayout.deckOuter(tree) + ArenaLayout.RampGap + ArenaLayout.RampWidth / 2
 end
 
 -- Puntos de la rampa en espiral: uno por tablón, desde el suelo hasta la plataforma más alta.
@@ -115,13 +138,8 @@ end
 function ArenaLayout.linkEnds(arena: Arena, link: Link): (Vec, Vec)
 	local a, b = arena.Trees[link.A], arena.Trees[link.B]
 	local angle = angleTo(a, b)
-	local ha, hb = ArenaLayout.deckHalf(a), ArenaLayout.deckHalf(b)
-	-- Las plataformas son cuadradas (alineadas con los ejes): el borde está más lejos en diagonal.
-	local function edge(half: number): number
-		local c, s = math.abs(math.cos(angle)), math.abs(math.sin(angle))
-		return half / math.max(c, s) - 0.5
-	end
-	local ea, eb = edge(ha), edge(hb)
+	local ea = ArenaLayout.deckEdge(a, angle) - 0.5
+	local eb = ArenaLayout.deckEdge(b, angle + math.pi) - 0.5
 	return { X = a.X + math.cos(angle) * ea, Y = link.Level, Z = a.Z + math.sin(angle) * ea },
 		{ X = b.X - math.cos(angle) * eb, Y = link.Level, Z = b.Z - math.sin(angle) * eb }
 end
@@ -184,16 +202,16 @@ local function build(): Arena
 	local levels = ArenaLayout.Levels
 	-- 4 árboles grandes junto al claro (0°, 90°, 180°, 270°), entre las zonas del mapa.
 	for s = 0, 3 do
-		addTree(math.rad(90 * s), ArenaLayout.InnerRadius, range(rng, 7.5, 9), { levels[1], levels[2], levels[3] }, true)
+		addTree(math.rad(90 * s), ArenaLayout.InnerRadius, range(rng, 7.5, 8.3), table.clone(levels), true)
 	end
 	-- 8 árboles junto a los nidos, por parejas, en los huecos entre nidos (±11,25°).
 	for s = 0, 3 do
-		addTree(math.rad(90 * s - 11.25), ArenaLayout.OuterRadius, range(rng, 6, 7), { levels[1], levels[2] }, true)
-		addTree(math.rad(90 * s + 11.25), ArenaLayout.OuterRadius, range(rng, 6, 7), { levels[1], levels[2], levels[3] }, false)
+		addTree(math.rad(90 * s - 11.25), ArenaLayout.OuterRadius, range(rng, 6, 6.6), { levels[1], levels[2], levels[3], levels[4] }, true)
+		addTree(math.rad(90 * s + 11.25), ArenaLayout.OuterRadius, range(rng, 6, 6.6), { levels[1], levels[2], levels[3], levels[4], levels[5] }, false)
 	end
-	-- Cabañas (escondites) en la plataforma media de los árboles grandes.
+	-- Cabañas (escondites) a media altura de los árboles grandes.
 	for s = 1, 4 do
-		trees[s].Hut = levels[2]
+		trees[s].Hut = levels[3]
 	end
 
 	local links: { Link } = {}
@@ -204,10 +222,14 @@ local function build(): Arena
 		local inner, minus, plus = s + 1, 5 + 2 * s, 6 + 2 * s
 		local nextInner, nextMinus = (s + 1) % 4 + 1, 5 + 2 * ((s + 1) % 4)
 		link(inner, minus, levels[1], "Bridge")
+		link(inner, minus, levels[4], "Bridge")
 		link(inner, plus, levels[2], "Bridge")
+		link(inner, plus, levels[5], "Beam")
 		link(minus, plus, levels[2], "Beam") -- viga estrecha sin barandilla
 		link(minus, plus, levels[1], if s % 2 == 0 then "Stones" else "Beam")
-		link(inner, nextInner, levels[3], "Stones") -- atajo alto y arriesgado entre los grandes
+		link(minus, plus, levels[3], "Bridge")
+		link(inner, nextInner, levels[3], "Stones") -- atajos arriesgados entre los grandes
+		link(inner, nextInner, levels[6], "Stones") -- el más alto de todos
 		if s % 2 == 0 then
 			link(plus, nextMinus, levels[1], "Stones")
 		end
@@ -228,28 +250,32 @@ local function build(): Arena
 	end
 
 	local rides: { Ride } = {}
-	for s = 0, 3 do
-		local inner = trees[s + 1]
-		local target = trees[5 + 2 * ((s + 1) % 4)] -- el árbol exterior del siguiente sector
-		local angle = angleTo(inner, target)
-		local from = ArenaLayout.deckHalf(inner) + 1
-		local to = ArenaLayout.deckHalf(target) - 2
-		-- Tirolina: de lo más alto de un árbol grande a la plataforma baja de otro.
-		local zipline: Ride = {
+	local function zipline(from: Tree, fromLevel: number, to: Tree, toLevel: number)
+		local angle = angleTo(from, to)
+		local start = ArenaLayout.deckEdge(from, angle) + 1
+		local finish = ArenaLayout.deckHalf(to) - 2
+		local ride: Ride = {
 			Kind = "Zipline",
-			From = { X = inner.X + math.cos(angle) * from, Y = levels[3] + 7, Z = inner.Z + math.sin(angle) * from },
-			To = { X = target.X - math.cos(angle) * to, Y = levels[1] + 2.5, Z = target.Z - math.sin(angle) * to },
+			From = { X = from.X + math.cos(angle) * start, Y = fromLevel + 7, Z = from.Z + math.sin(angle) * start },
+			To = { X = to.X - math.cos(angle) * finish, Y = toLevel + 2.5, Z = to.Z - math.sin(angle) * finish },
 		}
-		table.insert(rides, zipline)
+		table.insert(rides, ride)
+	end
+	for s = 0, 3 do
+		local inner, plus = trees[s + 1], trees[6 + 2 * s]
+		local nextInner, nextMinus = trees[(s + 1) % 4 + 1], trees[5 + 2 * ((s + 1) % 4)]
+		-- Tirolinas: de lo más alto de un árbol grande a media altura de otro, y de lo alto de
+		-- un árbol exterior a la plataforma baja del siguiente árbol grande.
+		zipline(inner, levels[6], nextMinus, levels[3])
+		zipline(plus, levels[5], nextInner, levels[2])
 		-- Tobogán: de la plataforma baja de un árbol exterior al suelo, hacia el claro.
-		local outer = trees[6 + 2 * s]
-		local down = math.atan2(-outer.Z, -outer.X) + math.rad(if s % 2 == 0 then 35 else -35)
-		local start = ArenaLayout.deckHalf(outer) + 0.5
+		local down = math.atan2(-plus.Z, -plus.X) + math.rad(if s % 2 == 0 then 35 else -35)
+		local start = ArenaLayout.deckEdge(plus, down) + 0.5
 		local length = levels[1] / math.tan(math.rad(32))
 		local slide: Ride = {
 			Kind = "Slide",
-			From = { X = outer.X + math.cos(down) * start, Y = levels[1] + 0.5, Z = outer.Z + math.sin(down) * start },
-			To = { X = outer.X + math.cos(down) * (start + length), Y = 0.5, Z = outer.Z + math.sin(down) * (start + length) },
+			From = { X = plus.X + math.cos(down) * start, Y = levels[1] + 0.5, Z = plus.Z + math.sin(down) * start },
+			To = { X = plus.X + math.cos(down) * (start + length), Y = 0.5, Z = plus.Z + math.sin(down) * (start + length) },
 		}
 		table.insert(rides, slide)
 	end
@@ -315,14 +341,14 @@ function ArenaLayout.get(): Arena
 	return cached :: Arena
 end
 
--- Puntos sobre las plataformas (para poner brasas en lo alto): el centro de cada lado.
+-- Puntos sobre las plataformas (para poner brasas y cajas en lo alto): el centro de cada cara.
 function ArenaLayout.deckSpots(): { Vec }
 	local spots: { Vec } = {}
 	for _, tree in ArenaLayout.get().Trees do
 		local mid = tree.Radius + ArenaLayout.DeckWidth / 2
 		for _, level in tree.Decks do
-			for k = 0, 3 do
-				local angle = k * math.pi / 2
+			for k = 0, ArenaLayout.DeckSides - 1 do
+				local angle = k * 2 * math.pi / ArenaLayout.DeckSides
 				table.insert(spots, { X = tree.X + math.cos(angle) * mid, Y = level, Z = tree.Z + math.sin(angle) * mid })
 			end
 		end

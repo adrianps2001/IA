@@ -422,7 +422,9 @@ end)
 
 test("ArenaLayout: árboles sin solaparse, rampas que llegan arriba y enlaces cortos de saltar", function()
 	local arena = ArenaLayout.get()
-	expect(#arena.Trees == 12 and #arena.Links > 12 and #arena.Rides == 8)
+	expect(#arena.Trees == 12 and #arena.Links > 20 and #arena.Rides == 12)
+	-- El doble de alto que la primera versión (68 studs).
+	expect(ArenaLayout.Levels[#ArenaLayout.Levels] >= 2 * 68 - 4)
 	for i, a in arena.Trees do
 		-- Lejos del claro del huevo y de los nidos.
 		local d = math.sqrt(a.X * a.X + a.Z * a.Z)
@@ -431,9 +433,18 @@ test("ArenaLayout: árboles sin solaparse, rampas que llegan arriba y enlaces co
 		for j, b in arena.Trees do
 			if i < j then
 				local dist = math.sqrt((a.X - b.X) ^ 2 + (a.Z - b.Z) ^ 2)
-				expect(dist > ArenaLayout.rampRadius(a) + ArenaLayout.rampRadius(b) + 3, "árboles separados")
+				local edges = ArenaLayout.rampRadius(a) + ArenaLayout.rampRadius(b) + ArenaLayout.RampWidth
+				expect(dist > edges, string.format("las rampas de %d y %d no se tocan (%.1f > %.1f)", i, j, dist, edges))
 			end
 		end
+		-- La plataforma (octógono) no llega a la rampa ni a la escalera en ninguna dirección.
+		for k = 0, 71 do
+			local angle = k * math.pi / 36
+			local edge = ArenaLayout.deckEdge(a, angle)
+			expect(edge >= ArenaLayout.deckHalf(a) - 1e-6 and edge <= ArenaLayout.deckOuter(a) + 1e-6)
+		end
+		expect(ArenaLayout.rampRadius(a) - ArenaLayout.RampWidth / 2 > ArenaLayout.deckOuter(a), "la rampa va por fuera de las esquinas")
+		expect(near(ArenaLayout.deckEdge(a, ArenaLayout.faceAngle(1.234)), ArenaLayout.deckHalf(a), 1e-6), "la escalera queda pegada a una cara")
 		if a.Ramp then
 			local points = ArenaLayout.rampPoints(a)
 			expect(near(points[#points].Y, a.Decks[#a.Decks], 1e-6), "la rampa acaba en la plataforma de arriba")
@@ -462,6 +473,11 @@ test("ArenaLayout: árboles sin solaparse, rampas que llegan arriba y enlaces co
 		end
 	end
 	expect(#ArenaLayout.deckSpots() > 0)
+	for _, ride in arena.Rides do
+		local run = math.sqrt((ride.From.X - ride.To.X) ^ 2 + (ride.From.Z - ride.To.Z) ^ 2)
+		local slope = math.deg(math.atan2(ride.From.Y - ride.To.Y, run))
+		expect(slope > 15 and slope < 45, string.format("%s con pendiente razonable (%.0f°)", ride.Kind, slope))
+	end
 end)
 
 test("Rewards: ganador, aliado y consolación", function()

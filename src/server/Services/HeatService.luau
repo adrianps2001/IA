@@ -279,8 +279,14 @@ end
 
 local function spawnLuckyBlocks()
 	local def = Config.Heat.LuckyBlock
+	local treeSpots = ArenaLayout.deckSpots()
 	for _ = 1, def.Count do
 		local block = spawnSource("LuckyBlock", Color3.fromRGB(255, 210, 40), Vector3.new(3, 3, 3), Enum.PartType.Block, function()
+			-- Algunas cajas salen en lo alto de los árboles (premio por subir).
+			if random:NextNumber() < Config.Arena.LuckyOnTrees then
+				local spot = treeSpots[random:NextInteger(1, #treeSpots)]
+				return Vector3.new(spot.X, spot.Y, spot.Z)
+			end
 			return MapService.randomGroundPoint(MapLayout.SourceRing.Min, MapLayout.SourceRing.Max)
 		end, def.Respawn, function(player)
 			local amount = random:NextInteger(def.Min, def.Max)

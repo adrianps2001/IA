@@ -50,9 +50,9 @@ Config.Heat = {
 	BumpSameTargetCooldown = 30, -- el mismo jugador no puede empujar a la misma víctima más a menudo
 	NewPlayerProtectionRounds = 5, -- en sus primeras rondas, a un novato no se le puede empujar
 	BumpRange = 9,
-	Ember = { Amount = 5, Respawn = 8, Count = 60 },
+	Ember = { Amount = 5, Respawn = 8, Count = 70 },
 	Firefly = { Amount = 8, Respawn = 12, Count = 20 },
-	LuckyBlock = { Min = 1, Max = 50, Respawn = 30, Count = 10 },
+	LuckyBlock = { Min = 1, Max = 50, Respawn = 30, Count = 12 },
 	Geyser = { Amount = 40, Cooldown = 45, PlayersNeeded = 2, Window = 4, Count = 4 },
 }
 
@@ -380,7 +380,8 @@ Config.Arena = {
 	Seed = 7,
 	TrampolinePower = 95, -- velocidad vertical al pisar una seta trampolín
 	ZiplineSpeed = 55, -- studs por segundo en la tirolina
-	EmbersOnTrees = 0.25, -- fracción de las brasas que aparecen en las plataformas de los árboles
+	EmbersOnTrees = 0.45, -- fracción de las brasas que aparecen en las plataformas de los árboles
+	LuckyOnTrees = 0.25, -- fracción de las cajas sorpresa que aparecen en lo alto
 }
 
 -- Aspecto de las criaturas: "Chibi" (monas, por defecto) o "Classic" (las de la v1).

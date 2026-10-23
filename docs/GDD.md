@@ -159,7 +159,7 @@ Cada mecánica sirve a una de las cuatro fases de la ronda; todas se aprenden en
 ### 5.4 Persecución y robo (v3)
 
 - **Duración:** 2 minutos (2 min 40 s con Luna de Sangre). **(v3)** Se queda la criatura **quien la tenga cuando se acaba el tiempo**. Ya no hay que llevarla al nido, asegurarla ni jugar una prórroga: el nido de la partida es solo el punto de salida. Si la criatura está en el suelo al acabar, se escapa.
-- **(v3) El parkour es la ruta de huida.** Alrededor del claro del huevo (que no cambia) hay 12 árboles gigantes con plataformas a tres alturas. El portador sube y se esconde; los ladrones le siguen (sección 8, Mundo):
+- **(v3) El parkour es la ruta de huida.** Alrededor del claro del huevo (que no cambia) hay 12 árboles gigantes con plataformas de hasta 6 pisos (de 22 a 132 studs). El portador sube y se esconde; los ladrones le siguen (sección 8, Mundo):
   - **Rutas seguras:** rampas en espiral con barandilla y escaleras de mano. Lentas pero sin caídas.
   - **Atajos arriesgados:** vigas estrechas sin barandilla (ahí no te pueden rodear), caminos de piedras flotantes y puentes.
   - **Bajar rápido:** tirolinas y toboganes. **Subir rápido:** setas trampolín.
@@ -275,7 +275,7 @@ El estilo debe reconocerse en una miniatura de 150 píxeles: un huevo enorme y b
 
 - **(v3) Lobby:** una plaza con el portal de partidas en el centro (pisar el círculo te mete en la cola), el cartel del ranking, una estatua del Huevo Comunitario y 24 nidos alrededor unidos por caminos.
 - **Mapa de partida: Bosque de Brasas.** Mapa circular de unos 300 x 300 studs, con el huevo en un claro central y 16 campamentos de salida en el borde.
-- **(v3) Parkour de árboles gigantes** alrededor del claro: 4 árboles grandes junto al claro y 8 por parejas junto a los campamentos, con plataformas a 24, 46 y 68 studs. Los unen puentes, vigas y caminos de piedras; tienen rampas o escaleras, tirolinas, toboganes, setas trampolín, cabañas y copas para esconderse. Una cuarta parte de las brasas sale en lo alto, así que también se sube durante la incubación. No hace falta que todo tenga sentido: algún bloque flotante suelto también vale.
+- **(v3) Parkour de árboles gigantes** alrededor del claro: 4 árboles grandes junto al claro y 8 por parejas junto a los campamentos, con plataformas de hasta 6 pisos, de 22 a 132 studs (v3.1: el doble de alto que la primera versión). Los unen puentes, vigas y caminos de piedras; tienen rampas o escaleras, tirolinas, toboganes, setas trampolín, cabañas y copas para esconderse. Casi la mitad de las brasas y una de cada cuatro cajas sorpresa salen en lo alto, así que también se sube durante la incubación. No hace falta que todo tenga sentido: algún bloque flotante suelto también vale.
 - **Zonas:** pantano de luciérnagas, cueva de cristales, géiseres, puente colgante (atajo arriesgado) y túneles.
 - **Ciclo visual de la ronda:** atardecer durante la incubación, eclipse en la eclosión, noche iluminada por el aura de la criatura durante la persecución.
 

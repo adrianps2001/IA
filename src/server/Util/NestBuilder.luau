@@ -107,16 +107,26 @@ function NestBuilder.lobby(index: number, origin: CFrame, parent: Instance): Nes
 
 	-- Valla de madera con la entrada delante (10 de ancho).
 	local wood = Color3.fromRGB(160, 110, 70)
+	-- Las esquinas son de dos tramos de valla: el poste se pone una sola vez (dos piezas
+	-- iguales en el mismo sitio parpadean).
+	local posts: { [string]: boolean } = {}
 	local function fence(from: Vector3, to: Vector3)
 		local length = (to - from).Magnitude
 		local cf = origin * CFrame.lookAt(from, to)
 		for _, y in { 1.8, 3.2 } do
-			block({ Name = "FenceRail", Size = Vector3.new(0.3, 0.35, length), CFrame = cf * CFrame.new(0, y, -length / 2), Color = wood, Material = Enum.Material.Wood }, model)
+			-- Un poco más cortas: en las esquinas no se cruzan con las del otro lado.
+			block({ Name = "FenceRail", Size = Vector3.new(0.3, 0.35, length - 0.6), CFrame = cf * CFrame.new(0, y, -length / 2), Color = wood, Material = Enum.Material.Wood }, model)
 		end
-		local posts = math.max(1, math.floor(length / 4))
-		for k = 0, posts do
-			local p = from:Lerp(to, k / posts)
-			block({ Name = "FencePost", Size = Vector3.new(0.5, 3.4, 0.5), CFrame = origin * CFrame.new(p + Vector3.new(0, 2.2, 0)), Color = wood, Material = Enum.Material.Wood }, model)
+		local count = math.max(1, math.floor(length / 4))
+		for k = 0, count do
+			local p = from:Lerp(to, k / count)
+			local key = string.format("%.1f,%.1f", p.X, p.Z)
+			-- Las esquinas llevan farola: ahí no hace falta poste.
+			local corner = math.abs(math.abs(p.X) - half) < 0.01 and math.abs(math.abs(p.Z) - half) < 0.01
+			if not posts[key] and not corner then
+				posts[key] = true
+				block({ Name = "FencePost", Size = Vector3.new(0.5, 3.4, 0.5), CFrame = origin * CFrame.new(p + Vector3.new(0, 2.2, 0)), Color = wood, Material = Enum.Material.Wood }, model)
+			end
 		end
 	end
 	local e = 5
@@ -158,7 +168,9 @@ function NestBuilder.lobby(index: number, origin: CFrame, parent: Instance): Nes
 		for _, x in PEDESTAL_X do
 			local top = 1 + rowInfo.H
 			cylinder(origin * CFrame.new(x, 1 + rowInfo.H / 2, rowInfo.Z), rowInfo.H, 3.6, { Name = "Pedestal", Color = Color3.fromRGB(235, 228, 215), Material = Enum.Material.Marble }, model)
-			local rim = cylinder(origin * CFrame.new(x, top - 0.15, rowInfo.Z), 0.35, 3.9, { Name = "Rim", Color = Color3.fromRGB(120, 120, 120), Material = Enum.Material.Neon, CanCollide = false }, model)
+			-- El aro queda un poco por debajo de la cara de arriba del podio: si quedan casi a la
+			-- misma altura, las dos caras parpadean.
+			local rim = cylinder(origin * CFrame.new(x, top - 0.3, rowInfo.Z), 0.4, 3.9, { Name = "Rim", Color = Color3.fromRGB(120, 120, 120), Material = Enum.Material.Neon, CanCollide = false }, model)
 			local plate = block({
 				Name = "Plate",
 				Size = Vector3.new(3.4, 0.9, 0.2),
@@ -248,7 +260,7 @@ function NestBuilder.arena(index: number, origin: CFrame, parent: Instance): Nes
 		local z = if k == 1 then 5.5 else 4.5
 		local h = if k == 1 then 2.4 else 1.6
 		cylinder(origin * CFrame.new(x, 1 + h / 2, z), h, 3, { Name = "Pedestal", Color = Color3.fromRGB(235, 228, 215), Material = Enum.Material.Marble }, model)
-		local rim = cylinder(origin * CFrame.new(x, 1 + h - 0.15, z), 0.3, 3.3, { Name = "Rim", Color = Color3.fromRGB(120, 120, 120), Material = Enum.Material.Neon, CanCollide = false }, model)
+		local rim = cylinder(origin * CFrame.new(x, 1 + h - 0.3, z), 0.4, 3.3, { Name = "Rim", Color = Color3.fromRGB(120, 120, 120), Material = Enum.Material.Neon, CanCollide = false }, model)
 		table.insert(pedestals, origin * CFrame.new(x, 1 + h, z))
 		table.insert(rims, rim)
 	end
