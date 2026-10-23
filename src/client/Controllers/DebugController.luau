@@ -6,9 +6,11 @@ local ContextActionService = game:GetService("ContextActionService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Remotes = require(Shared.Remotes)
+local Sounds = require(Shared.Sounds)
 local Testing = require(Shared.Testing)
 
 local UI = require(script.Parent.Parent.UI)
+local SoundController = require(script.Parent.SoundController)
 
 local DebugController = {}
 
@@ -35,7 +37,7 @@ function DebugController.start()
 	local panel = UI.frame({
 		AnchorPoint = Vector2.new(1, 0.5),
 		Position = UDim2.new(1, -8, 0.5, 0),
-		Size = UDim2.fromOffset(190, #BUTTONS * 40 + 44),
+		Size = UDim2.fromOffset(190, (#BUTTONS + 1) * 40 + 44),
 		Visible = false,
 	}, gui)
 	UI.round(panel, 12)
@@ -47,6 +49,37 @@ function DebugController.start()
 			Remotes.event("DebugCommand"):FireServer(def[2], def[3])
 		end)
 	end
+	-- Suena todo el catálogo, uno a uno y por grupos, con su nombre en el botón: así se oye
+	-- cuál está demasiado fuerte o flojo y se ajusta su Level en Sounds.luau.
+	local testing = false
+	local soundButton: TextButton
+	soundButton = UI.button({ Size = UDim2.new(1, 0, 0, 34), Text = "🔊 Probar sonidos", LayoutOrder = #BUTTONS + 1, BackgroundColor3 = UI.Colors.PanelLight }, panel, function()
+		if testing then
+			testing = false
+			return
+		end
+		testing = true
+		local names = {}
+		for name in Sounds.Defs do
+			table.insert(names, name)
+		end
+		table.sort(names, function(a, b)
+			local ga, gb = Sounds.Defs[a].Group, Sounds.Defs[b].Group
+			return if ga == gb then a < b else ga < gb
+		end)
+		task.spawn(function()
+			for _, name in names do
+				if not testing then
+					break
+				end
+				soundButton.Text = string.format("🔊 %s · %s (%.2f)", Sounds.Defs[name].Group, name, Sounds.Catalog[name].Volume)
+				SoundController.play(name)
+				task.wait(1.3)
+			end
+			testing = false
+			soundButton.Text = "🔊 Probar sonidos"
+		end)
+	end)
 	ContextActionService:BindAction("DebugPanel", function(_, state)
 		if state == Enum.UserInputState.Begin then
 			panel.Visible = not panel.Visible

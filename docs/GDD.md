@@ -1,6 +1,13 @@
 # GDD — THE EGG CHOOSES (El Huevo Elige) para Roblox
 
-Versión 3 · 2026-10-23 · Adrian (v1: 2026-10-21 · v2: 2026-10-23)
+Versión 3.1 · 2026-10-23 · Adrian (v1: 2026-10-21 · v2 y v3: 2026-10-23)
+
+> **Qué cambia en la versión 3.1** (segunda prueba en Studio; detalles en la sección 14):
+> - **Brasas por niveles:** naranjas abajo (5 de Calor), **azules** desde la mitad de los árboles (10) y **moradas** en la plataforma más alta (20).
+> - **Criatura al hombro:** eliges una de tus criaturas con 🦜 y la llevas en el hombro, en el lobby y en la partida (solo estética).
+> - **La criatura sale del huevo** en el centro del claro mientras se decide a quién se une.
+> - **Sonidos equilibrados** por grupos y textos corregidos ("¡Corre a tu nido!" ya no tenía sentido).
+> - **Monetización centrada en el lobby** (sección 9): nada de pago cambia la partida. Se retiran el Auto-Depósito y la Ofrenda Dorada, y la Suerte del Servidor pasa a ser **Suerte del Lobby**.
 
 > **Qué cambia en la versión 3.** Tras la primera prueba del juego:
 > - **Lobby aparte:** el nido, la tienda, la cría, la decoración, los intercambios y la Bandada están en un lobby con más jugadores. Desde allí se entra a las partidas con un emparejamiento (sección 7) y se vuelve al acabar.
@@ -303,53 +310,83 @@ El estilo debe reconocerse en una miniatura de 150 píxeles: un huevo enorme y b
 - Bajo la barra, lo que importa en cada momento de la persecución: la cuenta atrás del tira y afloja, el aviso "¡Te están robando!", los escudos y **(v3)** la señal ("Próxima señal en 5 s", "¡Te están viendo! Escóndete").
 - **(v3)** En el lobby, un botón grande **⚔️ Jugar** y "🔁 Seguir jugando" (volver a la cola solo al acabar).
 
-## 9. Monetización
+## 9. Monetización (v3.1)
 
-La estrategia combina cinco fuentes y nunca vende la victoria en la persecución: se paga por comodidad, estatus, velocidad de colección y momentos sociales. Roblox ofrece hoy suscripciones, compras en el juego, anuncios inmersivos (vídeo, imagen y portales) y recompensas por participación ([documentación de Roblox](https://create.roblox.com/docs/get-started/monetization)).
+**Idea central:** la partida es justa y el dinero se gasta en el **lobby**. Ahí está la gente (más jugadores por servidor que en una partida), ahí se luce el nido y ahí se ve lo que llevas puesto. Todo lo que se vende es de uno de estos tres tipos:
+
+1. **Lucirse (estética y estatus):** temas de nido, pedestales, accesorios para la criatura del hombro, estelas, emotes, títulos. Se ven en el lobby y algunos también en la partida, pero no hacen nada.
+2. **Coleccionar más rápido (el nido):** x2 Monedas, incubadora rápida, más ranuras. Solo cambian el ritmo de tu colección, que vive en el lobby.
+3. **Momentos sociales del lobby:** Suerte del Lobby para todos, fuegos artificiales con tu nombre, regalos a amigos.
+
+Nada de pago cambia el huevo de la partida, la elección, la persecución ni lo que cuesta conseguir Calor. Roblox ofrece hoy suscripciones, compras en el juego, anuncios inmersivos (vídeo, imagen y portales) y recompensas por participación ([documentación de Roblox](https://create.roblox.com/docs/get-started/monetization)).
+
+**Lo que cambia respecto a la v3** (y por qué):
+
+| Antes | Ahora | Por qué |
+|---|---|---|
+| Suerte del Servidor: más rareza en el huevo de la partida | **Suerte del Lobby:** durante 15 min, los huevos del nido de **todos** los del lobby salen con el doble de suerte | Tocaba la partida. Además, con lobby y partida en lugares separados **no funcionaba**: se compraba en el lobby y la suerte se quedaba allí, sin ningún huevo de partida al que aplicarse |
+| Ofrenda Dorada: sesgar un gen del huevo de la partida | Retirada (idea para más adelante: sesgar un gen de tu propio huevo del nido) | Tocaba la partida y tampoco funcionaba desde el lobby: el remoto solo existía en el servidor de partida |
+| Pase Auto-Depósito | Retirado | Ahorraba tiempo en la partida: es una pequeña ventaja |
 
 ### 9.1 Game passes (pago único)
 
-| Pase | Precio (Robux) | Qué da |
-|---|---|---|
-| Estela de Brasas **(v2)** | 99 | Rastro de chispas al correr (estético). Sustituye a la Bolsa Grande (+50 % de Calor), que era pagar por ganar: más Calor daba más probabilidad de ser elegido |
-| Nido VIP | 249 | +10 ranuras, decoración dorada, etiqueta VIP |
-| Auto-Depósito | 199 | El Calor se deposita solo al estar cerca del huevo |
-| x2 Monedas | 299 | Duplica la producción del nido |
-| Incubadora Rápida | 349 | Cría un 50 % más rápida |
-| Ranura de Cría Extra | 149 | Dos crías a la vez |
+| Pase | Precio (Robux) | Qué da | Estado |
+|---|---|---|---|
+| Nido VIP | 249 | +10 ranuras, decoración dorada, etiqueta VIP | Hecho |
+| x2 Monedas | 299 | Duplica la producción del nido | Hecho |
+| Incubadora Rápida | 349 | Cría un 50 % más rápida | Hecho |
+| Ranura de Cría Extra | 149 | Dos crías a la vez | Hecho |
+| Estela de Brasas | 99 | Rastro de chispas al correr (estético) | Hecho |
+| **Dos al Hombro** | 199 | Llevas una criatura en cada hombro | Propuesta |
+| **Vitrina Grande** | 199 | +6 pedestales en el nido del lobby para lucir más criaturas | Propuesta |
+
+**Lo único que "apenas influye":** las Monedas también compran las mejoras de bolsa y botas, que sí se notan en la partida, así que x2 Monedas las adelanta. El efecto es pequeño (las botas dan como mucho un 10 % de velocidad y todo el mundo llega al máximo con unas horas de juego). Si se quiere cero influencia: **mejoras igualadas en la partida** (todos juegan con la misma bolsa y botas, y las mejoras pasan a ser del nido). Es una palanca de diseño, no está hecha.
 
 ### 9.2 Productos de consumo (developer products)
 
-| Producto | Precio (Robux) | Notas de diseño |
-|---|---|---|
-| **Suerte del Servidor (15 min)** | 199 | Sube la rareza de los huevos de TODO el servidor y anuncia el nombre del comprador. Es la compra estrella: genera agradecimiento público y presión social sana |
-| Ofrenda Dorada | 49 | Sesga un gen elegido en el próximo huevo del servidor |
-| Reintento de Cría | 25 | Repite una cría con los mismos padres |
-| Packs de Monedas | 49 a 999 | Escalado clásico con bonus en packs grandes |
-| Huevo de Temporada | 99 | Probabilidades públicas antes de comprar |
+| Producto | Precio (Robux) | Notas de diseño | Estado |
+|---|---|---|---|
+| **Suerte del Lobby (15 min)** | 199 | Los huevos del nido de todos los del lobby salen con el doble de suerte. Se anuncia el nombre del comprador y el HUD del lobby muestra la cuenta atrás. Es la compra estrella: agradecimiento público en un servidor lleno | Hecho |
+| Huevo de Temporada | 99 | Probabilidades públicas antes de comprar | Hecho |
+| Reintento de Cría | 25 | Repite una cría con los mismos padres | Hecho |
+| Packs de Monedas | 49 a 999 | Escalado clásico con bonus en packs grandes | Hecho |
+| **Fuegos artificiales** | 25 | Espectáculo en la plaza del lobby con tu nombre y tu criatura del hombro en grande | Propuesta |
+| **Renombrar criatura** | 25 | Nombre propio en la placa del pedestal (con el filtro de texto de Roblox) | Propuesta |
+| **Regalar** | — | Cualquier pase o producto se puede comprar para un amigo del lobby | Propuesta |
 
-### 9.3 Suscripción "Club del Nido"
+### 9.3 Tienda de la Plaza (estética, rota cada día)
 
-Suscripción mensual (precio en moneda local, renovación automática) con: +20 % de Monedas, 1 Huevo de Temporada al mes, carril premium del pase de temporada, nombre de color en el chat y una decoración exclusiva cada mes. Es la base de ingresos recurrentes; se mide la tasa de cancelación en el panel de creador.
+Una tienda en la plaza del lobby con 6 artículos que cambian cada día (la rotación es real, sin temporizadores falsos). Se paga con Robux o con polvo de cáscara (los artículos de polvo dan un uso más al polvo de consolación).
 
-### 9.4 Anuncios
+| Categoría | Ejemplos | Precio orientativo | Dónde se ve |
+|---|---|---|---|
+| Temas de nido | Bosque nevado, volcán, playa, espacio | 149-299 Robux | Lobby |
+| Pedestales | Mármol, cristal, oro, nube | 49-99 Robux o polvo | Lobby |
+| Accesorios del hombro | Sombrerito, gafas de sol, bufanda, corona de flores | 25-75 Robux o polvo | Lobby y partida (sin efecto) |
+| Emotes | Bailar con tu criatura, lanzarla al aire y cogerla | 49 Robux | Lobby |
+| Títulos y marcos de placa | "Ladrón de leyenda", marco dorado | 25 Robux o polvo | Lobby y tabla de la partida |
+| Efectos de victoria | Confeti, lluvia de plumas al volver al lobby con una criatura ganada | 49 Robux | Lobby |
 
-- **Vídeos con recompensa:** opcionales, nunca forzados. Ver un anuncio da un reintento de cría gratis o duplica el Polvo de consuelo de una ronda. Monetizan a la mayoría que no paga.
-- **Anuncios inmersivos:** vallas en el lobby y portales de marca en zonas que no interfieren con el juego.
-- **Integraciones de marca** (huevo patrocinado temático): fase posterior al éxito. Ojo: Roblox empezará a cobrar un porcentaje de estos acuerdos desde enero de 2027 ([Net Influencer](https://www.netinfluencer.com/roblox-to-raise-developer-exchange-rate-for-games-aimed-at-18-plus-players-as-adult-cohort-surges/)).
+### 9.4 Pase de temporada y suscripción
 
-### 9.5 Otros ingresos
+- **Pase de temporada** (gratis + premium por unos 399 Robux): solo estética (temas de nido, accesorios, títulos) y polvo. Las misiones salen de jugar normalmente (robos, rondas, huevos), sin pagar.
+- **Club del Nido** (suscripción mensual): +20 % de Monedas, 1 Huevo de Temporada al mes, carril premium del pase, nombre de color en el chat y una decoración exclusiva cada mes. Es la base de ingresos recurrentes; se mide la tasa de cancelación en el panel de creador.
 
+### 9.5 Anuncios y otros ingresos
+
+- **Vídeos con recompensa** en el lobby, opcionales: un reintento de cría gratis o el doble de polvo de una ronda. Monetizan a la mayoría que no paga.
+- **Anuncios inmersivos:** vallas y portales en la plaza del lobby, nunca en la arena.
+- **Integraciones de marca** (tema de nido o huevo patrocinado): fase posterior al éxito. Ojo: Roblox empezará a cobrar un porcentaje de estos acuerdos desde enero de 2027 ([Net Influencer](https://www.netinfluencer.com/roblox-to-raise-developer-exchange-rate-for-games-aimed-at-18-plus-players-as-adult-cohort-surges/)).
 - **Servidores privados** de pago (para grupos de amigos y creadores que graban).
-- **Ropa UGC oficial** del juego (camisetas "Fui el elegido", sombrero de cáscara).
-- **Pase de temporada premium** (unos 399 Robux): carril con genes y decoraciones exclusivas.
+- **Ropa UGC oficial** (camisetas "Fui el elegido", sombrero de cáscara).
+- **Premium Payouts:** Roblox paga por el tiempo de los usuarios Premium; un lobby agradable para quedarse suma.
 
 ### 9.6 Reglas de monetización ética
 
-1. Ninguna compra garantiza ser elegido ni ganar la persecución, ni da ventaja en ellas. **(v2)** Se quitaron el Escudo de Cáscara de pago (bloqueaba un robo) y la Bolsa Grande (más Calor, más probabilidad de ser elegido). Los escudos ahora se ganan depositando Calor.
-2. Todo lo aleatorio de pago muestra sus probabilidades antes de comprar.
+1. **(v3.1)** Nada de pago cambia la partida: ni el huevo, ni la elección, ni la persecución, ni lo que cuesta conseguir Calor. Lo que se ve en la partida (estela, accesorios del hombro, títulos) no hace nada. **(v2)** Ya se habían quitado el Escudo de Cáscara de pago y la Bolsa Grande.
+2. Todo lo aleatorio de pago muestra sus probabilidades antes de comprar, y no se ofrece donde la ley lo restringe.
 3. Sin temporizadores falsos ni ventanas emergentes de compra tras perder.
-4. Lo exclusivo de pago es cosmético o de comodidad; todo gen jugable se puede conseguir gratis.
+4. Todo gen jugable se puede conseguir gratis; lo exclusivo de pago es estética.
 5. Primera oferta al jugador nuevo solo tras su tercera ronda.
 
 ### 9.7 Objetivos económicos
@@ -358,6 +395,7 @@ Suscripción mensual (precio en moneda local, renovación automática) con: +20 
 |---|---|
 | % de jugadores que pagan | 2-4 % |
 | Ingresos por usuario diario (ARPDAU) | Medir en Robux y optimizar con pruebas A/B de precios |
+| Peso de la estética (Tienda de la Plaza, pase, temas) en ingresos | 40 % o más: es lo que no tiene techo |
 | Peso de anuncios con recompensa en ingresos | 5-15 % |
 | Suscriptores activos del Club | 0,5 % de usuarios mensuales |
 
@@ -533,6 +571,21 @@ Vienen de la primera prueba del juego en Studio. Los números del simulador comp
 - `Shields.ChosenBonus = 2` o `Shields.NewPlayerBonus = 2`: más escudos al empezar.
 - `Round.ChaseTime = 90`: con todo lo anterior, novatos y casuales llegan a ~0,3 victorias por hora, pero hay menos de un robo por criatura (persecución aburrida).
 - Emparejamiento por nivel: que los novatos jueguen sus primeras horas entre ellos.
+
+## 14. Cambios de la versión 3.1 y por qué
+
+Vienen de la segunda prueba en Studio.
+
+| Lo que se pidió o se vio | Cambio en la v3.1 |
+|---|---|
+| Subir a lo alto de los árboles no compensaba | Brasas **azules** desde la mitad de los árboles (Calor ×2) y **moradas** en la plataforma más alta (×4). Brillan para verse desde abajo |
+| Algunos sonidos muy fuertes y otros muy flojos | Volumen = importancia × grupo × lo fuerte que suena cada archivo; los sonidos 3D ya no se apagan a 10 studs. Botón "🔊 Probar sonidos" en el panel de depuración (F7) para afinarlos |
+| Querer llevar una criatura encima | **Criatura al hombro:** botón 🦜 en el panel del nido. Se ve en el lobby y en la partida; no hace nada |
+| Al eclosionar salía "¡Corre a tu nido!" | Ahora: "¡Escóndete y aguanta hasta el final!" |
+| Durante la elección no se veía la criatura | Sale del huevo en el centro del claro, grande y girando, hasta que empieza la persecución |
+| Monetizar sin tocar la partida | Sección 9: todo se gasta en el lobby. Se retiran el Auto-Depósito y la Ofrenda Dorada; la Suerte del Servidor pasa a Suerte del Lobby (y se descubre que, con lugares separados, la vieja no funcionaba) |
+
+**Por qué se ve el lobby desde la partida (en Studio).** Studio no puede viajar entre lugares, así que mientras `Config.Places` tenga los IDs a 0 el juego funciona en **modo combinado**: un solo servidor construye el lobby (a 1000 studs de la arena) y la arena, y "teletransportar" es reaparecer en el otro sitio. Al publicar con dos lugares y poner sus IDs en `Config.Places`, el servidor de partida solo construye la arena y el del lobby solo el lobby (`Place.hasLobby()` y `Place.hasArena()`).
 
 ## Fuentes
 

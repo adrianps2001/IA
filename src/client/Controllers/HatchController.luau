@@ -1,6 +1,8 @@
 --!strict
 -- La eclosión (GDD 5.3, 8 y v2): 10 s. El huevo tiembla y un foco salta entre los
 -- favoritos hasta pararse en cada elegido. El servidor ya decidió; aquí solo se anima.
+-- Al romperse el huevo, la criatura (o criaturas) aparece en su sitio, en grande y girando,
+-- para que todo el servidor la vea mientras se decide a quién se une.
 
 local CaptureService = game:GetService("CaptureService")
 local Players = game:GetService("Players")
@@ -8,6 +10,9 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local Creature = require(Shared.Creature)
+local CreatureModel = require(Shared.CreatureModel)
+local Genes = require(Shared.Genes)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 
@@ -58,6 +63,68 @@ end
 local function placeSpot(spot: Part, position: Vector3)
 	-- Cilindro vertical: el eje X del cilindro apunta hacia arriba.
 	spot.CFrame = CFrame.new(position + Vector3.new(0, 28, 0)) * CFrame.Angles(0, 0, math.rad(90))
+end
+
+-- Tamaño de la criatura revelada y separación cuando nacen varias a la vez.
+local REVEAL_SCALE = 2.2
+local REVEAL_SPACING = 9
+
+-- Saca las criaturas del huevo: lo esconde (solo en este cliente) y pone los modelos sobre
+-- el pedestal. Devuelve una función que lo deshace.
+local function reveal(eggPart: BasePart?, picks: { any }): () -> ()
+	if not eggPart then
+		return function() end
+	end
+	local base = eggPart.Position - Vector3.new(0, eggPart.Size.Y / 2, 0)
+	eggPart.LocalTransparencyModifier = 1
+	local light = eggPart:FindFirstChildOfClass("PointLight")
+	local models: { { Model: Model, Foot: number, Seat: Vector3 } } = {}
+	for index, pick in picks do
+		if Genes.isValidSet(pick.Genes) then
+			local rarity = if Rarity.isValid(pick.Rarity) then pick.Rarity else "Common"
+			local model = CreatureModel.build(Creature.new("reveal" .. index, pick.Genes, "Hatch", 0), REVEAL_SCALE)
+			for _, descendant in model:GetDescendants() do
+				if descendant:IsA("BasePart") then
+					descendant.CanCollide = false
+					descendant.CanQuery = false
+					descendant.CanTouch = false
+				end
+			end
+			-- Un brillo del color de su rareza para que se vea desde lejos.
+			local glow = Instance.new("PointLight")
+			glow.Range = 24
+			glow.Brightness = 2
+			glow.Color = UI.rgb(Rarity.Info[rarity].Color)
+			glow.Parent = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
+			model.Name = "HatchReveal"
+			model.Parent = workspace
+			local offset = (index - (#picks + 1) / 2) * REVEAL_SPACING
+			table.insert(models, { Model = model, Foot = CreatureModel.footOffset(model), Seat = base + Vector3.new(offset, 0, 0) })
+		end
+	end
+	local born = os.clock()
+	local spin = RunService.RenderStepped:Connect(function()
+		local t = os.clock() - born
+		-- Sale de un salto y luego gira despacio mirando a todos.
+		local pop = math.max(0, 1 - t / 0.5)
+		local hop = math.sin(math.min(t / 0.5, 1) * math.pi) * 3 * pop + math.abs(math.sin(t * 2.2)) * 0.6
+		for _, entry in models do
+			entry.Model:PivotTo(CFrame.new(entry.Seat + Vector3.new(0, entry.Foot + hop, 0)) * CFrame.Angles(0, t * 0.9, 0))
+		end
+	end)
+	if light then
+		light.Enabled = false
+	end
+	return function()
+		spin:Disconnect()
+		for _, entry in models do
+			entry.Model:Destroy()
+		end
+		eggPart.LocalTransparencyModifier = 0
+		if light then
+			light.Enabled = true
+		end
+	end
 end
 
 local function show(text: string, sub: string, color: Color3?)
@@ -136,6 +203,8 @@ local function play(data: any)
 	if eggPart then
 		eggPart.CFrame = originalCFrame
 	end
+	-- ¡Crac! La criatura sale del huevo y se queda en el centro hasta que empieza la persecución.
+	local hide = reveal(eggPart, picks)
 
 	-- Fase 2 (60 %): un foco por criatura salta entre los favoritos y se para en su elegido.
 	local candidates = shortlist(order, picks)
@@ -174,7 +243,7 @@ local function play(data: any)
 		local info = Rarity.Info[rarity]
 		spot.Color = UI.rgb(info.Color)
 		if pick.UserId == player.UserId then
-			show("¡EL HUEVO TE HA ELEGIDO!", string.format("%s (%s) · ¡Corre a tu nido!", tostring(pick.CreatureName), info.DisplayName), UI.Colors.Gold)
+			show("¡EL HUEVO TE HA ELEGIDO!", string.format("%s (%s) · ¡Escóndete y aguanta hasta el final!", tostring(pick.CreatureName), info.DisplayName), UI.Colors.Gold)
 		else
 			show(string.format("¡ELIGE A %s!", string.upper(tostring(pick.Name))), string.format("%s (%s) · ¡Róbasela!", tostring(pick.CreatureName), info.DisplayName), UI.rgb(info.Color))
 		end
@@ -186,6 +255,7 @@ local function play(data: any)
 	for _, spot in spots do
 		spot:Destroy()
 	end
+	hide()
 	TweenService:Create(title, TweenInfo.new(0.3), { TextTransparency = 1 }):Play()
 	task.wait(0.3)
 	title.TextTransparency = 0

@@ -203,6 +203,11 @@ local function lobbyText(): string
 	elseif queued then
 		return string.format("⚔️ En la cola: %d jugador%s · buscando partida…", count, if count == 1 then "" else "es")
 	end
+	local luckEnds = tonumber(RoundState.get("ServerLuckEndsAt")) or 0
+	local luckLeft = luckEnds - workspace:GetServerTimeNow()
+	if luckLeft > 0 then
+		return string.format("🍀 Suerte del Lobby: %d:%02d · tus huevos del nido salen mejores", math.floor(luckLeft / 60), math.floor(luckLeft % 60))
+	end
 	return "🏡 Lobby · cuida tu nido y pulsa Jugar"
 end
 

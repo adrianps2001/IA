@@ -444,7 +444,6 @@ function RoundService.init()
 	RoundState.set("ChosenUserIds", "")
 	RoundState.set("BloodMoon", false)
 	RoundState.set("GoldenRain", false)
-	RoundState.set("ServerLuckEndsAt", 0)
 end
 
 function RoundService.start()

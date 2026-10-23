@@ -343,17 +343,34 @@ end
 
 -- Puntos sobre las plataformas (para poner brasas y cajas en lo alto): el centro de cada cara.
 function ArenaLayout.deckSpots(): { Vec }
-	local spots: { Vec } = {}
+	local tiers = ArenaLayout.deckSpotsByTier()
+	local spots = table.clone(tiers.Low)
+	table.move(tiers.Mid, 1, #tiers.Mid, #spots + 1, spots)
+	table.move(tiers.Top, 1, #tiers.Top, #spots + 1, spots)
+	return spots
+end
+
+-- Altura desde la que salen brasas azules (la mitad de la altura de los árboles).
+ArenaLayout.MidHeight = 66
+
+-- Las mismas caras repartidas por altura (GDD v3, brasas por niveles):
+-- * Low: por debajo de la mitad (brasas naranjas);
+-- * Mid: de la mitad hacia arriba, sin contar la última plataforma (brasas azules);
+-- * Top: la plataforma más alta de cada árbol (brasas moradas).
+function ArenaLayout.deckSpotsByTier(): { Low: { Vec }, Mid: { Vec }, Top: { Vec } }
+	local tiers = { Low = {} :: { Vec }, Mid = {} :: { Vec }, Top = {} :: { Vec } }
 	for _, tree in ArenaLayout.get().Trees do
 		local mid = tree.Radius + ArenaLayout.DeckWidth / 2
+		local top = tree.Decks[#tree.Decks]
 		for _, level in tree.Decks do
+			local list = if level == top then tiers.Top elseif level >= ArenaLayout.MidHeight then tiers.Mid else tiers.Low
 			for k = 0, ArenaLayout.DeckSides - 1 do
 				local angle = k * 2 * math.pi / ArenaLayout.DeckSides
-				table.insert(spots, { X = tree.X + math.cos(angle) * mid, Y = level, Z = tree.Z + math.sin(angle) * mid })
+				table.insert(list, { X = tree.X + math.cos(angle) * mid, Y = level, Z = tree.Z + math.sin(angle) * mid })
 			end
 		end
 	end
-	return spots
+	return tiers
 end
 
 -- Piedras de un camino de piedras: separadas para tener que saltar, subiendo y bajando un poco.

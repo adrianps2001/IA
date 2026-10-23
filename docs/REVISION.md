@@ -46,7 +46,9 @@ Mismas semillas y horas de juego que la v2 (30 días, 60 jugadores; 12 jugadores
 6. **"Seguir jugando" activado por defecto:** al volver al lobby vuelves solo a la cola a los 3 s. Así se juega seguido, pero quizá quieras que por defecto te quedes en el lobby a ver tu nido.
 7. **El parkour sale siempre igual** (semilla `Config.Arena.Seed`). Con otra semilla cambian los bloques flotantes y los arbustos; los árboles y los puentes son fijos. Es un prototipo: un mapa hecho a mano en Studio sería mejor.
 8. **Sonidos provisionales:** usan los que trae Roblox con distintos tonos (funcionan sin subir nada). Habría que elegir audios mejores de la Caja de herramientas y poner sus ID en `Sounds.luau`.
-9. **Suerte del Servidor y Ofrenda Dorada:** son compras que afectan a la partida, pero la tienda está en el lobby. Habría que poder comprarlas desde la partida (o quitarlas).
+9. ~~**Suerte del Servidor y Ofrenda Dorada**~~ **(resuelto en la v3.1):** con lugares separados no funcionaban (se compraban en el lobby y no llegaban a la partida). La Suerte pasa a ser **Suerte del Lobby** (huevos del nido de todo el lobby) y la Ofrenda Dorada y el Auto-Depósito se retiran: nada de pago toca la partida (GDD 9).
+10. **Brasas por niveles (v3.1):** azules ×2 desde la mitad de los árboles (`Config.Heat.BlueEmber`, 24) y moradas ×4 en la cima (`Config.Heat.PurpleEmber`, 10). El simulador no las tiene en cuenta (sus bots no suben). Si en las pruebas la barra se llena demasiado pronto, bajar su número antes que su valor.
+11. **Volumen de los sonidos (v3.1):** se ha estimado lo fuerte que suena cada archivo (`Sounds.Gain`). Con F7 → 🔊 Probar sonidos se oyen todos seguidos con su volumen; si alguno sigue mal, se cambia su `Level`.
 
 Decisiones de la v2 que siguen abiertas: la meta del Huevo Comunitario (25 millones al mes), que la Bandada no dé alianza automática y que se puedan intercambiar Secretas.
 
@@ -82,7 +84,7 @@ Lo nuevo que ha salido con la v3, y lo pendiente de antes que sigue importando.
 11. **Botón de acción contextual en móvil** (recoger / depositar / robar / tirolina).
 12. **Seguridad de movimiento:** ahora el cliente mueve al personaje en tirolinas y trampolines; el servidor debería comprobar velocidades razonables (y registrar teletransportes raros) antes de abrir el juego.
 13. **Intercambio y dinero real:** límites diarios y Secretas intransferibles los primeros días.
-14. **Ingresos sin pago por ganar:** cosméticos para el compañero, temas de nido (encajan muy bien con los pedestales) y poner nombre a las criaturas.
+14. **Ingresos sin pago por ganar:** diseñado en la v3.1 (GDD 9: Tienda de la Plaza con temas de nido, pedestales y accesorios para la criatura del hombro; renombrar criaturas; fuegos artificiales; regalos). Falta hacerlo. Y decidir si x2 Monedas debe dejar de acelerar las mejoras de bolsa y botas (lo único de pago que apenas toca la partida).
 15. **Accesibilidad:** la rareza se distingue por color; añadir icono y un ajuste de tamaño de interfaz.
 16. **Medir en la beta** lo que predice el simulador (victorias por sesión, robos por criatura, el elegido conserva, tiempo en la cola).
 

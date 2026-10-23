@@ -1,7 +1,8 @@
 --!strict
 -- Estética que dibuja cada cliente (GDD v2), sin tráfico de red ni física en el servidor:
--- * Compañero: la primera favorita de cada jugador le sigue flotando. El servidor publica
---   sus genes en el atributo CompanionGenes (NestService.updateCompanion).
+-- * Criatura al hombro: la que el jugador elige con 🦜 en el panel del nido va sentada en su
+--   hombro derecho, en el lobby y en la partida. El servidor publica sus genes en el atributo
+--   CompanionGenes (NestService.updateCompanion).
 -- * Estela de Brasas: un rastro de chispas para quien tenga el pase (atributo Pass_EmberTrail).
 -- Nada de esto da ventaja: las piezas no colisionan ni se pueden tocar.
 
@@ -16,7 +17,12 @@ local Genes = require(Shared.Genes)
 
 local CosmeticsController = {}
 
-type Companion = { Model: Model, Source: string }
+type Companion = { Model: Model, Source: string, Foot: number }
+
+-- Tamaño de la criatura en el hombro y dónde se sienta respecto al HumanoidRootPart
+-- (el hombro de un R15 está ~1.5 studs por encima del centro del torso).
+local SHOULDER_SCALE = 0.32
+local SHOULDER_OFFSET = Vector3.new(1.25, 1.55, 0.1)
 
 local companions: { [Player]: Companion } = {}
 local folder: Folder
@@ -46,7 +52,7 @@ local function refreshCompanion(player: Player)
 	if not ok or not Genes.isValidSet(genes) then
 		return
 	end
-	local model = CreatureModel.build(Creature.new("companion", genes, "Companion", 0), 0.45)
+	local model = CreatureModel.build(Creature.new("companion", genes, "Companion", 0), SHOULDER_SCALE)
 	for _, descendant in model:GetDescendants() do
 		if descendant:IsA("BasePart") then
 			descendant.CanCollide = false
@@ -56,7 +62,7 @@ local function refreshCompanion(player: Player)
 	end
 	model.Name = "Companion_" .. player.UserId
 	model.Parent = folder
-	companions[player] = { Model = model, Source = source }
+	companions[player] = { Model = model, Source = source, Foot = CreatureModel.footOffset(model) }
 end
 
 local function refreshTrail(player: Player)
@@ -121,14 +127,14 @@ function CosmeticsController.start()
 		end
 	end)
 
-	-- El compañero flota detrás del hombro de su dueño y se mece un poco.
+	-- La criatura va pegada al hombro (sin retardo) y respira un poco para parecer viva.
 	RunService.RenderStepped:Connect(function()
-		local bob = math.sin(os.clock() * 3) * 0.3
+		local breathe = math.sin(os.clock() * 2.5) * 0.04
 		for player, companion in companions do
 			local root = rootOf(player)
 			if root then
-				local target = root.CFrame * CFrame.new(2.5, 1.5 + bob, 2)
-				companion.Model:PivotTo(companion.Model:GetPivot():Lerp(target, 0.15))
+				local seat = root.CFrame * CFrame.new(SHOULDER_OFFSET.X, SHOULDER_OFFSET.Y + breathe, SHOULDER_OFFSET.Z)
+				companion.Model:PivotTo(seat * CFrame.new(0, companion.Foot, 0))
 			end
 		end
 	end)

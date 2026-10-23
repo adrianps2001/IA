@@ -81,7 +81,7 @@ src/client/                 StarterPlayerScripts.Client
   Controllers/HatchController   Espectáculo de eclosión y ruleta
   Controllers/ChaseController   Botones del portador y ventana de tratos
   Controllers/NestController    Panel del nido: criaturas (cría, liberar, ⭐ favoritas), incubadora, mejoras, decorar, misiones, tienda
-  Controllers/CosmeticsController  Compañero (tu primera favorita te sigue) y Estela de Brasas
+  Controllers/CosmeticsController  Criatura al hombro (eliges cuál con 🦜) y Estela de Brasas
   Controllers/EffectsController Latido del huevo, criaturas arcoíris y saltitos en los nidos
   Controllers/SoundController   Sonidos de las acciones
   Controllers/ArenaController   Setas trampolín, tirolinas y toboganes
@@ -170,7 +170,10 @@ Implementado:
 - Varias criaturas por ronda (1 a 3 según los jugadores; sustituye al Huevo Doble), rondas de ~6 min, eclosión de 10 s y lluvia de brasas doradas (GDD v2).
 - Persecución por criatura (GDD v3: gana quien la tenga al acabar) con señal del portador, robo por toque (tira y afloja), escudos de Afinidad y extra para elegidos y novatos, inmunidad, esprint, relevo, aturdimiento, ventaja de los elegidos y zorros del bosque en partidas pequeñas (configurable en `Config.Chase`, `Config.Shields` y `Config.ForestThieves`).
 - Sin pago por ganar: los escudos se ganan depositando Calor y la Bolsa Grande pasa a ser la Estela de Brasas (estética).
-- Favoritas que sobreviven a la Nueva generación, compañero en la ronda, huevo de bienvenida y protección de novatos contra empujones.
+- Favoritas que sobreviven a la Nueva generación, criatura al hombro (en el lobby y en la partida), huevo de bienvenida y protección de novatos contra empujones.
+- Brasas por niveles en el parkour: azules (×2) desde la mitad de los árboles y moradas (×4) en la cima (GDD v3.1).
+- La criatura sale del huevo en el centro del claro durante la eclosión (GDD v3.1).
+- Sonidos con volumen equilibrado por grupos y botón para probarlos todos (F7).
 - Tratos y traiciones, con títulos Leal/Traidor.
 - Bandada (grupos de hasta 4: reparten el 10 % del Calor, se ven a través de las paredes y +10 % de polvo con un amigo) e intercambio de criaturas con doble confirmación, cambio atómico e historial.
 - Consuelo con Polvo de cáscara, y premio al elegido que pierde la criatura: polvo extra y un Huevo del Elegido (Rara a Épica).
@@ -181,7 +184,7 @@ Implementado:
 - Misiones diarias y racha de 7 días.
 - Luna de Sangre (3 franjas los sábados), Noche de Saqueo (sábados y domingos, 21-23 UTC, en una fase propia tras los resultados; por defecto el ladrón se lleva una copia común y el dueño no pierde nada) y Huevo Comunitario (barra global mensual en MemoryStore con criatura conmemorativa).
 - Anuncios globales de Míticas y Secretas.
-- Pases, productos y suscripción, con probabilidades públicas y comprobación de `PolicyService` para los objetos aleatorios de pago.
+- Pases, productos y suscripción centrados en el lobby (nada de pago toca la partida; GDD 9 v3.1), con probabilidades públicas y comprobación de `PolicyService` para los objetos aleatorios de pago.
 - Ranking semanal de robos y salón de la fama (nidos con más "me gusta"), en un cartel de la plaza del lobby, con un OrderedDataStore por semana.
 - Embudo de analítica.
 - Ciclo visual de la ronda (atardecer, eclipse y noche).
@@ -191,7 +194,7 @@ Pendiente (siguientes fases del roadmap):
 - Huevo del Admin (evento en directo).
 - Visitar nidos de otros servidores y títulos semanales para el campeón.
 - Emotes de reacción.
-- Selector de gen para la Ofrenda Dorada (el servidor ya la admite).
+- Tienda de la Plaza (temas de nido, pedestales, accesorios para la criatura del hombro), renombrar criaturas, fuegos artificiales y regalos (GDD 9, v3.1).
 - Más sumideros de Monedas: pase de temporada y cosméticos.
 - Emparejamiento por nivel: con la persecución v3, los que menos persiguen ganan bastante menos (ver `docs/REVISION.md`).
 - Sonidos definitivos (ahora se usan los que trae Roblox) y música.

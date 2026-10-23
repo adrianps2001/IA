@@ -71,7 +71,7 @@ local function renderCreatures()
 		}, r)
 		UI.label({
 			Position = UDim2.new(0.55, 0, 0, 10),
-			Size = UDim2.new(0.45, -56, 0, 28),
+			Size = UDim2.new(0.45, -104, 0, 28),
 			Text = string.format("%s/s", UI.formatNumber(creature.Income)),
 			TextColor3 = UI.Colors.Gold,
 			TextXAlignment = Enum.TextXAlignment.Right,
@@ -94,7 +94,7 @@ local function renderCreatures()
 			confirmRelease = ""
 			render()
 		end)
-		-- Favorita: sobrevive a la Nueva generación, no se libera y la primera te acompaña.
+		-- Favorita: sobrevive a la Nueva generación, no se libera (🦜 elige cuál llevas al hombro).
 		local star = UI.button({
 			AnchorPoint = Vector2.new(1, 0.5),
 			Position = UDim2.new(1, -8, 0.5, 0),
@@ -105,6 +105,17 @@ local function renderCreatures()
 			Remotes.event("ToggleFavorite"):FireServer(creature.Id)
 		end)
 		star.ZIndex = 3
+		-- Al hombro: la criatura que te acompaña en el lobby y en la partida.
+		local shoulder = UI.button({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -52, 0.5, 0),
+			Size = UDim2.fromOffset(40, 36),
+			Text = "🦜",
+			BackgroundColor3 = if creature.Shoulder then UI.Colors.Good else UI.Colors.Panel,
+		}, r, function()
+			Remotes.event("SetShoulder"):FireServer(creature.Id)
+		end)
+		shoulder.ZIndex = 3
 	end
 
 	local hidden = (profile.TotalCreatures or #profile.Creatures) - #profile.Creatures
@@ -314,12 +325,11 @@ end
 -- Tienda opcional (GDD 9): nunca vende la victoria; todo lo aleatorio muestra probabilidades.
 local function renderShop()
 	local products = {
-		{ Key = "ServerLuck", Text = "🍀 Suerte del Servidor (15 min, para TODOS)", Product = true },
+		{ Key = "ServerLuck", Text = "🍀 Suerte del Lobby (15 min: huevos del nido de TODOS)", Product = true },
 		{ Key = "SeasonEgg", Text = "🥚 Huevo de Temporada: " .. oddsText(Config.EggRanges.Season), Product = true, Random = true },
 		{ Key = "BreedReroll", Text = "🔁 Repetir la última cría", Product = true, Random = true },
 		{ Key = "CoinsSmall", Text = "🪙 Pack pequeño de Monedas", Product = true },
 		{ Key = "EmberTrail", Text = "🔥 Estela de Brasas (estética)", Product = false },
-		{ Key = "AutoDeposit", Text = "🔥 Auto-Depósito", Product = false },
 		{ Key = "DoubleCoins", Text = "🪙 x2 Monedas del nido", Product = false },
 		{ Key = "VipNest", Text = "👑 Nido VIP (+10 ranuras)", Product = false },
 		{ Key = "FastIncubator", Text = "⏩ Incubadora Rápida", Product = false },

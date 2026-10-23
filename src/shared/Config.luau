@@ -51,6 +51,9 @@ Config.Heat = {
 	NewPlayerProtectionRounds = 5, -- en sus primeras rondas, a un novato no se le puede empujar
 	BumpRange = 9,
 	Ember = { Amount = 5, Respawn = 8, Count = 70 },
+	-- Brasas por niveles (GDD v3): cuanto más alto subes, más vale cada brasa.
+	BlueEmber = { Amount = 10, Respawn = 10, Count = 24 }, -- de la mitad de los árboles hacia arriba (doble)
+	PurpleEmber = { Amount = 20, Respawn = 15, Count = 10 }, -- en la plataforma más alta (doble de la azul)
 	Firefly = { Amount = 8, Respawn = 12, Count = 20 },
 	LuckyBlock = { Min = 1, Max = 50, Respawn = 30, Count = 12 },
 	Geyser = { Amount = 40, Cooldown = 45, PlayersNeeded = 2, Window = 4, Count = 4 },
@@ -127,7 +130,7 @@ Config.ForestThieves = {
 }
 
 -- Favoritas: hasta Max criaturas marcadas con ⭐. No se pueden liberar, sobreviven a la Nueva
--- generación y la primera te acompaña en la ronda (solo estética).
+-- generación (solo estética; la del hombro se elige aparte con 🦜).
 Config.Favorites = { Max = 3 }
 
 Config.Movement = {
@@ -311,15 +314,13 @@ Config.Events = {
 Config.GamePasses = {
 	EmberTrail = 0, -- estela de brasas (estética). Sustituye a la Bolsa Grande (+50 % de Calor)
 	VipNest = 0,
-	AutoDeposit = 0,
 	DoubleCoins = 0,
 	FastIncubator = 0,
 	ExtraBreedSlot = 0,
 } :: { [string]: number }
 
 Config.DevProducts = {
-	ServerLuck = 0,
-	GoldenOffering = 0,
+	ServerLuck = 0, -- v3.1: "Suerte del Lobby" (huevos del nido de todo el lobby), no toca la partida
 	BreedReroll = 0,
 	SeasonEgg = 0,
 	CoinsSmall = 0,
@@ -338,6 +339,8 @@ Config.EggRanges = {
 	Welcome = { Min = "Common", Max = "Rare" }, -- huevo de bienvenida
 }
 
+-- Suerte del Lobby: durante Seconds, los huevos del nido que abra cualquiera en ese lobby tiran
+-- con Luck veces más suerte. No afecta a la criatura de la partida (GDD 9, v3.1).
 Config.ServerLuck = { Seconds = 15 * 60, Luck = 2 }
 Config.CoinPacks = { CoinsSmall = 5_000, CoinsLarge = 120_000 } :: { [string]: number }
 
@@ -380,7 +383,7 @@ Config.Arena = {
 	Seed = 7,
 	TrampolinePower = 95, -- velocidad vertical al pisar una seta trampolín
 	ZiplineSpeed = 55, -- studs por segundo en la tirolina
-	EmbersOnTrees = 0.45, -- fracción de las brasas que aparecen en las plataformas de los árboles
+	EmbersOnTrees = 0.45, -- fracción de las brasas naranjas que salen en las plataformas bajas de los árboles
 	LuckyOnTrees = 0.25, -- fracción de las cajas sorpresa que aparecen en lo alto
 }
 

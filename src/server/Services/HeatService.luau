@@ -20,7 +20,6 @@ local CommunityService = require(script.Parent.CommunityService)
 local DataService = require(script.Parent.DataService)
 local EggService = require(script.Parent.EggService)
 local MapService = require(script.Parent.MapService)
-local MonetizationService = require(script.Parent.MonetizationService)
 local PartyService = require(script.Parent.PartyService)
 local QuestService = require(script.Parent.QuestService)
 
@@ -226,32 +225,64 @@ end
 
 local EMBER_COLOR = Color3.fromRGB(255, 120, 30)
 local GOLDEN_COLOR = Color3.fromRGB(255, 215, 60)
+local BLUE_COLOR = Color3.fromRGB(70, 170, 255)
+local PURPLE_COLOR = Color3.fromRGB(190, 80, 255)
 local embers: { Part } = {}
+
+local function goldenMultiplier(): number
+	return if RoundState.get("GoldenRain") then Config.Round.GoldenRainMultiplier else 1
+end
+
+local function randomSpot(spots: { ArenaLayout.Vec }, jitter: number): Vector3
+	local spot = spots[random:NextInteger(1, #spots)]
+	return Vector3.new(spot.X + random:NextNumber(-jitter, jitter), spot.Y, spot.Z + random:NextNumber(-jitter, jitter))
+end
+
+-- Brasas de altura: azules desde la mitad de los árboles y moradas en la cima. Brillan (neón y
+-- luz) para que se vean desde abajo y den ganas de subir.
+local function spawnHighEmbers(name: string, def: { Amount: number, Respawn: number, Count: number }, spots: { ArenaLayout.Vec }, color: Color3, size: number)
+	if #spots == 0 then
+		return
+	end
+	for _ = 1, def.Count do
+		local ember = spawnSource(name, color, Vector3.new(size, size, size), Enum.PartType.Ball, function()
+			return randomSpot(spots, 1.5)
+		end, def.Respawn, function(player)
+			return HeatService.give(player, def.Amount * goldenMultiplier()) > 0
+		end)
+		local light = Instance.new("PointLight")
+		light.Color = color
+		light.Range = 10
+		light.Brightness = 1.5
+		light.Parent = ember
+	end
+end
 
 local function spawnEmbers()
 	local def = Config.Heat.Ember
-	local treeSpots = ArenaLayout.deckSpots()
+	local tiers = ArenaLayout.deckSpotsByTier()
 	for _ = 1, def.Count do
 		local ember = spawnSource("Ember", EMBER_COLOR, Vector3.new(1.4, 1.4, 1.4), Enum.PartType.Ball, function()
-			-- GDD v3: una parte de las brasas sale en las plataformas de los árboles (premio
-			-- por subir al parkour también durante la incubación).
-			if random:NextNumber() < Config.Arena.EmbersOnTrees then
-				local spot = treeSpots[random:NextInteger(1, #treeSpots)]
-				return Vector3.new(spot.X + random:NextNumber(-1.5, 1.5), spot.Y, spot.Z + random:NextNumber(-1.5, 1.5))
+			-- GDD v3: una parte de las brasas naranjas sale en las plataformas bajas de los
+			-- árboles; más arriba están las azules y las moradas, que valen más.
+			if random:NextNumber() < Config.Arena.EmbersOnTrees and #tiers.Low > 0 then
+				return randomSpot(tiers.Low, 1.5)
 			end
 			return MapService.randomGroundPoint(MapLayout.SourceRing.Min, MapLayout.SourceRing.Max)
 		end, def.Respawn, function(player)
 			-- Lluvia de brasas doradas (RoundService): valen más durante un rato.
-			local amount = def.Amount * (if RoundState.get("GoldenRain") then Config.Round.GoldenRainMultiplier else 1)
-			return HeatService.give(player, amount) > 0
+			return HeatService.give(player, def.Amount * goldenMultiplier()) > 0
 		end)
 		table.insert(embers, ember)
 	end
+	spawnHighEmbers("BlueEmber", Config.Heat.BlueEmber, tiers.Mid, BLUE_COLOR, 1.6)
+	spawnHighEmbers("PurpleEmber", Config.Heat.PurpleEmber, tiers.Top, PURPLE_COLOR, 1.9)
+	-- La lluvia dorada solo recolorea las naranjas; las de altura conservan su color (y
+	-- también se multiplican).
 	RoundState.changed("GoldenRain"):Connect(function()
 		local golden = RoundState.get("GoldenRain") == true
 		for _, ember in embers do
 			ember.Color = if golden then GOLDEN_COLOR else EMBER_COLOR
-			ember.Material = if golden then Enum.Material.Neon else ember.Material
 		end
 	end)
 end
@@ -588,18 +619,12 @@ function HeatService.start()
 		end
 	end)
 
-	-- Pase Auto-Depósito y refresco de capacidad tras mejorar la bolsa.
+	-- Refresco de capacidad tras mejorar la bolsa. (v3.1: se quitó el pase Auto-Depósito, que
+	-- ahorraba tiempo en la partida: lo de pago ya no toca la partida.)
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
 			for _, player in Players:GetPlayers() do
-				if active and MonetizationService.hasPass(player, "AutoDeposit") then
-					local s = states[player]
-					local root = rootOf(player)
-					if s and (s.Heat > 0 or s.Offering) and root and (root.Position - MapService.EggCenter).Magnitude <= Config.Heat.DepositRadius then
-						HeatService.deposit(player)
-					end
-				end
 				if states[player] and player:GetAttribute("BagCapacity") ~= HeatService.capacity(player) then
 					sync(player)
 				end

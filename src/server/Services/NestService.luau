@@ -17,6 +17,7 @@ local Place = require(Shared.Place)
 local PlayerData = require(Shared.PlayerData)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
+local RoundState = require(Shared.RoundState)
 
 local AnnouncementService = require(script.Parent.AnnouncementService)
 local DataService = require(script.Parent.DataService)
@@ -119,13 +120,24 @@ function NestService.giveCreature(player: Player, genes: Genes.GeneSet, origin: 
 	return creature
 end
 
--- Compañero (GDD v2): la primera favorita acompaña a su dueño. El servidor solo publica sus
--- genes; cada cliente dibuja el modelo (CosmeticsController). Solo estética.
+-- Al hombro (GDD v3): la criatura que elijas va contigo, en el lobby y en la partida. Si no
+-- eliges ninguna, ninguna. El servidor solo publica sus genes; cada cliente dibuja el modelo
+-- (CosmeticsController). Solo estética: no colisiona ni cambia nada del juego.
 function NestService.updateCompanion(player: Player)
 	local profile = DataService.get(player)
-	local id = profile and profile.Favorites[1]
+	local id = profile and profile.Shoulder
 	local creature = if profile and id then PlayerData.findCreature(profile, id) else nil
 	player:SetAttribute("CompanionGenes", if creature then HttpService:JSONEncode(creature.Genes) else nil)
+end
+
+-- Suerte del Lobby (GDD 9, v3.1): alguien la compra y, durante 15 min, los huevos del nido
+-- de todos los que estén en ese lobby salen con más suerte. No toca la partida.
+local function lobbyLuck(): number
+	local endsAt = RoundState.get("ServerLuckEndsAt")
+	if type(endsAt) == "number" and workspace:GetServerTimeNow() < endsAt then
+		return Config.ServerLuck.Luck
+	end
+	return 1
 end
 
 -- Quita de las favoritas las criaturas que ya no tiene (liberadas, intercambiadas, saqueadas).
@@ -141,6 +153,9 @@ function NestService.onFavoritesChanged(player: Player)
 		end
 	end
 	profile.Favorites = valid
+	if profile.Shoulder and not PlayerData.findCreature(profile, profile.Shoulder) then
+		profile.Shoulder = nil -- la liberaste o la intercambiaste
+	end
 	NestService.updateCompanion(player)
 end
 
@@ -498,7 +513,7 @@ local function collectEggs(player: Player)
 		if egg.ReadyAt <= now then
 			local genes = egg.Genes
 			if not genes then
-				local rarity = Rarity.roll(rng, 1, egg.MinRarity, egg.MaxRarity)
+				local rarity = Rarity.roll(rng, lobbyLuck(), egg.MinRarity, egg.MaxRarity)
 				genes = Genes.rollSet(rng, rarity)
 			end
 			local creature = NestService.giveCreature(player, genes :: Genes.GeneSet, egg.Kind)
@@ -597,6 +612,21 @@ local function release(player: Player, ids: any)
 	if released == 0 then
 		AnnouncementService.player(player, "Esa criatura no se puede liberar (las Secretas y las favoritas ⭐ no se liberan).")
 	end
+end
+
+-- Elegir la criatura del hombro (la misma otra vez = quitarla).
+local function setShoulder(player: Player, id: any)
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	if type(id) == "string" and PlayerData.findCreature(profile, id) and profile.Shoulder ~= id then
+		profile.Shoulder = id
+	else
+		profile.Shoulder = nil
+	end
+	DataService.markChanged(player)
+	NestService.updateCompanion(player)
 end
 
 -- Favoritas: marcar o desmarcar con ⭐ (como mucho Config.Favorites.Max).
@@ -719,6 +749,7 @@ local function onLoaded(player: Player, profile: Profile)
 		assignArenaNest(player)
 	end
 	publishNestPosition(player)
+	NestService.updateCompanion(player)
 	player:GetAttributeChangedSignal("InMatch"):Connect(function()
 		onMatchChanged(player)
 	end)
@@ -760,6 +791,20 @@ function NestService.init()
 		addEgg(player, "Streak", 60, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName)
 	end
 
+	MonetizationService.registerProduct("ServerLuck", function(player)
+		if not Place.hasLobby() then
+			return false
+		end
+		local now = workspace:GetServerTimeNow()
+		local current = RoundState.get("ServerLuckEndsAt")
+		local base = if type(current) == "number" and current > now then current else now
+		RoundState.set("ServerLuckEndsAt", base + Config.ServerLuck.Seconds)
+		AnnouncementService.server(
+			string.format("🍀 ¡%s ha activado la Suerte del Lobby! 15 min de huevos del nido con más suerte para todos. Gracias 💛", player.DisplayName),
+			"rare"
+		)
+		return true
+	end)
 	MonetizationService.registerProduct("BreedReroll", function(player)
 		local profile = DataService.get(player)
 		if not profile or not profile.LastBreed then
@@ -805,6 +850,7 @@ function NestService.start()
 	Remotes.event("RequestRebirth").OnServerEvent:Connect(managed(rebirth))
 	Remotes.event("RequestRelease").OnServerEvent:Connect(managed(release))
 	Remotes.event("ToggleFavorite").OnServerEvent:Connect(managed(toggleFavorite))
+	Remotes.event("SetShoulder").OnServerEvent:Connect(managed(setShoulder))
 	Remotes.event("RequestReleaseStored").OnServerEvent:Connect(managed(releaseStored))
 	Remotes.event("RequestBuyDecoration").OnServerEvent:Connect(managed(buyDecoration))
 	Remotes.event("RequestBreed").OnServerEvent:Connect(managed(function(player, idA, idB)
