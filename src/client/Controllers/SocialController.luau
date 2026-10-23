@@ -294,7 +294,7 @@ local function hideIfMine(instance: Instance)
 		mine = model ~= nil and model:GetAttribute("OwnerUserId") == player.UserId
 	elseif instance.Name == "LikePrompt" then
 		local nest = instance.Parent and instance.Parent.Parent
-		mine = nest ~= nil and nest.Name == "Nest_" .. tostring(player:GetAttribute("NestIndex"))
+		mine = nest ~= nil and nest.Name == "Nest_" .. tostring(player:GetAttribute("LobbyNestIndex"))
 	end
 	if mine and not instance:GetAttribute("HiddenForOwner") then
 		instance:SetAttribute("HiddenForOwner", true)
@@ -312,18 +312,21 @@ function SocialController.start()
 
 	workspace.DescendantAdded:Connect(hideIfMine)
 	local function scanNests()
-		local map = workspace:FindFirstChild("Map")
-		local nests = map and map:FindFirstChild("Nests")
-		if nests then
-			for _, descendant in nests:GetDescendants() do
-				hideIfMine(descendant)
+		for _, root in { workspace:FindFirstChild("Map"), workspace:FindFirstChild("Lobby") } do
+			local nests = root and root:FindFirstChild("Nests")
+			if nests then
+				for _, descendant in nests:GetDescendants() do
+					hideIfMine(descendant)
+				end
 			end
 		end
 	end
 	scanNests()
 	player:GetAttributeChangedSignal("NestIndex"):Connect(scanNests)
+	player:GetAttributeChangedSignal("LobbyNestIndex"):Connect(scanNests)
 
-	UI.button({
+	-- GDD v3: la Bandada y los intercambios se gestionan en el lobby.
+	local toggle = UI.button({
 		Name = "Toggle",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 8, 0.5, 72),
@@ -335,6 +338,15 @@ function SocialController.start()
 			renderList()
 		end
 	end)
+	local function refreshToggle()
+		local lobby = player:GetAttribute("InMatch") ~= true
+		toggle.Visible = lobby
+		if not lobby then
+			panel.Visible = false
+		end
+	end
+	player:GetAttributeChangedSignal("InMatch"):Connect(refreshToggle)
+	task.defer(refreshToggle)
 
 	panel = UI.frame({
 		Name = "Panel",

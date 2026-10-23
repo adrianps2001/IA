@@ -8,6 +8,7 @@ local services = {
 	require(script.Services.MapService),
 	require(script.Services.QuestService),
 	require(script.Services.PartyService),
+	require(script.Services.MatchService),
 	require(script.Services.NestService),
 	require(script.Services.CommunityService),
 	require(script.Services.LootService),
@@ -18,6 +19,7 @@ local services = {
 	require(script.Services.ChaseService),
 	require(script.Services.ForestService),
 	require(script.Services.RoundService),
+	require(script.Services.MatchmakingService),
 	require(script.Services.DebugService), -- solo responde en Studio
 }
 

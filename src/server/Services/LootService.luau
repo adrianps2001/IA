@@ -13,6 +13,7 @@ local Config = require(Shared.Config)
 local Creature = require(Shared.Creature)
 local Events = require(Shared.Events)
 local Genes = require(Shared.Genes)
+local Place = require(Shared.Place)
 local PlayerData = require(Shared.PlayerData)
 local RoundState = require(Shared.RoundState)
 
@@ -51,7 +52,7 @@ local function update()
 		open = shouldOpen
 		setPromptsEnabled(open)
 		if open then
-			AnnouncementService.server(string.format("🌙 ¡Hora del saqueo! %d s: mantén E junto a una criatura de un nido ajeno para saquearla. Quédate en tu nido para defender el tuyo.", Config.Events.LootNight.PhaseSeconds), "threshold")
+			AnnouncementService.match(string.format("🌙 ¡Hora del saqueo! %d s: mantén E junto a una criatura de un nido ajeno para saquearla. Quédate en tu nido para defender el tuyo.", Config.Events.LootNight.PhaseSeconds), "threshold")
 		end
 	end
 end
@@ -110,7 +111,7 @@ local function onTriggered(prompt: ProximityPrompt, thief: Player)
 	end
 	DataService.addStat(thief, "Steals", 1)
 	QuestService.progress(thief, "Steal", 1)
-	AnnouncementService.server(string.format("🌙 %s ha saqueado el nido de %s.", thief.DisplayName, owner.DisplayName), "info")
+	AnnouncementService.match(string.format("🌙 %s ha saqueado el nido de %s.", thief.DisplayName, owner.DisplayName), "info")
 end
 
 local function watch(instance: Instance)
@@ -140,7 +141,7 @@ end
 function LootService.init() end
 
 function LootService.start()
-	if not Config.Events.LootNight.Enabled then
+	if not Config.Events.LootNight.Enabled or not Place.hasArena() then
 		return
 	end
 	CollectionService:GetInstanceAddedSignal("LootPrompt"):Connect(watch)

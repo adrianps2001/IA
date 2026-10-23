@@ -187,12 +187,14 @@ local function load(player: Player)
 	local raw: any = nil
 	if not useMemory then
 		local ok, data
-		for _ = 1, 4 do
+		-- Al cambiar de lugar (lobby <-> partida) el servidor de origen suelta el bloqueo
+		-- al salir el jugador, uno o dos segundos después de que llegue aquí.
+		for _ = 1, 12 do
 			ok, data = acquire(player)
 			if ok or data ~= "locked" then
 				break
 			end
-			task.wait(4) -- el otro servidor suele liberar en segundos
+			task.wait(2)
 		end
 		if not ok then
 			player:Kick("No pudimos cargar tus datos. Vuelve a entrar en un momento.")

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Genera el informe del simulador de bots (docs/simulacion.html).
 
-Lanza en paralelo el simulador (sim/run.luau) con la configuración de la versión 1 del GDD
-(valores de BEFORE) y con la ACTUAL (v2) de src/shared/Config.luau, con las mismas semillas,
-y guarda los resultados agregados dentro de la página (<script id="sim-data">).
+Compara la versión anterior del GDD con la ACTUAL (src/shared/Config.luau). La v3 cambió las
+reglas de la persecución (ya no hay nido al que llevar la criatura), así que la v2 ya no se
+puede volver a simular: sus resultados están guardados en tools/sim_baseline_v2.json (son los
+que dio este mismo script con la v2, con las mismas semillas y tamaños). Lanza en paralelo el
+simulador (sim/run.luau) con la configuración actual y guarda los resultados agregados dentro
+de la página (<script id="sim-data">).
 
 Uso:
   python3 tools/sim_report.py                     # completo (~3-4 min con 4 núcleos)
@@ -23,64 +26,29 @@ from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASELINE = os.path.join(ROOT, "tools", "sim_baseline_v2.json")
 PAGE = os.path.join(ROOT, "docs", "simulacion.html")
 LUAU = os.environ.get("LUAU", "luau")
 
-# Valores que tenía Config antes de ajustarlo con el simulador.
-# Valores de la versión 1 del GDD (antes del repaso de mecánicas). El informe compara la v1
-# con la configuración actual (v2) usando las mismas semillas.
-BEFORE = {
-    "Round.IncubationTime": 480,
-    "Round.HatchTime": 30,
-    "Round.ChaseTime": 180,
-    "Round.BloodMoonChaseTime": 300,
-    "Round.ResultsTime": 15,
-    "Round.IntermissionTime": 15,
-    "Round.PlayersPerCreature": 100,
-    "Round.GoldenRainSeconds": 0,
-    "Round.BarGoalBase": 6000,
-    "Round.BarGoalPerPlayer": 1150,
-    "Chase.TapSteal": "false",
-    "Chase.SecureSeconds": 25,
-    "Chase.OvertimeSeconds": 45,
-    "Shields.Enabled": "false",
-    "ForestThieves.Enabled": "false",
-    "Election.NewPlayerRounds": 0,
-    "Heat.BagGamePassMultiplier": 1.5,
-    "Heat.BumpSameTargetCooldown": 0,
-    "Heat.NewPlayerProtectionRounds": 0,
-    "Incubator.WelcomeEggSeconds": 0,
-    "Favorites.Max": 0,
-    "Release.BulkMaxRarity": "Common",
-    "PriceScale": 1,
-}
+LABELS = {"before": "v2", "after": "v3"}
 
-# Por qué se cambió cada valor (se muestra en la tabla del informe).
-WHY = {
-    "Round.IncubationTime": "La fase más larga (8 min) casi no decidía quién ganaba y se hacía repetitiva. Con 3,5 min caben el doble de rondas por sesión.",
-    "Round.HatchTime": "30 s mirando una ruleta sin poder moverse era demasiado. Ahora 10 s y la cámara no se bloquea.",
-    "Round.ChaseTime": "Con varias criaturas y escudos, 2 min bastan para que se asegure o se decida en la prórroga.",
-    "Round.BloodMoonChaseTime": "Proporcional a la nueva persecución.",
-    "Round.ResultsTime": "Los resultados se ven mientras empieza la siguiente ronda.",
-    "Round.IntermissionTime": "Menos espera entre rondas.",
-    "Round.PlayersPerCreature": "Una criatura más por cada 5 perseguidores (hasta 3): con 12 jugadores ya no es 11 contra 1.",
-    "Round.GoldenRainSeconds": "Lluvia de brasas doradas a mitad de la incubación: un objetivo común en la fase de recoger.",
-    "Round.BarGoalBase": "La meta de la barra se ajusta a la incubación más corta: sigue acabando de media entre el 55 y el 70 %.",
-    "Round.BarGoalPerPlayer": "Igual que la base.",
-    "Chase.TapSteal": "Robar con un toque y un tira y afloja en vez de mantener el botón (incómodo en móvil).",
-    "Chase.SecureSeconds": "Con menos robos por criatura, asegurar pide un poco más.",
-    "Chase.OvertimeSeconds": "Proporcional a la nueva persecución.",
-    "Shields.Enabled": "Escudos de Afinidad: depositar Calor ayuda a conservar la criatura. Sustituyen al escudo de pago.",
-    "ForestThieves.Enabled": "Zorros del bosque en servidores de menos de 6: tensión cuando hay pocos jugadores.",
-    "Election.NewPlayerRounds": "En su primera ronda, un novato tiene el mínimo más alto (12 %).",
-    "Heat.BagGamePassMultiplier": "La Bolsa Grande (+50 % de Calor) era pagar por ganar: más Calor daba más probabilidad de ser elegido.",
-    "Heat.BumpSameTargetCooldown": "No se puede empujar a la misma persona una y otra vez.",
-    "Heat.NewPlayerProtectionRounds": "Los novatos no pueden ser empujados en sus 5 primeras rondas.",
-    "Incubator.WelcomeEggSeconds": "Huevo de bienvenida: el novato ve el ciclo del nido en 2 minutos.",
-    "Favorites.Max": "3 favoritas que sobreviven a la Nueva generación.",
-    "Release.BulkMaxRarity": "Casi no salen Comunes: \"liberar guardadas\" también libera Raras.",
-    "PriceScale": "Con ~4,6 veces más victorias por hora, los precios en Monedas suben 2,5 veces para que la progresión del nido siga igual.",
-}
+# Qué cambió de la v2 a la v3 (valor en la v2, ruta en Config y por qué). Los que ya no
+# existen en Config se muestran como "(quitado)".
+CHANGES = [
+    ("Chase.CarrierSpeedMultiplier", 0.9, "Sin nido al que llegar, un portador más lento acababa siempre alcanzado (el elegido solo la conservaba el 16 %). Va a la misma velocidad que los demás."),
+    ("Shields.ChosenBonus", None, "Un escudo extra para cada elegido: sin nido donde asegurar, quien menos persigue casi nunca conservaba la criatura."),
+    ("Shields.NewPlayerBonus", None, "Un escudo extra en las 10 primeras rondas de un jugador."),
+    ("Chase.SecureSeconds", 30, "Ya no se asegura en el nido: gana quien tenga la criatura cuando se acaba el tiempo."),
+    ("Chase.OvertimeSeconds", 30, "Sin nido no hay prórroga de \"el primero que llegue\"."),
+    ("Chase.HomeHoldMultiplier", 1.5, "Sin defensa en casa."),
+    ("Chase.IntruderSpeedMultiplier", 0.6, "Sin territorio: los nidos de la arena son solo el punto de salida."),
+    ("Chase.DoorCloseTime", 10, "Sin puerta del nido."),
+    ("Chase.RevealEvery", None, "Señal: cada 8 s los portadores se ven a través de los árboles durante 2 s; entre señales hay que buscarlos por el parkour."),
+    ("Chase.RevealSeconds", None, "Duración de cada señal."),
+    ("Chase.FinalRevealSeconds", None, "En los últimos 10 s se les ve todo el rato: final con todos a la vista."),
+    ("Round.BloodMoonChaseTime", 180, "Sin prórroga, la Luna de Sangre alarga un poco menos la persecución."),
+    ("Arena.EmbersOnTrees", None, "Una cuarta parte de las brasas sale en lo alto de los árboles: también se sube durante la incubación."),
+]
 
 ARCHS = ["Newbie", "Casual", "Collector", "Thief", "Grinder", "Payer"]
 
@@ -119,10 +87,8 @@ def chase_stats(rounds):
     for c in chases:
         if c["Escaped"]:
             ends["Fuga"] += 1
-        elif c.get("Secured"):
-            ends["Asegurada"] += 1
-        elif c.get("Overtime"):
-            ends["Prórroga"] += 1
+        elif c.get("LastChangeAgo", 99) <= 10:
+            ends["Robada en los últimos 10 s"] += 1
         else:
             ends["Al acabar el tiempo"] += 1
     steals = Counter(min(c["Steals"], 30) for c in chases)
@@ -133,8 +99,7 @@ def chase_stats(rounds):
         "RoundMinutes": mean(r["DurationSeconds"] for r in rounds) / 60,
         "Escape": share(lambda c: c["Escaped"]),
         "ChosenWins": share(lambda c: c["WinnerIsChosen"]),
-        "Secured": share(lambda c: c.get("Secured")),
-        "Overtime": share(lambda c: c.get("Overtime")),
+        "LateSteal": share(lambda c: c.get("LastChangeAgo", 99) <= 10),
         "Steals": mean(c["Steals"] for c in chases),
         "Carriers": mean(c["Carriers"] for c in chases),
         "ShieldBlocks": mean(r.get("ShieldBlocks", 0) for r in rounds),
@@ -202,7 +167,7 @@ def meta_stats(meta):
 
 
 def pick_replay(seeds):
-    """Busca una partida con algo de todo: varias criaturas, robos, escudos y un final claro."""
+    """Busca una partida con algo de todo: varias criaturas, robos, escudos y un final reñido."""
     best, best_score = None, -1
     for seed in seeds:
         data = run(["repeticion", seed, 12])
@@ -210,8 +175,8 @@ def pick_replay(seeds):
         chases = s["Chases"]
         if any(c["Escaped"] for c in chases):
             continue
-        score = min(s["Steals"], 8) + 2 * min(s.get("ShieldBlocks", 0), 2) + (2 if s.get("Doors") else 0)
-        score += 3 * sum(1 for c in chases if c.get("Secured")) + 2 * sum(1 for c in chases if c.get("Overtime"))
+        score = min(s["Steals"], 8) + 2 * min(s.get("ShieldBlocks", 0), 2)
+        score += 2 * sum(1 for c in chases if c.get("LastChangeAgo", 99) <= 15)
         if score > best_score:
             best, best_score = data, score
     return best
@@ -252,13 +217,14 @@ def main():
     population = 36 if quick else 60
     sizes = [4, 8, 12, 16]
 
+    with open(BASELINE, encoding="utf-8") as f:
+        baseline = json.load(f)
+
     jobs = {}
     with ThreadPoolExecutor(max_workers=os.cpu_count() or 2) as pool:
         # Lo más lento primero para aprovechar los núcleos.
-        jobs["meta-before"] = pool.submit(run, ["meta", 7, days, population], BEFORE)
         jobs["meta-after"] = pool.submit(run, ["meta", 7, days, population])
         for size in sizes:
-            jobs[f"chase-before-{size}"] = pool.submit(run, ["lote-json", 101, rounds, size], BEFORE)
             jobs[f"chase-after-{size}"] = pool.submit(run, ["lote-json", 101, rounds, size])
         jobs["replay"] = pool.submit(pick_replay, range(1, 13))
         jobs["config"] = pool.submit(current_config)
@@ -266,19 +232,23 @@ def main():
 
     config = results["config"]
     changes = []
-    for path, before in BEFORE.items():
-        after = lookup(config, path)
-        changes.append({"Path": path, "Before": before, "After": after, "Why": WHY.get(path, "")})
+    for path, before, why in CHANGES:
+        try:
+            after = lookup(config, path)
+        except (KeyError, TypeError):
+            after = "(quitado)"
+        changes.append({"Path": path, "Before": before if before is not None else "(no existía)", "After": after, "Why": why})
 
     data = {
         "Quick": quick,
         "Sizes": sizes,
         "Archs": ARCHS,
+        "Labels": LABELS,
         "Chase": {
-            variant: {str(size): chase_stats(results[f"chase-{variant}-{size}"]["Rounds"]) for size in sizes}
-            for variant in ("before", "after")
+            "before": baseline["Chase"],
+            "after": {str(size): chase_stats(results[f"chase-after-{size}"]["Rounds"]) for size in sizes},
         },
-        "Meta": {variant: meta_stats(results[f"meta-{variant}"]) for variant in ("before", "after")},
+        "Meta": {"before": baseline["Meta"], "after": meta_stats(results["meta-after"])},
         "Replay": results["replay"],
         "Changes": changes,
         "Params": {"Rounds": rounds, "Days": days, "Population": population},

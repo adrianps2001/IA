@@ -394,7 +394,8 @@ end
 function NestController.start()
 	local gui = UI.screen("Nest", 3)
 
-	UI.button({
+	-- GDD v3: el nido se gestiona en el lobby. En la partida el botón no aparece.
+	local toggle = UI.button({
 		Name = "Toggle",
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 8, 0.5, 0),
@@ -406,6 +407,15 @@ function NestController.start()
 			render()
 		end
 	end)
+	local function refreshToggle()
+		local lobby = player:GetAttribute("InMatch") ~= true
+		toggle.Visible = lobby
+		if not lobby and panel then
+			panel.Visible = false
+		end
+	end
+	player:GetAttributeChangedSignal("InMatch"):Connect(refreshToggle)
+	task.defer(refreshToggle)
 
 	panel = UI.frame({
 		Name = "Panel",

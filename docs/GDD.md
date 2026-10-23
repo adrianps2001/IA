@@ -1,8 +1,29 @@
 # GDD — THE EGG CHOOSES (El Huevo Elige) para Roblox
 
-Versión 2 · 2026-10-23 · Adrian (v1: 2026-10-21)
+Versión 3 · 2026-10-23 · Adrian (v1: 2026-10-21 · v2: 2026-10-23)
 
-> **Qué cambia en la versión 2.** Tras jugar miles de rondas con el simulador de bots se vio que la v1 tenía fallos de fondo:
+> **Qué cambia en la versión 3.** Tras la primera prueba del juego:
+> - **Lobby aparte:** el nido, la tienda, la cría, la decoración, los intercambios y la Bandada están en un lobby con más jugadores. Desde allí se entra a las partidas con un emparejamiento (sección 7) y se vuelve al acabar.
+> - **Persecución nueva:** ya no hay que llevar la criatura al nido. Se la queda quien la tenga cuando se acaba el tiempo. El portador huye por un **parkour de árboles gigantes** y solo se le ve a distancia cuando da la **señal** (cada 8 s y en los últimos 10 s) (sección 5.4).
+> - **Criaturas monas** (estilo chibi) y fáciles de cambiar por otro estilo o por modelos de un artista; **nidos bonitos** con pedestales para lucirlas (secciones 5.6 y 8).
+> - **Sonidos** para las acciones y pasos más suaves (sección 8).
+>
+> Resultados del simulador (30 días, 60 jugadores, las mismas horas de juego; 12 jugadores para la persecución):
+>
+> | | v2 | v3 |
+> |---|---|---|
+> | Duración de la ronda (con la vuelta al lobby) | 6,0 min | 6,5 min (incluye ~35 s de cola y viajes) |
+> | Victorias por hora de juego | 2,29 | 2,14 |
+> | Sesiones que acaban con alguna victoria | 71 % | 62 % |
+> | Victorias por hora de un novato | 0,34 | 0,10 |
+> | El elegido conserva su criatura | 36 % | 30 % |
+> | Robos por criatura | 3,5 | 2,9 |
+>
+> **Ojo:** los jugadores que persiguen poco ganan bastante menos que en la v2 (un casual, de 1,02 a 0,17 victorias por hora; un novato, de 0,34 a 0,10). Sin nido donde asegurar, gana quien recupera la criatura al final, y esos son los que más persiguen. El simulador no imita bien el parkour (atajos, tirolinas, escondites), que debería ayudar al portador, así que hay que comprobarlo jugando. Las palancas están en la sección 13.
+>
+> Las secciones afectadas están marcadas con **(v3)**. La lista de cambios y el porqué está en la sección 13; la de la v2, en la 12.
+
+> **Qué cambió en la versión 2.** Tras jugar miles de rondas con el simulador de bots se vio que la v1 tenía fallos de fondo:
 > - la incubación (8 min) casi no decidía quién ganaba;
 > - el premio era demasiado escaso;
 > - la ronda tenía mucho tiempo muerto;
@@ -82,19 +103,19 @@ El núcleo son jugadores de 9 a 15 años que juegan en móvil con amigos; el seg
 
 **Fantasía secundaria:** criar una colección rara que crece sola y que otros envidian al visitar tu nido.
 
-## 4. Core loop y bucles de juego (v2)
+## 4. Core loop y bucles de juego (v3)
 
-La ronda de unos 6 minutos es el bucle central; el nido convierte cada ronda en progreso permanente y da motivos para volver.
+La ronda de unos 6 minutos es el bucle central; el nido del lobby convierte cada ronda en progreso permanente y da motivos para volver. **(v3)** Cada partida es una ronda: empieza y acaba en el lobby.
 
 ```mermaid
 flowchart LR
-  A[Incubación<br/>3,5 min · reunir Calor<br/>lluvia dorada a mitad] --> B[Eclosión<br/>10 s · la Elección]
-  B --> C[Persecución<br/>2 min + 30 s de prórroga]
-  C -->|criatura, Huevo del Elegido o polvo| D[Nido<br/>idle, cría, mejoras]
-  D -->|siguiente ronda| A
+  L[Lobby<br/>tu nido, tienda, Bandada<br/>⚔️ Jugar] -->|emparejamiento| A[Incubación<br/>3,5 min · reunir Calor<br/>lluvia dorada a mitad]
+  A --> B[Eclosión<br/>10 s · la Elección]
+  B --> C[Persecución<br/>2 min por el parkour]
+  C -->|criatura, Huevo del Elegido o polvo| L
 ```
 
-Ganar o perder la persecución siempre alimenta el nido: criatura para quien la mete en su nido, Huevo del Elegido para el elegido que la pierde y polvo de cáscara para el resto (si participó).
+Ganar o perder la persecución siempre alimenta el nido: criatura para quien la tenga al acabar el tiempo, Huevo del Elegido para el elegido que la pierde y polvo de cáscara para el resto (si participó). **(v3)** Al volver al lobby ves enseguida lo ganado en tu nido, y con "Seguir jugando" vuelves a la cola sin pulsar nada.
 
 **Por qué se acortó (v2).** En la v1 la ronda duraba ~12,8 min y en una sesión de 35-45 min solo cabían 3 rondas, con una criatura para todo el servidor. El 76 % de las sesiones acababa sin ganar nada. Con rondas de 6 min y varias criaturas por ronda, el 69 % de las sesiones tiene al menos una victoria.
 
@@ -133,17 +154,24 @@ Cada mecánica sirve a una de las cuatro fases de la ronda; todas se aprenden en
 - **(v2) Novatos:** en su primera ronda, un jugador nuevo ya tiene ese 12 %.
 - **(v2) Inactivos:** solo pueden ser elegidos quienes depositaron algo o se movieron en el último minuto. Si el huevo elegía a alguien AFK, se la robaban al instante y la ronda perdía la gracia.
 - **(v2) 10 segundos, sin bloquear la cámara:** el huevo se agrieta y un foco salta entre los 5 favoritos hasta pararse en cada elegido. Mientras, todos pueden moverse y colocarse.
-- El elegido recibe un aura dorada, una correa con la criatura y una flecha hacia su nido.
+- El elegido recibe un aura dorada y una correa con la criatura. **(v3)** Ya no hay flecha a su nido: tiene que esconderse.
 
-### 5.4 Persecución y robo (v2)
+### 5.4 Persecución y robo (v3)
 
-- **Duración:** 2 minutos. Cada elegido debe llevar su criatura a su nido y **asegurarla** (aguantar 30 s seguidos dentro) o tenerla dentro al acabar el tiempo. Si no está en su nido, empieza una **prórroga** de 30 s: gana el primero que la meta en el suyo.
-- **Robar (v2): un toque y un tira y afloja.** Tocar el botón junto al portador empieza un tira y afloja de 1,5 s (2,25 s si el portador está en su nido). El ladrón tiene que seguir cerca todo ese tiempo y el portador lo rompe si se aleja. En la v1 había que *mantener* el botón mientras los dos os movíais, algo muy incómodo en móvil, que es la mayoría del público.
-- **Escudos de Afinidad (v2):** cada 800 de Calor depositado en la ronda da un escudo (máximo 1). Si te van a quitar la criatura y tienes escudo, se rompe y el robo no ocurre. Así la incubación también cuenta en la persecución: en la v1, recoger Calor 8 minutos solo daba probabilidad de ser el *primer* portador.
+- **Duración:** 2 minutos (2 min 40 s con Luna de Sangre). **(v3)** Se queda la criatura **quien la tenga cuando se acaba el tiempo**. Ya no hay que llevarla al nido, asegurarla ni jugar una prórroga: el nido de la partida es solo el punto de salida. Si la criatura está en el suelo al acabar, se escapa.
+- **(v3) El parkour es la ruta de huida.** Alrededor del claro del huevo (que no cambia) hay 12 árboles gigantes con plataformas a tres alturas. El portador sube y se esconde; los ladrones le siguen (sección 8, Mundo):
+  - **Rutas seguras:** rampas en espiral con barandilla y escaleras de mano. Lentas pero sin caídas.
+  - **Atajos arriesgados:** vigas estrechas sin barandilla (ahí no te pueden rodear), caminos de piedras flotantes y puentes.
+  - **Bajar rápido:** tirolinas y toboganes. **Subir rápido:** setas trampolín.
+  - **Escondites:** cabañas, copas de hojas, arbustos y troncos huecos.
+  - **Caer no tiene castigo:** solo pierdes la altura.
+- **(v3) La señal del portador.** Entre los árboles no se ve lejos. Cada 8 s, durante 2 s, todos ven a los portadores a través de los árboles y queda una marca 📍 donde estaban; entre señal y señal hay que buscarlos. En los últimos 10 s se les ve todo el rato: final con todos a la vista.
+- **Robar (v2): un toque y un tira y afloja.** Tocar el botón junto al portador empieza un tira y afloja de 1,5 s. El ladrón tiene que seguir cerca todo ese tiempo y el portador lo rompe si se aleja. En la v1 había que *mantener* el botón mientras los dos os movíais, algo muy incómodo en móvil, que es la mayoría del público.
+- **Escudos de Afinidad (v2):** cada 800 de Calor depositado en la ronda da un escudo (máximo 1). Si te van a quitar la criatura y tienes escudo, se rompe y el robo no ocurre. Así la incubación también cuenta en la persecución.
 - **Una criatura por persona:** quien lleva una no puede robar otra, y quien ya ha ganado una en la ronda no persigue más. Así cada portador tiene sus propios perseguidores.
-- **Defensa:** el portador tiene un esprint con recarga y puede pasar la correa a un aliado libre (pase de relevo). Los nidos tienen una puerta que se cierra 10 segundos una vez por ronda. En su nido, el portador va a velocidad normal y los intrusos van más lentos.
-- **Equilibrio:** el portador corre un 10 % más lento fuera de su nido. Cada robo da 3 s de inmunidad al nuevo portador y deja aturdido 2 s al que la pierde. Los elegidos empiezan con 10 s de inmunidad y 4 s de ventaja.
-- **Ladrones del bosque (v2):** en servidores con menos de 6 jugadores salen zorros del borde del mapa que persiguen a los portadores. Si ganan el tira y afloja, la criatura cae al suelo y cualquiera puede recogerla; nunca se la quedan. Dan tensión a los servidores pequeños, que son lo normal al lanzar. Son claramente criaturas del juego, no jugadores falsos.
+- **Defensa:** el portador tiene un esprint con recarga y puede pasar la correa a un aliado libre (pase de relevo). **(v3)** Sin nido no hay puerta ni territorio.
+- **Equilibrio:** **(v3)** el portador va a la misma velocidad que los demás (en la v2 iba un 10 % más lento; sin nido al que llegar, le alcanzarían siempre). Cada robo da 3 s de inmunidad al nuevo portador y deja aturdido 2 s al que la pierde. Los elegidos empiezan con 10 s de inmunidad y 4 s de ventaja.
+- **Ladrones del bosque (v2):** en partidas con menos de 6 jugadores salen zorros del borde del mapa que persiguen a los portadores (y suben por el parkour). Si ganan el tira y afloja, la criatura cae al suelo y cualquiera puede recogerla; nunca se la quedan. Son claramente criaturas del juego, no jugadores falsos.
 - **Alianzas:** botón "Ofrecer trato": si un aliado te ayuda y ganas, recibe el 30 % del polvo de cáscara y una copia común de la criatura. Es opcional y se puede traicionar.
 
 ### 5.5 Consuelo
@@ -151,9 +179,11 @@ Cada mecánica sirve a una de las cuatro fases de la ronda; todas se aprenden en
 - Todos los que no se quedan con una criatura reciben **Polvo de cáscara** según su Afinidad y sus intentos de robo. **(v2)** Quien no hizo nada en la ronda no cobra. Con el polvo se compran huevos pequeños personales y decoración.
 - **(v2) Huevo del Elegido:** el elegido que pierde su criatura recibe 50 de polvo extra y un huevo de Rara a Épica. Ser elegido nunca es una pérdida.
 
-### 5.6 Nido personal
+### 5.6 Nido personal (v3)
 
-- Parcela propia dentro de cada servidor (como en los tycoons), cargada desde tus datos guardados.
+- **(v3) Tu nido está en el lobby**, una parcela propia cargada desde tus datos guardados, con más jugadores alrededor que pueden visitarla. Allí se hace todo lo del nido: tienda, mejoras, incubadora, cría, liberar, decorar, intercambiar y formar la Bandada. En la partida no se gestiona el nido.
+- **(v3) Hecho para lucirse:** tus 12 mejores criaturas (primero las favoritas) en pedestales en gradas, cada una con su placa (nombre, rareza y producción), un aro del color de su rareza (dorado si es favorita) y un foco las Legendarias o mejores. Valla, farolillos, un arco con tu cartel (criaturas, "me gusta" y Belleza) y un cuenco con el huevo de la incubadora, que brilla cuando hay huevos listos. Las criaturas dan saltitos en su pedestal.
+- **(v3) En la partida apareces con tu nido:** un campamento de salida con tus 3 favoritas a la vista (y saqueables en la Noche de Saqueo).
 - Las criaturas generan **Monedas por segundo** según su rareza y genes, también sin conexión (al 25 %, con tope de 8 horas).
 - Se puede **decorar** (12 piezas de Monedas o polvo, solo estéticas) y visitar. Los nidos ajenos se pueden ver; solo se pueden saquear en la Noche de Saqueo (sección 7). Las criaturas sobrantes se pueden **liberar** a cambio de polvo.
 - **(v2) Favoritas:** hasta 3 criaturas con ⭐. No se liberan por error, sobreviven a la Nueva generación y la primera te acompaña flotando durante la ronda (solo estética). Así el nido también se ve en la ronda.
@@ -210,6 +240,7 @@ Lo social es el producto: cada sistema empuja a jugar con amigos, a hablar de lo
 
 ### Sistemas sociales
 
+- **(v3) Emparejamiento:** desde el lobby, "Jugar" te pone en la cola. La partida sale con 8 jugadores enseguida, con 4 tras 20 s o con los que haya tras 45 s (los zorros rellenan). La Bandada entra junta. Todos los jugadores de una partida vuelven juntos al mismo lobby.
 - **Grupos de hasta 4** ("Bandada"): comparten el 10 % del Calor depositado (Afinidad) y se ven a través de las paredes. Con un amigo de Roblox en el grupo, +10 % de Polvo. **(v2)** No son aliados automáticos en la persecución (para eso están los tratos), para que cuatro amigos no sean imbatibles.
 - **Pactos y traiciones:** el botón de trato (sección 5.4) registra cuántos pactos has cumplido o roto. Aparece en tu perfil como "Leal" o "Traidor", un título que la comunidad adora presumir.
 - **Intercambio** de criaturas entre jugadores con ventana de confirmación doble, historial y valor estimado visible para reducir estafas.
@@ -242,8 +273,10 @@ El estilo debe reconocerse en una miniatura de 150 píxeles: un huevo enorme y b
 
 ### Mundo
 
-- **Mapa de lanzamiento: Bosque de Brasas.** Mapa circular de unos 300 x 300 studs, con el huevo en un claro central y 16 nidos en el borde. Distancia nido-huevo: 25 a 35 segundos corriendo, suficiente para una persecución pero no aburrida.
-- **Zonas:** pantano de luciérnagas, cueva de cristales, géiseres, puente colgante (atajo arriesgado) y túneles (rutas de escape para el portador).
+- **(v3) Lobby:** una plaza con el portal de partidas en el centro (pisar el círculo te mete en la cola), el cartel del ranking, una estatua del Huevo Comunitario y 24 nidos alrededor unidos por caminos.
+- **Mapa de partida: Bosque de Brasas.** Mapa circular de unos 300 x 300 studs, con el huevo en un claro central y 16 campamentos de salida en el borde.
+- **(v3) Parkour de árboles gigantes** alrededor del claro: 4 árboles grandes junto al claro y 8 por parejas junto a los campamentos, con plataformas a 24, 46 y 68 studs. Los unen puentes, vigas y caminos de piedras; tienen rampas o escaleras, tirolinas, toboganes, setas trampolín, cabañas y copas para esconderse. Una cuarta parte de las brasas sale en lo alto, así que también se sube durante la incubación. No hace falta que todo tenga sentido: algún bloque flotante suelto también vale.
+- **Zonas:** pantano de luciérnagas, cueva de cristales, géiseres, puente colgante (atajo arriesgado) y túneles.
 - **Ciclo visual de la ronda:** atardecer durante la incubación, eclipse en la eclosión, noche iluminada por el aura de la criatura durante la persecución.
 
 ### Dirección de arte
@@ -251,10 +284,12 @@ El estilo debe reconocerse en una miniatura de 150 píxeles: un huevo enorme y b
 - Estilo "juguete brillante": formas redondas, materiales suaves, emisivos fuertes para lo valioso (Calor, auras).
 - **Lenguaje de rareza por color**, siempre igual: gris, verde, azul, morado, naranja, rojo y arcoíris para Secreta.
 - Criaturas modulares (cuerpo + cabeza + patrón + aura): unas 60 piezas al lanzamiento dan miles de combinaciones con poco coste de arte.
+- **(v3) Estilo chibi:** bola con barriguita clara, ojos grandes con brillo, mofletes rosas, boquita "ω", patitas y colita; cada gen añade un rasgo (orejas, corona, alas, antifaz…). El estilo se cambia en un solo sitio, y se pueden usar modelos hechos por un artista sin tocar el código. Galería: `docs/criaturas.html`.
 - Rendimiento móvil: piezas de baja poligonización, partículas limitadas y texturas pequeñas.
 
 ### Sonido
 
+- **(v3) Implementado:** latido del huevo, recoger Calor (sube de tono con el combo), depositar, bolsa llena, bloques de suerte, empujones, géiseres, eclosión, ser portador, tira y afloja, robos, escudos, la señal, cuenta atrás, trampolines, tirolinas, compras, cola y clics de la interfaz. Pasos propios más suaves (los de Roblox chirriaban). Todos en un catálogo fácil de cambiar; ahora usan los sonidos que trae Roblox y habría que sustituirlos por otros mejores.
 - **Latido del huevo** que se acelera al llenarse la barra: es la firma sonora del juego y el audio de los clips.
 - Cada rareza tiene un acorde de revelación distinto; la Secreta, una melodía exclusiva.
 - Música dinámica: tranquila en incubación, tensa con percusión en la persecución.
@@ -265,7 +300,8 @@ El estilo debe reconocerse en una miniatura de 150 píxeles: un huevo enorme y b
 - HUD mínimo: bolsa, barra del servidor, temporizador de fase y flecha de objetivo.
 - Un botón de acción contextual en móvil (recoger / depositar / robar / pasar).
 - Eclosión de 10 s sin bloquear la cámara **(v2)**, con botón "Captura" al final usando la captura de Roblox.
-- Bajo la barra, lo que importa en cada momento de la persecución: la cuenta atrás del tira y afloja, el aviso "¡Te están robando!", los escudos y el progreso para asegurar.
+- Bajo la barra, lo que importa en cada momento de la persecución: la cuenta atrás del tira y afloja, el aviso "¡Te están robando!", los escudos y **(v3)** la señal ("Próxima señal en 5 s", "¡Te están viendo! Escóndete").
+- **(v3)** En el lobby, un botón grande **⚔️ Jugar** y "🔁 Seguir jugando" (volver a la cola solo al acabar).
 
 ## 9. Monetización
 
@@ -386,6 +422,7 @@ Un equipo de 3 a 5 personas puede llegar a un lanzamiento en unas 14 semanas, po
 
 ### 11.1 Arquitectura técnica
 
+- **(v3) Dos lugares con el mismo código:** el lobby (más jugadores) y las partidas (servidores reservados de hasta 12). Teletransporte con `TeleportService` y los datos de la Bandada en el viaje; el perfil se guarda antes de saltar y el bloqueo de sesión evita duplicados. En Studio todo funciona en un solo servidor para probar.
 - **Servidor autoritativo** para Calor, robos, Elección y compras: el cliente solo envía intenciones ("quiero robar"), el servidor valida distancia y tiempos. Es la defensa principal contra exploits.
 - **Guardado de datos** con un módulo de sesiones con bloqueo (tipo ProfileStore) para evitar duplicaciones en intercambios.
 - **MessagingService** para anuncios globales de criaturas Míticas/Secretas y el Huevo Comunitario.
@@ -472,6 +509,30 @@ Todos los números salen del simulador de bots (`sim/`), que juega con las misma
 | Luna de Sangre a una sola hora | 20:00 UTC | 3 franjas |
 | Noche de Saqueo partía el servidor | Competía con la incubación | Fase propia tras los resultados |
 | Más victorias = más inflación | Monedas ×2,9 a final de mes | Precios ×2,5: la progresión del nido va al mismo ritmo que en la v1 |
+
+## 13. Cambios de la versión 3 y por qué
+
+Vienen de la primera prueba del juego en Studio. Los números del simulador comparan la v2 con la v3 (12 jugadores para la persecución; 30 días y 60 jugadores para la economía).
+
+| Lo que se vio al probar | Cambio en la v3 |
+|---|---|
+| El jugador no podía enseñar sus criaturas | Nido en el lobby con pedestales, placas y focos; compañero; campamento con 3 favoritas en la partida |
+| Gestionar el nido en mitad de la partida no tiene sentido y el servidor de partida es pequeño | Lobby aparte con más jugadores: nido, tienda, intercambios y Bandada; emparejamiento y teletransporte |
+| Llevar la criatura al nido no era divertido | Se la queda quien la tenga al acabar; parkour de árboles gigantes como ruta de huida |
+| Sin nido al que volver, ¿cómo se encuentra al portador? | Señal cada 8 s (2 s visible) y en los últimos 10 s; marca 📍 de la última posición |
+| Un portador más lento acababa siempre alcanzado | Misma velocidad que los demás: el elegido conserva la criatura 30 % de las veces (con 12 jugadores) |
+| La criatura de prueba era fea | Estilo chibi y sistema de estilos intercambiable; modelos de artista sin tocar código |
+| El sonido de los pasos chirriaba y faltaban sonidos | Pasos propios suaves y un catálogo de sonidos para casi todas las acciones |
+| Los bots se atascaban en las paredes | PathfindingService con recuperación (bots y zorros) |
+| Las cajas sorpresa no desaparecían al cogerlas | Se ocultaba la caja, pero no los "?" pintados encima; ahora se apaga todo |
+| Sin nido, los que menos persiguen casi nunca conservaban la criatura | El elegido y los novatos (10 primeras rondas) empiezan con un escudo extra |
+
+**Lo que hay que vigilar.** Con la persecución v3 los jugadores que persiguen poco ganan mucho menos: un casual pasa de 1,02 a 0,17 victorias por hora y un novato de 0,34 a 0,10; los que más persiguen ganan algo más (un ladrón, de 3,47 a 3,73). Las partidas son de 12 como mucho, así que el caso de 16 jugadores (donde el elegido solo la conserva el 12 % de las veces) no se da. Palancas, todas en `Config`, por si las pruebas lo confirman:
+
+- `Chase.CarrierMaxBoots = true`: el portador corre como con las botas al máximo (simulador: el elegido la conserva el 34 % con 12 jugadores, con menos robos).
+- `Shields.ChosenBonus = 2` o `Shields.NewPlayerBonus = 2`: más escudos al empezar.
+- `Round.ChaseTime = 90`: con todo lo anterior, novatos y casuales llegan a ~0,3 victorias por hora, pero hay menos de un robo por criatura (persecución aburrida).
+- Emparejamiento por nivel: que los novatos jueguen sus primeras horas entre ellos.
 
 ## Fuentes
 

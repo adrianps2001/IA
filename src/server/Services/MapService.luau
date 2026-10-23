@@ -1,35 +1,36 @@
 --!strict
--- Genera el mapa de lanzamiento "Bosque de Brasas" en gris (GDD 8): mapa circular de ~300 studs,
--- huevo en un claro central y 16 nidos en el borde. Sustituible por un mapa hecho a mano
--- que mantenga los mismos nombres (Map/Egg, Map/Nests/Nest_N con Floor, Door, Spawn, Sign).
+-- Genera los mapas en gris (GDD 8 y v3):
+-- * Arena "Bosque de Brasas": mapa circular de ~300 studs, huevo en un claro central, zonas,
+--   el parkour de árboles gigantes (ArenaBuilder) y 16 campamentos de salida en el borde.
+-- * Lobby: plaza con el portal de partidas y los nidos bonitos de todos (LobbyBuilder).
+-- Qué se construye depende del lugar (Place): el lobby, la arena o los dos (modo combinado).
+-- Sustituible por mapas hechos a mano que mantengan los mismos nombres.
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local MapLayout = require(Shared.MapLayout)
+local Place = require(Shared.Place)
+local RoundState = require(Shared.RoundState)
 
-export type Nest = {
-	Index: number,
-	Origin: CFrame, -- centro del suelo; -Z mira al huevo
-	Size: number,
-	Model: Model,
-	Floor: BasePart,
-	Door: BasePart,
-	Spawn: SpawnLocation,
-	Sign: TextLabel,
-}
+local ArenaBuilder = require(script.Parent.Parent.Util.ArenaBuilder)
+local LobbyBuilder = require(script.Parent.Parent.Util.LobbyBuilder)
+local NestBuilder = require(script.Parent.Parent.Util.NestBuilder)
+
+export type Nest = NestBuilder.Nest
 
 local MapService = {}
 
 MapService.Radius = MapLayout.Radius
 MapService.NestRadius = MapLayout.NestRadius
-MapService.NestSize = MapLayout.NestSize
 MapService.EggCenter = Vector3.new(0, 0, 0)
-MapService.Nests = {} :: { Nest }
+MapService.Nests = {} :: { Nest } -- campamentos de la arena
+MapService.LobbyNests = {} :: { Nest } -- nidos del lobby
 MapService.Zones = {} :: { [string]: Vector3 }
--- Se rellenan en init().
+-- Se rellenan en init() (la arena solo si este lugar la tiene).
 MapService.Egg = (nil :: any) :: Part
 MapService.Folder = (nil :: any) :: Folder
 MapService.SourcesFolder = (nil :: any) :: Folder
+MapService.Lobby = nil :: LobbyBuilder.Lobby?
 
 local rng = Random.new()
 local mapFolder: Folder
@@ -122,12 +123,13 @@ local function buildGround()
 	}, mapFolder)
 
 	local spawn = Instance.new("SpawnLocation")
-	spawn.Name = "LobbySpawn"
+	spawn.Name = "ArenaSpawn"
 	spawn.Anchored = true
 	spawn.Size = Vector3.new(10, 1, 10)
 	spawn.CFrame = CFrame.new(0, 0.6, 32)
 	spawn.Transparency = 0.6
 	spawn.Neutral = true
+	spawn.Enabled = not Place.hasLobby() -- en el modo combinado se aparece en el lobby
 	spawn.Duration = 0
 	spawn.Parent = mapFolder
 end
@@ -160,93 +162,6 @@ local function buildEgg()
 
 	MapService.Egg = egg
 	MapService.EggCenter = egg.Position
-end
-
-local function buildNest(index: number): Nest
-	local center = toVector(MapLayout.nestCenter(index))
-	local origin = CFrame.lookAt(center, Vector3.new(0, 0, 0))
-	local size = MapService.NestSize
-	local half = size / 2
-	local wallHeight = 9
-	local opening = MapLayout.NestOpening
-
-	local model = Instance.new("Model")
-	model.Name = "Nest_" .. index
-	model.Parent = mapFolder:FindFirstChild("Nests")
-
-	local floor = block({
-		Name = "Floor",
-		Size = Vector3.new(size, 1, size),
-		CFrame = origin * CFrame.new(0, 0.5, 0),
-		Color = Color3.fromRGB(150, 120, 85),
-		Material = Enum.Material.WoodPlanks,
-	}, model)
-
-	local wallColor = Color3.fromRGB(110, 85, 60)
-	local function wall(name: string, cf: CFrame, sz: Vector3)
-		block({ Name = name, CFrame = origin * cf, Size = sz, Color = wallColor, Material = Enum.Material.Wood }, model)
-	end
-	wall("BackWall", CFrame.new(0, wallHeight / 2 + 1, half), Vector3.new(size, wallHeight, 1))
-	wall("LeftWall", CFrame.new(-half, wallHeight / 2 + 1, 0), Vector3.new(1, wallHeight, size))
-	wall("RightWall", CFrame.new(half, wallHeight / 2 + 1, 0), Vector3.new(1, wallHeight, size))
-	local side = (size - opening) / 2
-	wall("FrontLeft", CFrame.new(-(opening / 2 + side / 2), wallHeight / 2 + 1, -half), Vector3.new(side, wallHeight, 1))
-	wall("FrontRight", CFrame.new(opening / 2 + side / 2, wallHeight / 2 + 1, -half), Vector3.new(side, wallHeight, 1))
-
-	local door = block({
-		Name = "Door",
-		CFrame = origin * CFrame.new(0, wallHeight / 2 + 1, -half),
-		Size = Vector3.new(opening, wallHeight, 1),
-		Color = Color3.fromRGB(255, 200, 80),
-		Material = Enum.Material.ForceField,
-		Transparency = 1,
-		CanCollide = false,
-		CanQuery = false,
-	}, model)
-
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Name = "Spawn"
-	spawn.Anchored = true
-	spawn.Size = Vector3.new(6, 1, 6)
-	spawn.CFrame = origin * CFrame.new(0, 1.1, half - 5)
-	spawn.Transparency = 1
-	spawn.CanCollide = false
-	spawn.Enabled = false -- solo sirve como RespawnLocation del dueño
-	spawn.Duration = 0
-	spawn.Parent = model
-
-	local signPart = block({
-		Name = "SignPost",
-		CFrame = origin * CFrame.new(0, wallHeight + 4, -half),
-		Size = Vector3.new(1, 1, 1),
-		Transparency = 1,
-		CanCollide = false,
-		CanQuery = false,
-	}, model)
-	local billboard = Instance.new("BillboardGui")
-	billboard.Size = UDim2.fromOffset(220, 60)
-	billboard.MaxDistance = 140
-	billboard.Parent = signPart
-	local sign = Instance.new("TextLabel")
-	sign.Size = UDim2.fromScale(1, 1)
-	sign.BackgroundTransparency = 1
-	sign.Font = Enum.Font.FredokaOne
-	sign.TextScaled = true
-	sign.TextColor3 = Color3.new(1, 1, 1)
-	sign.TextStrokeTransparency = 0.2
-	sign.Text = "Nido libre"
-	sign.Parent = billboard
-
-	return {
-		Index = index,
-		Origin = origin,
-		Size = size,
-		Model = model,
-		Floor = floor,
-		Door = door,
-		Spawn = spawn,
-		Sign = sign,
-	}
 end
 
 local function buildZones()
@@ -310,43 +225,12 @@ local function buildZones()
 		Material = Enum.Material.WoodPlanks,
 	}, mapFolder)
 
-	-- Árboles repartidos (obstáculos y cobertura en la persecución).
 	for _, geyser in MapLayout.geyserPositions() do
 		MapService.addObstacle(toVector(geyser), 4.5)
 	end
-	for _ = 1, 70 do
-		local pos = MapService.randomGroundPoint(MapLayout.TreeRing.Min, MapLayout.TreeRing.Max)
-		local tooClose = not MapService.isClear(pos, 3)
-		for _, zone in MapService.Zones do
-			if (zone - pos).Magnitude < 24 then
-				tooClose = true
-				break
-			end
-		end
-		if not tooClose then
-			MapService.addObstacle(pos, 1.8)
-			local height = rng:NextNumber(10, 20)
-			block({
-				Name = "Trunk",
-				Size = Vector3.new(2.5, height, 2.5),
-				CFrame = CFrame.new(pos + Vector3.new(0, height / 2, 0)),
-				Color = Color3.fromRGB(90, 60, 40),
-				Material = Enum.Material.Wood,
-			}, mapFolder)
-			block({
-				Name = "Leaves",
-				Shape = Enum.PartType.Ball,
-				Size = Vector3.new(10, 10, 10),
-				CFrame = CFrame.new(pos + Vector3.new(0, height + 3, 0)),
-				Color = Color3.fromRGB(200, 90, 40), -- bosque de brasas: hojas rojizas
-				Material = Enum.Material.Grass,
-				CanCollide = false,
-			}, mapFolder)
-		end
-	end
 end
 
-function MapService.init()
+local function buildArena()
 	local existing = workspace:FindFirstChild("Map")
 	if existing then
 		existing:Destroy()
@@ -366,12 +250,43 @@ function MapService.init()
 	buildGround()
 	buildEgg()
 	for index = 1, Config.Nest.Count do
-		table.insert(MapService.Nests, buildNest(index))
+		local center = toVector(MapLayout.nestCenter(index))
+		table.insert(MapService.Nests, NestBuilder.arena(index, CFrame.lookAt(center, Vector3.zero), nests))
 	end
 	buildZones()
+	-- Parkour: árboles gigantes con plataformas, puentes y atajos (GDD v3).
+	ArenaBuilder.build(mapFolder, MapService.addObstacle)
 
 	MapService.Folder = mapFolder
 	MapService.SourcesFolder = sources
+end
+
+local function buildLobby()
+	local existing = workspace:FindFirstChild("Lobby")
+	if existing then
+		existing:Destroy()
+	end
+	local lobby = LobbyBuilder.build(workspace)
+	MapService.Lobby = lobby
+	MapService.LobbyNests = lobby.Nests
+	-- Estatua del Huevo Comunitario: el progreso global.
+	local function refresh()
+		local progress = tonumber(RoundState.get("CommunityProgress")) or 0
+		lobby.CommunityLabel.Text = if progress >= 1
+			then "🌍 Huevo Comunitario\n¡lleno!"
+			else string.format("🌍 Huevo Comunitario\n%d %%", math.floor(progress * 100))
+	end
+	RoundState.changed("CommunityProgress"):Connect(refresh)
+	refresh()
+end
+
+function MapService.init()
+	if Place.hasArena() then
+		buildArena()
+	end
+	if Place.hasLobby() then
+		buildLobby()
+	end
 end
 
 function MapService.start() end

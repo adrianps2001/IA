@@ -1,21 +1,22 @@
 --!strict
 -- Ladrones del bosque (GDD v2): en servidores con menos de Config.ForestThieves.FillTo
 -- jugadores, durante la persecución salen zorros del borde del mapa que persiguen a los
--- portadores. Si completan el tira y afloja (las mismas reglas que un jugador:
--- ChaseRules), la criatura cae al suelo; nunca se la quedan. Dan tensión a los servidores
--- pequeños, que es lo normal al lanzar un juego. Son claramente criaturas del juego, no
--- jugadores falsos.
-
-local Players = game:GetService("Players")
+-- portadores. Si completan el tira y afloja (las mismas reglas que un jugador: ChaseRules),
+-- la criatura cae al suelo; nunca se la quedan. Dan tensión a los servidores pequeños, que
+-- es lo normal al lanzar un juego. Son claramente criaturas del juego, no jugadores falsos.
+-- GDD v3: se mueven con PathfindingService (Navigator), así suben las rampas del parkour y
+-- rodean los árboles en vez de quedarse pegados.
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local ChaseRules = require(Shared.ChaseRules)
 local Config = require(Shared.Config)
 local MapLayout = require(Shared.MapLayout)
+local Navigator = require(Shared.Navigator)
+local Place = require(Shared.Place)
 local RoundState = require(Shared.RoundState)
 
 local ChaseService = require(script.Parent.ChaseService)
-local NestService = require(script.Parent.NestService)
+local MatchService = require(script.Parent.MatchService)
 
 local ForestService = {}
 
@@ -28,8 +29,7 @@ type Fox = {
 	TugStartedAt: number?,
 	RestUntil: number, -- tras tirar una criatura, vuelve al bosque un rato
 	Home: Vector3,
-	LastPosition: Vector3,
-	StuckSince: number,
+	Nav: Navigator.Navigator,
 }
 
 local foxes: { Fox } = {}
@@ -93,6 +93,7 @@ local function buildFox(position: Vector3, index: number): Fox
 	model.Parent = folder
 	root:SetNetworkOwner(nil) -- lo mueve el servidor
 	return {
+		Nav = Navigator.new(humanoid, root, 2),
 		Model = model,
 		Humanoid = humanoid,
 		Root = root,
@@ -101,8 +102,6 @@ local function buildFox(position: Vector3, index: number): Fox
 		TugStartedAt = nil,
 		RestUntil = 0,
 		Home = position,
-		LastPosition = root.Position,
-		StuckSince = os.clock(),
 	}
 end
 
@@ -118,7 +117,7 @@ local function spawnFoxes()
 	if not Config.ForestThieves.Enabled then
 		return
 	end
-	local players = #Players:GetPlayers()
+	local players = #MatchService.players()
 	local count = math.min(Config.ForestThieves.MaxCount, Config.ForestThieves.FillTo - players)
 	if count <= 0 then
 		return
@@ -144,16 +143,12 @@ end
 local function tick()
 	local now = os.clock()
 	local phase = RoundState.phase()
-	if phase ~= "Chase" and phase ~= "Overtime" then
+	if phase ~= "Chase" then
 		return
 	end
 	for _, fox in foxes do
-		local humanoid = fox.Humanoid
-		-- Velocidad: como en los jugadores, en un nido ajeno se va más lento.
-		local inNest = NestService.nestIndexAt(fox.Root.Position) ~= nil
-		humanoid.WalkSpeed = Config.Movement.BaseWalkSpeed * Config.ForestThieves.SpeedMultiplier * (if inNest then Config.Chase.IntruderSpeedMultiplier else 1)
 		if now < fox.RestUntil then
-			humanoid:MoveTo(fox.Home)
+			fox.Nav:moveTo(fox.Home)
 			fox.TugStartedAt = nil
 			continue
 		end
@@ -161,7 +156,7 @@ local function tick()
 		local target = nearestTarget(fox)
 		if not target then
 			fox.TugStartedAt = nil
-			humanoid:MoveTo(fox.Home)
+			fox.Nav:moveTo(fox.Home)
 			continue
 		end
 		if target.Index ~= fox.TargetIndex then
@@ -170,18 +165,10 @@ local function tick()
 		end
 		if now - fox.SeenAt >= Config.ForestThieves.Reaction then
 			fox.SeenAt = now
-			humanoid:MoveTo(target.Position)
-		end
-		-- Atascado (un árbol): saltar.
-		if (fox.Root.Position - fox.LastPosition).Magnitude < 0.5 then
-			if now - fox.StuckSince > 1.5 then
-				humanoid.Jump = true
-				fox.StuckSince = now
-			end
+			fox.Nav:moveTo(target.Position)
 		else
-			fox.StuckSince = now
+			fox.Nav:update()
 		end
-		fox.LastPosition = fox.Root.Position
 
 		-- Tira y afloja: tiene que seguir cerca durante el tiempo de robo.
 		local d = (target.Position - fox.Root.Position).Magnitude
@@ -193,7 +180,7 @@ local function tick()
 			fox.TugStartedAt = nil
 		end
 		local started = fox.TugStartedAt
-		if started and now - started >= ChaseRules.holdTime(NestService.isInsideOwnNest(target.Carrier)) then
+		if started and now - started >= ChaseRules.holdTime() then
 			fox.TugStartedAt = nil
 			local result = ChaseService.foxGrab(target.Index, fox.Root.Position, started)
 			if result == "dropped" or result == "shield" then
@@ -204,6 +191,9 @@ local function tick()
 end
 
 function ForestService.init()
+	if not Place.hasArena() then
+		return
+	end
 	local map = workspace:FindFirstChild("Map")
 	local f = Instance.new("Folder")
 	f.Name = "ForestThieves"
@@ -212,17 +202,19 @@ function ForestService.init()
 end
 
 function ForestService.start()
+	if not Place.hasArena() then
+		return
+	end
 	RoundState.changed("Phase"):Connect(function()
-		local phase = RoundState.phase()
-		if phase == "Chase" then
+		if RoundState.phase() == "Chase" then
 			spawnFoxes()
-		elseif phase ~= "Overtime" then
+		else
 			clear()
 		end
 	end)
 	task.spawn(function()
 		while true do
-			task.wait(0.2)
+			task.wait(0.15)
 			local ok, err = pcall(tick)
 			if not ok then
 				warn("[ForestService] " .. tostring(err))

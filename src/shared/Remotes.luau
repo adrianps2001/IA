@@ -15,10 +15,10 @@ local EVENTS = {
 	"PartyInvited", -- te invitan a una Bandada
 	"TradeRequested", -- alguien quiere intercambiar contigo
 	"TradeUpdated", -- estado de tu ventana de intercambio (nil = cerrada)
+	"PlaySound", -- sonido de una acción (nombre del catálogo Sounds y posición opcional)
 	-- cliente -> servidor
 	"RequestSprint",
 	"RequestPass",
-	"RequestCloseDoor",
 	"RespondDeal",
 	"RequestUpgrade",
 	"RequestBuyEgg",
@@ -39,6 +39,8 @@ local EVENTS = {
 	"TradeReady",
 	"TradeConfirm",
 	"TradeCancel",
+	"RequestQueue", -- entrar (true) o salir (false) de la cola de partidas
+	"SetAutoRequeue", -- volver a la cola solo al acabar la partida
 	"DebugCommand", -- solo Studio (Config.Testing.DebugTools)
 }
 

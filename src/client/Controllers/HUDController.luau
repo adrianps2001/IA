@@ -1,6 +1,8 @@
 --!strict
 -- HUD mínimo (GDD 8): bolsa, barra del servidor, temporizador de fase y flecha de objetivo.
 -- También muestra avisos del servidor y notificaciones personales.
+-- GDD v3: en el lobby cambia a la cola de partidas (botón Jugar y "seguir jugando"); en la
+-- persecución, la flecha apunta a donde se vio a los portadores en la última señal.
 
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -43,6 +45,16 @@ local secureLabel: TextLabel
 local toastList: Frame
 local beam: Beam
 local targetAttachment: Attachment
+local topFrame: Frame
+local bagFrame: Frame
+local lobbyFrame: Frame
+local lobbyLabel: TextLabel
+local playButton: TextButton
+local requeueButton: TextButton
+local markerFolder: Folder
+local markers: { BillboardGui } = {}
+local lastSeen: { Vector3 } = {}
+local lastSeenAt = 0
 
 local function buildTop()
 	local top = UI.frame({
@@ -52,6 +64,7 @@ local function buildTop()
 		Size = UDim2.new(0.5, 0, 0, 74),
 	}, gui)
 	UI.round(top, 14)
+	topFrame = top
 	local constraint = Instance.new("UISizeConstraint")
 	constraint.MinSize = Vector2.new(300, 74)
 	constraint.MaxSize = Vector2.new(560, 74)
@@ -78,7 +91,7 @@ local function buildTop()
 	end
 	barLabel = UI.label({ Size = UDim2.fromScale(1, 1), ZIndex = 4 }, bar)
 
-	-- Persecución: cuenta atrás para asegurar la criatura en el nido.
+	-- Persecución: señal, tira y afloja, escudos.
 	secureLabel = UI.label({
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 1, 6),
@@ -111,12 +124,86 @@ local function buildBag()
 		Size = UDim2.fromOffset(220, 70),
 	}, gui)
 	UI.round(panel, 14)
+	bagFrame = panel
 	local bar = UI.frame({ Position = UDim2.fromOffset(10, 8), Size = UDim2.new(1, -20, 0, 28), BackgroundColor3 = UI.Colors.PanelLight }, panel)
 	UI.round(bar, 10)
 	bagFill = UI.frame({ Size = UDim2.fromScale(0, 1), BackgroundColor3 = Color3.fromRGB(255, 110, 40), BackgroundTransparency = 0 }, bar)
 	UI.round(bagFill, 10)
 	bagLabel = UI.label({ Size = UDim2.fromScale(1, 1), ZIndex = 3 }, bar)
 	affinityLabel = UI.label({ Position = UDim2.fromOffset(10, 40), Size = UDim2.new(1, -20, 0, 22), TextColor3 = UI.Colors.Muted }, panel)
+end
+
+-- Lobby: estado de la cola, botón Jugar y "seguir jugando" al acabar cada partida.
+local function buildLobby()
+	lobbyFrame = UI.frame({
+		Name = "Lobby",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 8),
+		Size = UDim2.new(0.5, 0, 0, 46),
+		Visible = false,
+	}, gui)
+	UI.round(lobbyFrame, 14)
+	local constraint = Instance.new("UISizeConstraint")
+	constraint.MinSize = Vector2.new(300, 46)
+	constraint.MaxSize = Vector2.new(560, 46)
+	constraint.Parent = lobbyFrame
+	lobbyLabel = UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 1, -12), Text = "🏡 Lobby" }, lobbyFrame)
+
+	playButton = UI.button({
+		Name = "Play",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -40),
+		Size = UDim2.fromOffset(220, 62),
+		Text = "⚔️ JUGAR",
+		BackgroundColor3 = UI.Colors.Accent,
+		Visible = false,
+	}, gui, function()
+		Remotes.event("RequestQueue"):FireServer(player:GetAttribute("Queued") ~= true)
+	end)
+	UI.stroke(playButton, UI.Colors.Gold, 3)
+	requeueButton = UI.button({
+		Name = "Requeue",
+		AnchorPoint = Vector2.new(0.5, 1),
+		Position = UDim2.new(0.5, 0, 1, -8),
+		Size = UDim2.fromOffset(220, 28),
+		Text = "",
+		BackgroundColor3 = UI.Colors.PanelLight,
+		Visible = false,
+	}, gui, function()
+		Remotes.event("SetAutoRequeue"):FireServer(player:GetAttribute("AutoRequeue") == false)
+	end)
+end
+
+local function inMatch(): boolean
+	return player:GetAttribute("InMatch") == true
+end
+
+local function refreshMode()
+	local match = inMatch()
+	topFrame.Visible = match
+	bagFrame.Visible = match
+	lobbyFrame.Visible = not match
+	playButton.Visible = not match
+	requeueButton.Visible = true
+	requeueButton.Text = if player:GetAttribute("AutoRequeue") == false then "🔁 Seguir jugando: no" else "🔁 Seguir jugando: sí"
+	if match then
+		playButton.Visible = false
+	end
+	local queued = player:GetAttribute("Queued") == true
+	playButton.Text = if queued then "✕ Salir de la cola" else "⚔️ JUGAR"
+	playButton.BackgroundColor3 = if queued then UI.Colors.Bad else UI.Colors.Accent
+end
+
+local function lobbyText(): string
+	local count = tonumber(RoundState.get("QueueCount")) or 0
+	local launchAt = tonumber(RoundState.get("QueueLaunchAt")) or 0
+	local queued = player:GetAttribute("Queued") == true
+	if queued and launchAt > 0 then
+		return "🚀 ¡Partida encontrada! Saliendo…"
+	elseif queued then
+		return string.format("⚔️ En la cola: %d jugador%s · buscando partida…", count, if count == 1 then "" else "es")
+	end
+	return "🏡 Lobby · cuida tu nido y pulsa Jugar"
 end
 
 local function buildMessages()
@@ -210,15 +297,11 @@ local function mapChild(name: string): Instance?
 	return map and map:FindFirstChild(name)
 end
 
-local function playerByUserId(userId: any): Player?
-	if type(userId) ~= "number" or userId == 0 then
-		return nil
-	end
-	return Players:GetPlayerByUserId(userId)
-end
-
 -- Flecha de objetivo: un haz desde el jugador hasta lo que le toca hacer ahora.
 local function currentTarget(): Vector3?
+	if player:GetAttribute("InMatch") ~= true then
+		return nil
+	end
 	local phase = RoundState.phase()
 	if phase == "Incubation" then
 		local heat = tonumber(player:GetAttribute("Heat")) or 0
@@ -228,12 +311,12 @@ local function currentTarget(): Vector3?
 			local egg = mapChild("Egg")
 			return if egg and egg:IsA("BasePart") then egg.Position else nil
 		end
-	elseif phase == "Chase" or phase == "Overtime" then
+	elseif phase == "Chase" then
 		if player:GetAttribute("IsCarrier") then
-			local nestPosition = player:GetAttribute("NestPosition")
-			return if typeof(nestPosition) == "Vector3" then nestPosition else nil
+			return nil -- el portador no necesita flecha: tiene que esconderse
 		end
-		-- Puede haber varias criaturas: el portador (o la criatura suelta) más cercano.
+		-- Puede haber varias criaturas: donde se vio al portador más cercano en la última
+		-- señal (GDD v3: entre señales no se sabe dónde está), o una criatura suelta.
 		local own = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 		local from = if own and own:IsA("BasePart") then own.Position else Vector3.zero
 		local best: Vector3? = nil
@@ -244,13 +327,8 @@ local function currentTarget(): Vector3?
 				best, bestDistance = position, d
 			end
 		end
-		for _, id in string.split(tostring(RoundState.get("Carriers") or ""), ",") do
-			local carrier = playerByUserId(tonumber(id))
-			local character = carrier and carrier.Character
-			local root = character and character:FindFirstChild("HumanoidRootPart")
-			if root and root:IsA("BasePart") then
-				consider(root.Position)
-			end
+		for _, position in lastSeen do
+			consider(position)
 		end
 		for _, creature in CollectionService:GetTagged("RoundCreature") do
 			local body = if creature:IsA("Model") then creature.PrimaryPart else nil
@@ -261,6 +339,50 @@ local function currentTarget(): Vector3?
 		return best
 	end
 	return nil
+end
+
+-- Marcas "📍 visto aquí" en las posiciones de la última señal.
+local function parsePositions(text: string): { Vector3 }
+	local list = {}
+	for _, chunk in string.split(text, ";") do
+		local parts = string.split(chunk, ",")
+		local x, y, z = tonumber(parts[1]), tonumber(parts[2]), tonumber(parts[3])
+		if x and y and z then
+			table.insert(list, Vector3.new(x, y, z))
+		end
+	end
+	return list
+end
+
+local function refreshMarkers()
+	local chasing = RoundState.phase() == "Chase" and inMatch()
+	for index, gui in markers do
+		local position = lastSeen[index]
+		gui.Enabled = chasing and position ~= nil
+		local anchor = gui.Adornee
+		if position and anchor and anchor:IsA("BasePart") then
+			anchor.Position = position + Vector3.new(0, 4, 0)
+		end
+	end
+	while #markers < #lastSeen do
+		local anchor = Instance.new("Part")
+		anchor.Anchored = true
+		anchor.CanCollide = false
+		anchor.CanQuery = false
+		anchor.CanTouch = false
+		anchor.Transparency = 1
+		anchor.Size = Vector3.new(0.2, 0.2, 0.2)
+		anchor.Parent = markerFolder
+		local gui = Instance.new("BillboardGui")
+		gui.Adornee = anchor
+		gui.AlwaysOnTop = true
+		gui.Size = UDim2.fromOffset(46, 46)
+		gui.Parent = markerFolder
+		UI.label({ Size = UDim2.fromScale(1, 1), Text = "📍", TextColor3 = UI.Colors.Gold }, gui)
+		table.insert(markers, gui)
+		anchor.Position = lastSeen[#markers] + Vector3.new(0, 4, 0)
+		gui.Enabled = chasing
+	end
 end
 
 local function updateBeam()
@@ -315,6 +437,25 @@ function HUDController.start()
 	beam.Enabled = false
 	beam.Parent = anchor
 
+	markerFolder = Instance.new("Folder")
+	markerFolder.Name = "SeenMarkers"
+	markerFolder.Parent = workspace.CurrentCamera
+	buildLobby()
+	for _, attribute in { "InMatch", "Queued", "AutoRequeue" } do
+		player:GetAttributeChangedSignal(attribute):Connect(refreshMode)
+	end
+	RoundState.changed("RevealPositions"):Connect(function()
+		lastSeen = parsePositions(tostring(RoundState.get("RevealPositions") or ""))
+		lastSeenAt = os.clock()
+		refreshMarkers()
+	end)
+	RoundState.changed("Phase"):Connect(function()
+		if RoundState.phase() ~= "Chase" then
+			lastSeen = {}
+		end
+		refreshMarkers()
+	end)
+
 	for _, attribute in { "Coins", "Dust" } do
 		player:GetAttributeChangedSignal(attribute):Connect(refreshCurrencies)
 	end
@@ -351,32 +492,45 @@ function HUDController.start()
 		communityLabel.Text = if community >= 1 then "🌍 Huevo Comunitario ¡lleno!" else string.format("🌍 Huevo Comunitario %d %%", math.floor(community * 100))
 		phaseLabel.Text = name
 		timerLabel.Text = if phase == "Waiting" then "" else UI.formatTime(RoundState.timeLeft())
-		-- Persecución: asegurar, tira y afloja, escudos y aviso de robo (GDD v2).
-		local chasing = phase == "Chase" or phase == "Overtime"
-		local secure = tonumber(player:GetAttribute("SecureProgress")) or 0
-		local secureTotal = Config.Chase.SecureSeconds
+		if not inMatch() then
+			lobbyLabel.Text = lobbyText()
+		end
+		-- Persecución: señal, tira y afloja, escudos y aviso de robo (GDD v2 y v3).
+		local chasing = phase == "Chase" and inMatch()
 		local tugEndsAt = tonumber(player:GetAttribute("TugEndsAt"))
 		local shields = tonumber(player:GetAttribute("Shields")) or 0
+		local revealed = RoundState.get("Revealed") == true
+		local nextReveal = math.max(0, (tonumber(RoundState.get("NextRevealAt")) or 0) - workspace:GetServerTimeNow())
+		local final = RoundState.timeLeft() <= Config.Chase.FinalRevealSeconds
+		local carrier = player:GetAttribute("IsCarrier") == true
 		local status = ""
 		if chasing and player:GetAttribute("BeingTugged") then
 			status = "⚠️ ¡Te están robando! ¡Aléjate!"
 		elseif chasing and tugEndsAt then
 			local left = math.max(0, tugEndsAt - workspace:GetServerTimeNow())
 			status = string.format("💪 ¡Robando! Quédate cerca %.1f s", left)
-		elseif chasing and secure > 0 and secureTotal > 0 then
-			status = string.format("🔒 Asegurando la criatura: %d / %d s", math.floor(secure * secureTotal), secureTotal)
+		elseif chasing and final then
+			status = if carrier then "⏰ ¡Aguanta! Todos te ven" else "⏰ ¡Últimos segundos: todos a la vista!"
+		elseif chasing and revealed then
+			status = if carrier then "📍 ¡Te están viendo! Escóndete" else "📍 ¡Señal! Mira dónde están"
+		elseif chasing then
+			status = string.format(if carrier then "🙈 Escondido · te verán en %d s" else "🔎 Próxima señal en %d s", math.ceil(nextReveal))
 		end
 		if chasing and shields > 0 then
 			status = (if status ~= "" then status .. " · " else "") .. string.rep("🛡️", shields)
 		end
 		secureLabel.Visible = status ~= ""
 		secureLabel.Text = status
+		if chasing and os.clock() - lastSeenAt > 0.5 then
+			refreshMarkers()
+		end
 		updateBeam()
 	end)
 
 	refreshCurrencies()
 	refreshBag()
 	refreshBar()
+	refreshMode()
 end
 
 return HUDController

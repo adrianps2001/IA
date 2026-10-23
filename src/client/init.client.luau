@@ -2,6 +2,7 @@
 -- Arranque del cliente.
 
 local controllers = {
+	require(script.Controllers.SoundController),
 	require(script.Controllers.HUDController),
 	require(script.Controllers.ChaseController),
 	require(script.Controllers.HatchController),
@@ -9,6 +10,7 @@ local controllers = {
 	require(script.Controllers.EffectsController),
 	require(script.Controllers.SocialController),
 	require(script.Controllers.CosmeticsController),
+	require(script.Controllers.ArenaController),
 	require(script.Controllers.DebugController),
 	require(script.Controllers.AutopilotController),
 }

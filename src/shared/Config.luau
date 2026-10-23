@@ -9,7 +9,7 @@ Config.Round = {
 	IncubationTime = 210, -- fase de recoger Calor (s); el huevo eclosiona antes si la barra llega al 100 %
 	HatchTime = 10, -- eclosión y Elección: el foco salta entre los favoritos y se para (antes 30 s)
 	ChaseTime = 120, -- persecución
-	BloodMoonChaseTime = 180,
+	BloodMoonChaseTime = 160,
 	ResultsTime = 8, -- los resultados siguen en pantalla mientras empieza la siguiente ronda
 	IntermissionTime = 6,
 	-- Varias criaturas por ronda: una más por cada PlayersPerCreature perseguidores, hasta
@@ -73,34 +73,31 @@ Config.Chase = {
 	StealHoldTime = 1.5,
 	StealRange = 9,
 	ImmunityAfterSteal = 3,
-	CarrierSpeedMultiplier = 0.9,
+	-- GDD v3: el portador va a la misma velocidad que los demás. Sin nido al que llegar, si
+	-- fuera más lento le alcanzarían siempre (simulador: el elegido solo la conservaba el 16 %).
+	CarrierSpeedMultiplier = 1,
+	CarrierMaxBoots = false, -- el portador corre como con las botas al máximo
 	SprintMultiplier = 1.4,
 	SprintDuration = 2,
 	SprintCooldown = 8,
 	PassRange = 12,
-	DoorCloseTime = 10,
 	-- Robo por toque (GDD v2): un toque empieza un tira y afloja de StealHoldTime segundos que
 	-- el servidor cuenta mientras el ladrón siga a menos de StealRange. Con false, como antes:
 	-- hay que mantener el botón (incómodo en móvil y con todos moviéndose).
 	TapSteal = true,
-	-- Defensa en casa: dentro de su propio nido, robar al portador cuesta este múltiplo de tiempo.
-	HomeHoldMultiplier = 1.5,
-	-- Asegurar: si el portador aguanta estos segundos seguidos en su nido, gana y la
-	-- persecución termina (0 = desactivado; solo cuenta el nido al acabar el tiempo).
-	SecureSeconds = 30,
-	-- Territorio: durante la persecución, quien entra en un nido ajeno va a esta fracción de
-	-- velocidad, y el portador dentro de su propio nido no sufre la penalización de portador.
-	IntruderSpeedMultiplier = 0.6,
-	HomeCarrierFullSpeed = true,
 	-- Aturdimiento: quien sufre un robo no puede moverse ni robar durante estos segundos.
 	StunSeconds = 2,
 	-- Ventaja del elegido: segundos que los demás tardan en poder moverse al empezar.
 	HeadStartSeconds = 4,
 	-- Inmunidad del elegido al empezar la persecución (después, la normal tras cada robo).
 	StartImmunitySeconds = 10,
-	-- Prórroga (gol de oro): si al acabar el portador no está en su nido, se sigue jugando
-	-- hasta este máximo; gana el primero que meta la criatura en su nido (0 = desactivada).
-	OvertimeSeconds = 30,
+	-- GDD v3: gana quien tenga la criatura al acabar el tiempo (ya no se lleva al nido).
+	-- Señal: cada RevealEvery s, durante RevealSeconds, todos ven a los portadores a través
+	-- de los árboles; entre señales hay que buscarlos. En los últimos FinalRevealSeconds se
+	-- les ve todo el rato (final con todos a la vista).
+	RevealEvery = 8,
+	RevealSeconds = 2,
+	FinalRevealSeconds = 10,
 }
 
 -- Escudos de Afinidad (GDD v2): cada HeatPerShield de Calor depositado en la ronda da un
@@ -111,6 +108,11 @@ Config.Shields = {
 	Enabled = true,
 	HeatPerShield = 800,
 	Max = 1,
+	-- GDD v3: escudos extra al empezar la persecución (aparte del máximo). Sin nido donde
+	-- asegurar, los que menos persiguen casi nunca conservaban la criatura.
+	ChosenBonus = 1, -- para cada elegido
+	NewPlayerBonus = 1, -- para quien lleva menos de NewPlayerRounds rondas
+	NewPlayerRounds = 10,
 }
 
 -- Ladrones del bosque (GDD v2): en servidores con menos de FillTo jugadores aparecen zorros
@@ -158,7 +160,7 @@ Config.Nest = {
 	OfflineCapHours = 8,
 	-- Fracción de la producción que se cobra sin conexión (1 = igual que jugando).
 	OfflineRate = 0.25,
-	Count = 16,
+	Count = 16, -- nidos de salida en la arena (uno por jugador de la partida)
 }
 
 Config.Incubator = {
@@ -338,6 +340,54 @@ Config.EggRanges = {
 
 Config.ServerLuck = { Seconds = 15 * 60, Luck = 2 }
 Config.CoinPacks = { CoinsSmall = 5_000, CoinsLarge = 120_000 } :: { [string]: number }
+
+-- Lugares (GDD v3): el lobby (nidos, tienda, intercambios, emparejamiento) y las partidas
+-- son dos lugares del mismo juego. Se publica el mismo archivo en los dos y cada servidor
+-- sabe qué es por su PlaceId. Con los dos a 0 (o en Studio) todo funciona en un solo
+-- servidor: el lobby y la arena están en el mismo mundo y "teletransportar" es mover al
+-- jugador (modo combinado, para probar).
+Config.Places = {
+	Lobby = 0, -- PlaceId del lugar de inicio (lobby)
+	Match = 0, -- PlaceId del lugar de las partidas
+}
+
+Config.Lobby = {
+	-- El lobby se construye lejos de la arena (en el modo combinado comparten mundo).
+	OriginX = 0,
+	OriginZ = 1000,
+	NestCount = 24, -- parcelas de nido en el lobby (el lobby admite más jugadores)
+	NestRadius = 120, -- distancia de cada nido al centro de la plaza
+	NestSize = 34,
+	DisplaySlots = 12, -- criaturas que se lucen en los pedestales del nido
+}
+
+-- Emparejamiento en el lobby: se forma una partida con los que están en la cola.
+Config.Matchmaking = {
+	MaxPlayers = 12, -- por partida
+	TargetPlayers = 8, -- con estos se sale enseguida
+	MinPlayers = 4, -- con estos se sale tras FillSeconds esperando a más
+	FillSeconds = 20,
+	SoloSeconds = 45, -- con menos de MinPlayers se sale igualmente tras esto (zorros de relleno)
+	Countdown = 5, -- cuenta atrás antes de teletransportar
+	ArrivalTimeout = 25, -- la partida espera a los que faltan hasta este máximo
+	RoundsPerMatch = 1, -- rondas por partida antes de volver al lobby
+	TeleportRetries = 3,
+}
+
+-- Arena (GDD v3): árboles gigantes con rampas, puentes y atajos alrededor del claro.
+-- La forma se genera siempre igual con esta semilla (MapLayout.arena).
+Config.Arena = {
+	Seed = 7,
+	TrampolinePower = 95, -- velocidad vertical al pisar una seta trampolín
+	ZiplineSpeed = 55, -- studs por segundo en la tirolina
+	EmbersOnTrees = 0.25, -- fracción de las brasas que aparecen en las plataformas de los árboles
+}
+
+-- Aspecto de las criaturas: "Chibi" (monas, por defecto) o "Classic" (las de la v1).
+-- Para usar modelos de un artista, ver CreatureModel.luau (carpeta ReplicatedStorage.CreatureArt).
+Config.Creatures = {
+	Style = "Chibi",
+}
 
 -- Pruebas en Roblox Studio (docs/PRUEBAS.md). Solo tienen efecto dentro de Studio: en un
 -- servidor publicado se ignoran siempre.

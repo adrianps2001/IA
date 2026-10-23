@@ -43,7 +43,8 @@ const ARCH = {
   Grinder: { label: "Fiel", color: "#7b5cff" },
   Payer: { label: "Con pases", color: "#e8a400" },
 };
-const VARIANT = { before: "v1", after: "v2" };
+// Versiones comparadas (las pone tools/sim_report.py: ahora v2 frente a v3).
+let VARIANT = { before: "v1", after: "v2" };
 const VCOLOR = { before: "#a79cb3", after: "#ff8a2a" };
 
 /* ---------------------------------------------------------------- tarjetas resumen */
@@ -180,7 +181,7 @@ function chaseCharts() {
   groupedBars($("#chart-chosen"), { categories: cats, series: both("ChosenWins"), format: (v) => pct(v) });
   groupedBars($("#chart-steals"), { categories: cats, series: both("Steals"), format: (v) => dec(v, 0) });
 
-  const endColors = { Asegurada: "#2fa85a", Prórroga: "#7b5cff", "Al acabar el tiempo": "#4c9be8", Fuga: "#e0464d" };
+  const endColors = { Asegurada: "#2fa85a", Prórroga: "#7b5cff", "Al acabar el tiempo": "#4c9be8", "Robada en los últimos 10 s": "#e8a400", Fuga: "#e0464d" };
   const rows = [];
   for (const v of ["before", "after"]) {
     for (const s of sizes) rows.push({ label: `${VARIANT[v]} · ${s} jug.`, values: SIM.Chase[v][s].Ends });
@@ -280,8 +281,8 @@ function economy() {
     }
     lineChart($(".chart-box", root), { xs: v === "both" ? SIM.Meta.after.Daily.map((d) => d.Day) : xs, series, format: m.format, log: !!m.log });
   }
-  variantSel.append(el("option", { value: "after" }, "Después (valores actuales)"));
-  variantSel.append(el("option", { value: "before" }, "Antes (valores originales)"));
+  variantSel.append(el("option", { value: "after" }, `${VARIANT.after} (actual)`));
+  variantSel.append(el("option", { value: "before" }, `${VARIANT.before} (anterior)`));
   variantSel.append(el("option", { value: "both" }, "Comparar Casual y Fiel"));
   metricSel.addEventListener("change", render);
   variantSel.addEventListener("change", render);
@@ -357,7 +358,7 @@ function replay() {
   const data = SIM.Replay;
   if (!root || !data) return;
   const map = $("svg", root);
-  const R = 150, nestR = 128, nestSize = 26, count = 16;
+  const R = 150, nestR = 128, count = 16;
   const add = (tag, attrs, parent = map) => svg(tag, attrs, parent);
   add("circle", { cx: 0, cy: 0, r: R + 10, fill: "#46573a" });
   const zones = { 45: "#3c5a46", 135: "#5aa7c8", 225: "#a8a396", 315: "#8a6a4a" };
@@ -373,13 +374,17 @@ function replay() {
   const eggShape = add("ellipse", { cx: 0, cy: 0, rx: 7, ry: 9, fill: "#fff0d2", stroke: "#ff9a40", "stroke-width": 2 });
   const ownerOfNest = {};
   for (const n of data.Nests) ownerOfNest[n.Nest] = n;
+  // Campamentos de salida (v3: ya no hay que volver al nido).
   for (let i = 1; i <= count; i++) {
     const a = (i / count) * Math.PI * 2;
-    const deg = (a * 180) / Math.PI;
     const owner = ownerOfNest[i];
-    const g = add("g", { transform: `translate(${Math.cos(a) * nestR} ${Math.sin(a) * nestR}) rotate(${deg + 90})` });
-    add("rect", { x: -nestSize / 2, y: -nestSize / 2, width: nestSize, height: nestSize, fill: owner ? "#b48c5a" : "#6b5a46", stroke: owner ? ARCH[owner.Arch].color : "#4a3d30", "stroke-width": owner ? 2.5 : 1 }, g);
-    add("rect", { x: -4.5, y: nestSize / 2 - 1.5, width: 9, height: 3, fill: "#ffd060" }, g);
+    add("circle", { cx: Math.cos(a) * nestR, cy: Math.sin(a) * nestR, r: 10, fill: owner ? "#b48c5a" : "#6b5a46", stroke: owner ? ARCH[owner.Arch].color : "#4a3d30", "stroke-width": owner ? 2.5 : 1 });
+  }
+  // Árboles gigantes del parkour: plataforma (cuadrado) y tronco.
+  for (const tree of data.Trees || []) {
+    const half = tree.R + 6;
+    add("rect", { x: tree.X - half, y: tree.Z - half, width: half * 2, height: half * 2, fill: "#8a6a4a", opacity: 0.55, rx: 2 });
+    add("circle", { cx: tree.X, cy: tree.Z, r: tree.R, fill: "#5a3d28", stroke: "#c86a3a", "stroke-width": 1.5 });
   }
   // Bots
   const foxLayer = add("g", {});
@@ -418,7 +423,7 @@ function replay() {
   const tMax = frames[frames.length - 1].T;
   slider.max = String(tMax);
   let t = 0, playing = false, last = 0;
-  const PHASES = { Incubation: "🔥 Incubación", Hatch: "🥚 Eclosión", Chase: "🏃 Persecución", Overtime: "⚡ Prórroga", Results: "🏆 Resultados" };
+  const PHASES = { Incubation: "🔥 Incubación", Hatch: "🥚 Eclosión", Chase: "🏃 Persecución", Results: "🏆 Resultados" };
 
   function frameAt(time) {
     let lo = 0, hi = frames.length - 1;
@@ -478,7 +483,7 @@ function replay() {
   slider.addEventListener("input", () => seek(Number(slider.value)));
   $(".jump-chase", root).addEventListener("click", () => seek(phaseStart.Chase ?? 0));
   const s = data.Summary;
-  const ends = (s.Chases || []).map((c) => (c.Secured ? "asegurada" : c.Overtime ? "en la prórroga" : c.Escaped ? "escapó" : "al acabar el tiempo"));
+  const ends = (s.Chases || []).map((c) => (c.Escaped ? "escapó" : c.LastChangeAgo <= 10 ? "robada en los últimos 10 s" : "al acabar el tiempo"));
   $(".replay-summary", root).innerHTML = `Semilla ${data.Seed} · 12 bots · ${s.Creatures} criatura${s.Creatures === 1 ? "" : "s"} · ${s.Steals} robos · ${s.ShieldBlocks || 0} escudos rotos · ${ends.map((e) => `<b>${e}</b>`).join(", ")}`;
   draw();
 }
@@ -514,6 +519,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.prepend(el("p", { class: "callout warn" }, "Faltan los datos: ejecuta python3 tools/sim_report.py"));
     return;
   }
+  if (SIM.Labels) VARIANT = SIM.Labels;
   setupTheme();
   kpis();
   replay();

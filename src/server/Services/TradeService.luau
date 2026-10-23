@@ -148,6 +148,11 @@ local function request(player: Player, userId: any)
 	if not target or target == player or not DataService.get(player) or not DataService.get(target) then
 		return
 	end
+	-- GDD v3: se intercambia en el lobby, no en mitad de una partida.
+	if player:GetAttribute("InMatch") == true or target:GetAttribute("InMatch") == true then
+		AnnouncementService.player(player, "🏡 Los intercambios se hacen en el lobby.")
+		return
+	end
 	if sessions[player] or sessions[target] then
 		AnnouncementService.player(player, "Uno de los dos ya está intercambiando.")
 		return

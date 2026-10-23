@@ -1,8 +1,8 @@
 # The Egg Chooses (El Huevo Elige)
 
-Juego social para Roblox: todo el servidor alimenta **un único huevo gigante**, el huevo **elige a un dueño** al eclosionar (con muchos jugadores, a varios: una criatura para cada uno) y los demás tienen 2 minutos para **robárselo**. Las criaturas que consigues viven en tu nido, producen Monedas aunque no estés y se pueden criar para obtener genes nuevos.
+Juego social para Roblox: todos los jugadores de una partida alimentan **un único huevo gigante**, el huevo **elige a un dueño** al eclosionar (con muchos jugadores, a varios: una criatura para cada uno) y los demás tienen 2 minutos para **robárselo** por un parkour de árboles gigantes: quien la tenga al acabar se la queda. Las criaturas que consigues se lucen en tu nido del **lobby**, producen Monedas aunque no estés y se pueden criar para obtener genes nuevos.
 
-El diseño completo está en [`docs/GDD.md`](docs/GDD.md) (**versión 2**: la sección 12 explica qué se cambió y por qué). La **guía visual del proyecto** (Roblox para creadores, archivos, Luau y todo el código explicado con demos interactivas) está en [`docs/index.html`](docs/index.html) y se publica con GitHub Pages en https://adrianps2001.github.io/IA/. El **informe del simulador de bots** (repetición de una partida y gráficas que comparan la v1 y la v2 de las mecánicas) está en [`docs/simulacion.html`](docs/simulacion.html). Este repositorio contiene el **prototipo jugable** (fase 1 del roadmap: una ronda completa en gris) junto con el nido, la cría, la economía, las misiones y la monetización.
+El diseño completo está en [`docs/GDD.md`](docs/GDD.md) (**versión 3**: la sección 13 explica qué se cambió tras la primera prueba y la 12, la versión 2). La **guía visual del proyecto** (Roblox para creadores, archivos, Luau y todo el código explicado con demos interactivas) está en [`docs/index.html`](docs/index.html) y se publica con GitHub Pages en https://adrianps2001.github.io/IA/. El **informe del simulador de bots** (repetición de una partida y gráficas que comparan la v2 y la v3 de las mecánicas) está en [`docs/simulacion.html`](docs/simulacion.html), y la **galería de criaturas** (todas, construidas con el código del juego) en [`docs/criaturas.html`](docs/criaturas.html). Este repositorio contiene el **prototipo jugable** (fase 1 del roadmap: una ronda completa en gris) junto con el nido, la cría, la economía, las misiones y la monetización.
 
 ## Cómo probarlo
 
@@ -10,24 +10,25 @@ El diseño completo está en [`docs/GDD.md`](docs/GDD.md) (**versión 2**: la se
 2. Elige una de estas dos opciones:
    - **Sincronizar en directo:** ejecuta `rojo serve`, abre Roblox Studio con el [plugin de Rojo](https://create.roblox.com/store/asset/13916111004) y pulsa *Connect*.
    - **Generar el archivo del juego:** ejecuta `rojo build -o TheEggChooses.rbxlx` y abre ese archivo en Studio.
-3. En Studio, ve a **Test → Clients and Servers** y lanza **2 o más jugadores**. Hace falta más de uno para probar robos, géiseres y tratos.
+3. En Studio, pulsa **Jugar** (F5): apareces en tu nido del lobby; pulsa **⚔️ JUGAR** para ir a la arena (saldrán zorros como rivales). Para jugar con bots: pestaña **Prueba**, grupo **Clientes y servidores**, elige **Servidor local** y 4 jugadores (los detalles, en [`docs/PRUEBAS.md`](docs/PRUEBAS.md)).
 4. (Opcional) Para que se guarden los datos en Studio, activa **Game Settings → Security → Enable Studio Access to API Services**. Si no lo activas, el juego funciona igual pero no guarda nada.
 
-El mapa (bosque, huevo y 16 nidos) se genera por código al arrancar el servidor, así que no hace falta ningún archivo de mapa.
+Los mapas (el lobby con 24 nidos y la arena con el huevo, 16 campamentos y el parkour) se generan por código al arrancar el servidor, así que no hace falta ningún archivo de mapa. En Studio el lobby y la arena están en el mismo servidor; para publicar los dos lugares, mira el final de [`docs/PRUEBAS.md`](docs/PRUEBAS.md).
 
 **Último trabajo, decisiones a revisar y siguiente repaso de mejoras:** [`docs/REVISION.md`](docs/REVISION.md).
 
-**Modo de prueba en Studio:** los jugadores Player2, Player3... juegan solos con un **piloto automático** (F8 lo activa o desactiva) y **F7** abre un panel de depuración (saltar fase, llenar la barra, ser el portador, dar monedas o criaturas). En Studio las fases duran el 35 % (`Config.Testing.TimeScale`). Nada de esto funciona fuera de Studio. La guía y la lista de comprobación están en [`docs/PRUEBAS.md`](docs/PRUEBAS.md).
+**Modo de prueba en Studio:** los jugadores Player2, Player3... juegan solos con un **piloto automático** (F8 lo activa o desactiva) y **F7** abre un panel de depuración (jugar ya, saltar fase, llenar la barra, ser el portador, dar monedas o criaturas). En Studio las fases duran el 35 % (`Config.Testing.TimeScale`). Nada de esto funciona fuera de Studio. La guía y la lista de comprobación están en [`docs/PRUEBAS.md`](docs/PRUEBAS.md).
 
-## Cómo se juega una ronda (~6 min, GDD v2)
+## Cómo se juega (GDD v3)
+
+En el **lobby** está tu nido: tus criaturas en pedestales, la tienda, la incubadora, la cría, la decoración, los intercambios y la Bandada. Pulsa **⚔️ JUGAR** (o pisa el portal de la plaza): el emparejamiento te junta con otros (tu Bandada entra contigo) y viajáis a una partida de una ronda de ~6 min. Al acabar volvéis juntos al lobby.
 
 | Fase | Duración | Qué pasa |
 |---|---|---|
 | Preparados | 6 s | Se reinicia el huevo y la barra |
-| Incubación | 3,5 min (o hasta llenar la barra) | Recoge **Calor** (brasas, luciérnagas del pantano, bloques de suerte, géiseres en pareja) y deposítalo en el huevo. Lo que depositas es tu **Afinidad**, y cada 800 te da un **escudo** para la persecución. A mitad hay una **lluvia de brasas doradas** (valen el doble 25 s). Las ofrendas (cristal, pluma, hueso) sesgan los genes. Puedes empujar a quien lleve la bolsa llena (F), salvo a los novatos y nunca a la misma persona seguida. |
-| Eclosión | 10 s | Sale una criatura más por cada 5 perseguidores (hasta 3). Un foco salta entre los favoritos y se para en cada elegido, sin bloquear la cámara. Probabilidad = Afinidad / total, con un **mínimo del 2 %** que sube un 2 % por cada ronda sin ser elegido (hasta un 12 %; un novato lo tiene desde su primera ronda). Solo pueden salir elegidos quienes han participado. |
-| Persecución | 2 min (3 con Luna de Sangre) | Cada elegido lleva su criatura a su nido, con 10 s de inmunidad y 4 s de ventaja. Para robar basta **un toque** (E) junto al portador: empieza un **tira y afloja** de 1,5 s (2,25 s si está en su nido) que se rompe si el portador se aleja. Si el portador tiene un **escudo**, se rompe y no hay robo. Tras un robo hay 3 s de inmunidad y quien la pierde queda **aturdido** 2 s. Nadie lleva dos criaturas. El portador tiene **esprint** (Shift), **relevo** a un aliado (Q) y **puerta del nido** 10 s (R). Aguantar **30 s seguidos** en tu nido **asegura** la criatura. Con menos de 6 jugadores salen **zorros del bosque** que tiran la criatura al suelo. |
-| Prórroga | hasta 30 s | Las criaturas que no están en un nido al acabar: gana el primero que la meta en el suyo. |
+| Incubación | 3,5 min (o hasta llenar la barra) | Recoge **Calor** (brasas, también en lo alto de los árboles; luciérnagas, cajas sorpresa, géiseres en pareja) y deposítalo en el huevo. Lo que depositas es tu **Afinidad**, y cada 800 te da un **escudo** para la persecución. A mitad hay una **lluvia de brasas doradas**. Las ofrendas (cristal, pluma, hueso) sesgan los genes. Puedes empujar a quien lleve la bolsa llena (F), salvo a los novatos y nunca a la misma persona seguida. |
+| Eclosión | 10 s | Sale una criatura más por cada 5 perseguidores (hasta 3). Un foco salta entre los favoritos y se para en cada elegido. Probabilidad = Afinidad / total, con un **mínimo del 2 %** que sube un 2 % por cada ronda sin ser elegido (hasta un 12 %; un novato lo tiene desde su primera ronda). Solo pueden salir elegidos quienes han participado. |
+| Persecución | 2 min (2 min 40 s con Luna de Sangre) | **Quien tenga la criatura al acabar se la queda.** El portador huye por el **parkour** (rampas, puentes, vigas, piedras, tirolinas, toboganes, setas trampolín, escondites) y solo se le ve a distancia cuando da la **señal**: cada 8 s durante 2 s, y todo el rato en los últimos 10 s. Para robar basta **un toque** (E) junto al portador: empieza un **tira y afloja** de 1,5 s que se rompe si se aleja. Cada **escudo** bloquea un robo (el elegido y los novatos empiezan con uno). Tras un robo hay 3 s de inmunidad y quien la pierde queda **aturdido** 2 s. Nadie lleva dos criaturas. El portador tiene **esprint** (Shift) y **relevo** a un aliado (Q). Con menos de 6 jugadores salen **zorros del bosque** que tiran la criatura al suelo. |
 | Resultados | 8 s | Cada ganador se queda su criatura. El elegido que perdió la suya recibe un **Huevo del Elegido**; el resto, **Polvo de cáscara** si participó. |
 | Saqueo | 60 s | Solo en la Noche de Saqueo (sábados y domingos, 21-23 UTC). |
 
@@ -42,7 +43,12 @@ src/shared/                 ReplicatedStorage.Shared (servidor y cliente)
   Rarity, Genes, Creature   Rarezas, catálogo de 60 genes, criaturas (lógica pura)
   Election, Economy,        La Elección, fórmulas de economía, misiones diarias,
   Quests, PlayerData        esquema de datos guardados (lógica pura, con tests)
-  CreatureModel             Construye el modelo 3D modular de una criatura
+  CreatureModel             Construye el modelo 3D de una criatura con el estilo elegido
+  CreatureStyles/           Estilos de criatura: Chibi (monas, por defecto) y Classic
+  ArenaLayout               Geometría del parkour de la arena (lógica pura, con tests)
+  Place                     ¿Lobby, partida o los dos (Studio)?
+  Navigator                 Caminar con PathfindingService (bots de prueba y zorros)
+  Sounds                    Catálogo de sonidos
   Decorations, DecorationModel  Decoraciones del nido: datos y construcción
   Remotes, RoundState       Remotos y estado de ronda replicado
   Events                    Horarios de eventos, reglas del saqueo, criatura comunitaria
@@ -51,7 +57,9 @@ src/shared/                 ReplicatedStorage.Shared (servidor y cliente)
   Testing                   Modo de prueba en Studio (Config.Testing)
 src/server/                 ServerScriptService.Server
   Services/DataService      Guardado con bloqueo de sesión, autosave, vista para la UI
-  Services/MapService       Mapa en gris: bosque circular, huevo y 16 nidos
+  Services/MapService       Mapas en gris: arena (huevo, campamentos, parkour) y lobby
+  Services/MatchService     Quién juega la partida, llegadas, teletransportes y vuelta al lobby
+  Services/MatchmakingService  Cola del lobby y lanzamiento de partidas
   Services/RoundService     Máquina de fases de la ronda y reparto de premios
   Services/HeatService      Fuentes de Calor, bolsa, depósito, empujones, ofrendas
   Services/EggService       Barra del servidor, umbrales, tirada de la criatura
@@ -67,26 +75,32 @@ src/server/                 ServerScriptService.Server
   Services/TradeService     Intercambio de criaturas
   Services/LeaderboardService  Ranking semanal, salón de la fama y cartel
   Services/DebugService     Comandos de depuración (solo Studio)
+  Util/ArenaBuilder, LobbyBuilder, NestBuilder  Construyen el parkour, el lobby y los nidos
 src/client/                 StarterPlayerScripts.Client
   Controllers/HUDController     Bolsa, barra, temporizador, flecha de objetivo, avisos
   Controllers/HatchController   Espectáculo de eclosión y ruleta
   Controllers/ChaseController   Botones del portador y ventana de tratos
   Controllers/NestController    Panel del nido: criaturas (cría, liberar, ⭐ favoritas), incubadora, mejoras, decorar, misiones, tienda
   Controllers/CosmeticsController  Compañero (tu primera favorita te sigue) y Estela de Brasas
-  Controllers/EffectsController Latido del huevo y criaturas arcoíris
+  Controllers/EffectsController Latido del huevo, criaturas arcoíris y saltitos en los nidos
+  Controllers/SoundController   Sonidos de las acciones
+  Controllers/ArenaController   Setas trampolín, tirolinas y toboganes
   Controllers/SocialController  Bandada, intercambio e historial
   Controllers/DebugController   Panel de depuración (F7, solo Studio)
   Controllers/AutopilotController Piloto automático para probar en Studio (F8)
   ChaseRules, Rewards,       Reglas de la persecución, reparto de premios y geometría
   MapLayout                 del mapa (lógica pura, compartida con el simulador)
+src/charsounds/             RbxCharacterSounds: pasos suaves (sustituye a los de Roblox)
 sim/                        Simulador de bots: Round (una ronda), Meta (semanas), run (CLI)
 tests/run.luau              Tests de la lógica pura
 docs/GDD.md                 Documento de diseño
 docs/index.html, assets/    Web de documentación (GitHub Pages)
 docs/simulacion.html        Informe del simulador (lo genera tools/sim_report.py)
+docs/criaturas.html         Galería de criaturas (la genera tools/build_creatures.py)
 docs/PRUEBAS.md             Cómo probar en Studio y lista de comprobación
 docs/REVISION.md            Resumen del último trabajo y decisiones a revisar
-tools/                      export_data.luau, build_docs.py, sim_report.py, Json.luau
+tools/                      export_data.luau, build_docs.py, sim_report.py, build_creatures.py,
+                            RobloxMock.luau, Json.luau, sim_baseline_v2.json
 ```
 
 **Seguridad:** el servidor es autoritativo. El cliente solo envía intenciones ("quiero esprintar"). El servidor valida distancias, tiempos de pulsación, costes y fases, y calcula todas las velocidades.
@@ -115,7 +129,7 @@ python3 tools/sim_report.py                          # regenera docs/simulacion.
 ```
 
 Con él se encontraron problemas serios de equilibrio, que ya están corregidos en `Config`:
-- **La criatura se escapaba en el ~80 % de las rondas** (robos en el último segundo). Se añadieron prórroga, asegurar, territorio, aturdimiento y ventaja del elegido. Ahora se escapa en menos del 2 %.
+- **La criatura se escapaba en el ~80 % de las rondas** (robos en el último segundo). Se añadieron prórroga, asegurar, territorio, aturdimiento y ventaja del elegido, y se escapaba en menos del 2 % (en la v3, al ganar quien la tenga al acabar, ya casi nunca se escapa).
 - **La barra se llenaba siempre a mitad de tiempo**, así que siempre salía Épica como mínimo. Nueva meta `base + por jugador`.
 - **La economía estaba inflada unas 100 veces.** Curvas de precio más empinadas y producción sin conexión al 25 %.
 - **Los novatos casi nunca eran elegidos.** Suerte acumulada.
@@ -126,7 +140,9 @@ Y después, el repaso de diseño de la **versión 2** del GDD, medido con las mi
 - **El premio era escaso**: 0,5 victorias por hora y el 76 % de las sesiones sin ganar nada. Con varias criaturas por ronda y rondas de 6 min, 2,3 victorias por hora y el 69 % de las sesiones con alguna.
 - **Los novatos no ganaban nunca** (0 por hora en un mes). Ahora unas 0,35 por hora.
 
-Los detalles, con gráficas que comparan la v1 y la v2, están en `docs/simulacion.html`.
+Y la **versión 3** (gana quien la tenga al acabar, parkour, señal): el simulador mostró que un portador más lento acababa siempre alcanzado, así que va a la misma velocidad que los demás, y que los que menos persiguen casi nunca conservaban la criatura, así que el elegido y los novatos empiezan con un escudo extra.
+
+Los detalles, con gráficas que comparan la v2 y la v3, están en `docs/simulacion.html`.
 
 ## La web de documentación
 
@@ -142,12 +158,17 @@ Los detalles, con gráficas que comparan la v1 y la v2, están en `docs/simulaci
 ## Estado respecto al GDD
 
 Implementado:
-- Ronda completa con sus fases (incubación, eclosión, persecución, prórroga, resultados y, en la Noche de Saqueo, saqueo).
+- Lobby y partidas en lugares separados (GDD v3): cola con emparejamiento, Bandadas juntas, teletransporte a servidores reservados y vuelta al lobby; en Studio, todo en un servidor.
+- Nido bonito en el lobby (pedestales con placa, valla, farolillos, cartel, cuenco con la incubadora) y campamento en la partida con tus 3 favoritas (GDD v3).
+- Ronda completa con sus fases (incubación, eclosión, persecución, resultados y, en la Noche de Saqueo, saqueo).
+- Arena con parkour de árboles gigantes: plataformas, rampas, escaleras, puentes, vigas, piedras flotantes, tirolinas, toboganes, setas trampolín y escondites (GDD v3).
+- Criaturas con estilo chibi intercambiable y soporte para modelos de artista (GDD v3).
+- Sonidos para las acciones y pasos suaves (GDD v3).
 - Calor y sus 4 fuentes, bolsa limitada, empujones y ofrendas.
 - Umbrales de la barra al 25/50/75/100 %.
 - Elección con mínimo del 2 %, suerte acumulada, novatos al 12 % en su primera ronda y sin inactivos (GDD v2).
 - Varias criaturas por ronda (1 a 3 según los jugadores; sustituye al Huevo Doble), rondas de ~6 min, eclosión de 10 s y lluvia de brasas doradas (GDD v2).
-- Persecución por criatura con robo por toque (tira y afloja), escudos de Afinidad, inmunidad, esprint, relevo, puerta del nido, prórroga, asegurar, territorio, aturdimiento, ventaja de los elegidos y zorros del bosque en servidores pequeños (configurable en `Config.Chase`, `Config.Shields` y `Config.ForestThieves`).
+- Persecución por criatura (GDD v3: gana quien la tenga al acabar) con señal del portador, robo por toque (tira y afloja), escudos de Afinidad y extra para elegidos y novatos, inmunidad, esprint, relevo, aturdimiento, ventaja de los elegidos y zorros del bosque en partidas pequeñas (configurable en `Config.Chase`, `Config.Shields` y `Config.ForestThieves`).
 - Sin pago por ganar: los escudos se ganan depositando Calor y la Bolsa Grande pasa a ser la Estela de Brasas (estética).
 - Favoritas que sobreviven a la Nueva generación, compañero en la ronda, huevo de bienvenida y protección de novatos contra empujones.
 - Tratos y traiciones, con títulos Leal/Traidor.
@@ -161,7 +182,7 @@ Implementado:
 - Luna de Sangre (3 franjas los sábados), Noche de Saqueo (sábados y domingos, 21-23 UTC, en una fase propia tras los resultados; por defecto el ladrón se lleva una copia común y el dueño no pierde nada) y Huevo Comunitario (barra global mensual en MemoryStore con criatura conmemorativa).
 - Anuncios globales de Míticas y Secretas.
 - Pases, productos y suscripción, con probabilidades públicas y comprobación de `PolicyService` para los objetos aleatorios de pago.
-- Ranking semanal de robos y salón de la fama (nidos con más "me gusta"), en un cartel junto al huevo, con un OrderedDataStore por semana.
+- Ranking semanal de robos y salón de la fama (nidos con más "me gusta"), en un cartel de la plaza del lobby, con un OrderedDataStore por semana.
 - Embudo de analítica.
 - Ciclo visual de la ronda (atardecer, eclipse y noche).
 - Liberar criaturas a cambio de polvo (una a una o las guardadas) y decoración del nido (12 piezas de Monedas o polvo, solo estéticas). Se pueden apagar con `Config.Sinks`.
@@ -172,8 +193,8 @@ Pendiente (siguientes fases del roadmap):
 - Emotes de reacción.
 - Selector de gen para la Ofrenda Dorada (el servidor ya la admite).
 - Más sumideros de Monedas: pase de temporada y cosméticos.
-- Emparejamiento por nivel (los novatos ya ganan ~0,35 criaturas por hora, pero muy por detrás de los jugadores hábiles).
-- Sonido.
+- Emparejamiento por nivel: con la persecución v3, los que menos persiguen ganan bastante menos (ver `docs/REVISION.md`).
+- Sonidos definitivos (ahora se usan los que trae Roblox) y música.
 - Tutorial guiado.
 - Pase de temporada.
-- Mapa artístico definitivo.
+- Mapas artísticos definitivos (lobby y arena) y modelos de criatura hechos por un artista.

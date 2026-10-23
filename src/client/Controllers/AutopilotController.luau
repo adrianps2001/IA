@@ -1,17 +1,21 @@
 --!strict
--- Piloto automático para probar en Roblox Studio (docs/PRUEBAS.md). Con Test → Clients and
--- Servers y varios jugadores, cada ventana juega sola: recoge Calor, deposita, persigue,
--- roba con el prompt real, defiende su nido y usa la tienda del nido. Como son jugadores de
--- verdad, recorre exactamente el mismo código que una persona (remotos, prompts y
--- validaciones del servidor). F8 activa o desactiva el piloto en esa ventana.
--- Solo funciona dentro de Studio (Testing.enabled("Autopilot")).
+-- Piloto automático para probar en Roblox Studio (docs/PRUEBAS.md). Con varios jugadores de
+-- prueba, cada ventana juega sola: en el lobby usa la tienda del nido y se apunta a la cola;
+-- en la partida recoge Calor (también en lo alto de los árboles), deposita, persigue a donde
+-- se vio al portador en la última señal, roba con el prompt real y, si lleva la criatura,
+-- huye por el parkour. Como son jugadores de verdad, recorre exactamente el mismo código que
+-- una persona (remotos, prompts y validaciones del servidor). F8 lo activa o desactiva.
+-- GDD v3: se mueve con PathfindingService (Navigator), así ya no se queda pegado a las
+-- paredes y sube por las rampas. Solo funciona dentro de Studio (Testing.enabled("Autopilot")).
 
 local CollectionService = game:GetService("CollectionService")
 local ContextActionService = game:GetService("ContextActionService")
 local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local ArenaLayout = require(Shared.ArenaLayout)
 local Config = require(Shared.Config)
+local Navigator = require(Shared.Navigator)
 local Remotes = require(Shared.Remotes)
 local RoundState = require(Shared.RoundState)
 local Testing = require(Shared.Testing)
@@ -26,12 +30,16 @@ local enabled = false
 local label: TextLabel
 local blacklist: { [Instance]: number } = {} -- objetivos a los que no se pudo llegar
 local target: BasePart? = nil
-local lastPosition = Vector3.zero
-local stuckSince = 0
+local targetSince = 0
 local holding: ProximityPrompt? = nil
 local holdUntil = 0
-local doorUsedRound = -1
-local shopRound = -1
+local shopDone = false -- ya usó la tienda en esta visita al lobby
+local queueAt = 0 -- cuándo se apunta a la cola
+local wanderAt = 0
+local hideSpot: Vector3? = nil
+local hideUntil = 0
+local nav: Navigator.Navigator? = nil
+local navRoot: BasePart? = nil
 local lootPlanRound = -1 -- Noche de Saqueo: en qué ronda decidió si saquea
 local wantsLoot = false
 
@@ -55,11 +63,18 @@ local function flat(a: Vector3, b: Vector3): number
 	return Vector3.new(a.X - b.X, 0, a.Z - b.Z).Magnitude
 end
 
+-- Va andando con un camino calculado (rodea paredes y troncos, sube rampas).
 local function moveTo(position: Vector3)
 	local h = humanoid()
-	if h then
-		h:MoveTo(position)
+	local root = rootOf(player)
+	if not h or not root then
+		return
 	end
+	if not nav or navRoot ~= root then
+		nav = Navigator.new(h, root)
+		navRoot = root
+	end
+	(nav :: Navigator.Navigator):moveTo(position)
 end
 
 -- Mantiene pulsado un prompt real durante unos segundos (como una persona con la tecla E).
@@ -91,9 +106,11 @@ local function nearestSource(root: BasePart): BasePart?
 	local bestScore = math.huge
 	local now = os.clock()
 	for _, part in folder:GetChildren() do
-		if part:IsA("BasePart") and part.Transparency < 1 and part.Name ~= "Geyser" and (blacklist[part] or 0) < now then
+		if part:IsA("BasePart") and not part:GetAttribute("Taken") and part.Transparency < 1 and part.Name ~= "Geyser" and (blacklist[part] or 0) < now then
 			local value = if part.Name == "LuckyBlock" then 4 else 1
-			local score = flat(part.Position, root.Position) / value
+			-- Lo que está en lo alto cuesta más de alcanzar (hay que subir la rampa).
+			local climb = math.max(0, part.Position.Y - root.Position.Y) * 2
+			local score = (flat(part.Position, root.Position) + climb) / value
 			if score < bestScore then
 				best, bestScore = part, score
 			end
@@ -172,73 +189,118 @@ local function incubation(root: BasePart)
 			end
 		end
 	end
-	if not target or not target.Parent or target.Transparency >= 1 then
+	-- Si tarda demasiado en llegar a una fuente, la descarta un rato.
+	if target and os.clock() - targetSince > 20 then
+		blacklist[target] = os.clock() + 15
+		target = nil
+	end
+	if not target or not target.Parent or target:GetAttribute("Taken") then
 		target = nearestSource(root)
+		targetSince = os.clock()
 	end
 	if target then
 		moveTo(target.Position)
 	end
 end
 
+-- Un buen escondite: una plataforma de un árbol lejos de los ladrones.
+local function pickHideSpot(root: BasePart, threat: Vector3?): Vector3
+	local spots = ArenaLayout.deckSpots()
+	local best = spots[1]
+	local bestScore = -math.huge
+	for _ = 1, 12 do
+		local spot = spots[math.random(1, #spots)]
+		local p = Vector3.new(spot.X, spot.Y, spot.Z)
+		local score = spot.Y * 0.5 - flat(p, root.Position) * 0.3
+		if threat then
+			score += flat(p, threat)
+		end
+		if score > bestScore then
+			best, bestScore = spot, score
+		end
+	end
+	return Vector3.new(best.X, best.Y + 3, best.Z)
+end
+
+-- Posiciones de la última señal ("x,y,z;x,y,z").
+local function lastSeen(): { Vector3 }
+	local list = {}
+	for _, chunk in string.split(tostring(RoundState.get("RevealPositions") or ""), ";") do
+		local parts = string.split(chunk, ",")
+		local x, y, z = tonumber(parts[1]), tonumber(parts[2]), tonumber(parts[3])
+		if x and y and z then
+			table.insert(list, Vector3.new(x, y, z))
+		end
+	end
+	return list
+end
+
 local function chase(root: BasePart)
 	if player:GetAttribute("IsCarrier") then
 		release()
-		local nest = player:GetAttribute("NestPosition")
-		if typeof(nest) ~= "Vector3" then
-			return
-		end
 		-- ¿Hay ladrones cerca?
 		local nearest = math.huge
+		local threat: Vector3? = nil
 		for _, other in Players:GetPlayers() do
-			local r = if other ~= player then rootOf(other) else nil
-			if r then
-				nearest = math.min(nearest, flat(r.Position, root.Position))
+			local r = if other ~= player and other:GetAttribute("InMatch") then rootOf(other) else nil
+			if r and (r.Position - root.Position).Magnitude < nearest then
+				nearest = (r.Position - root.Position).Magnitude
+				threat = r.Position
 			end
 		end
 		if nearest < 15 then
 			Remotes.event("RequestSprint"):FireServer()
 		end
-		local atHome = flat(nest, root.Position) < Config.Nest.Count -- ~dentro de la parcela (26 studs)
-		if atHome then
-			local round = tonumber(RoundState.get("Round")) or 0
-			if nearest < 22 and doorUsedRound ~= round then
-				doorUsedRound = round
-				Remotes.event("RequestCloseDoor"):FireServer()
-			end
-			-- Moverse dentro del nido para esquivar.
-			moveTo(nest + Vector3.new(math.random(-8, 8), 0, math.random(-8, 8)))
-		else
-			moveTo(nest)
+		-- Huir por el parkour: cambiar de escondite si se acercan o tras un rato.
+		if not hideSpot or os.clock() > hideUntil or (nearest < 18 and math.random() < 0.15) then
+			hideSpot = pickHideSpot(root, threat)
+			hideUntil = os.clock() + math.random(10, 18)
 		end
+		moveTo(hideSpot :: Vector3)
 		return
 	end
+	hideSpot = nil
 
-	-- Puede haber varias criaturas: una suelta cerca es lo primero; si no, el portador más cercano.
+	-- Puede haber varias criaturas: una suelta cerca es lo primero.
 	for _, creature in CollectionService:GetTagged("RoundCreature") do
 		local body = if creature:IsA("Model") then creature.PrimaryPart else nil
 		local pickup = body and body:FindFirstChild("PickupPrompt")
 		if body and pickup and pickup:IsA("ProximityPrompt") and flat(body.Position, root.Position) < 60 then
 			moveTo(body.Position)
-			if flat(body.Position, root.Position) < 8 then
+			if (body.Position - root.Position).Magnitude < 8 then
 				hold(pickup, pickup.HoldDuration + 0.2)
 			end
 			return
 		end
 	end
+	-- Un portador a la vista (cerca), o a donde se le vio en la última señal.
 	local carrierRoot: BasePart? = nil
 	local best = math.huge
 	for _, id in string.split(tostring(RoundState.get("Carriers") or ""), ",") do
 		local carrier = Players:GetPlayerByUserId(tonumber(id) or 0)
 		local r = if carrier and carrier ~= player then rootOf(carrier) else nil
-		if r and flat(r.Position, root.Position) < best then
-			carrierRoot, best = r, flat(r.Position, root.Position)
+		local d = if r then (r.Position - root.Position).Magnitude else math.huge
+		if r and d < best and (d < 40 or RoundState.get("Revealed")) then
+			carrierRoot, best = r, d
 		end
 	end
 	if not carrierRoot then
+		local seen = lastSeen()
+		local closest: Vector3? = nil
+		local closestDistance = math.huge
+		for _, p in seen do
+			local d = (p - root.Position).Magnitude
+			if d < closestDistance then
+				closest, closestDistance = p, d
+			end
+		end
+		if closest then
+			moveTo(closest)
+		end
 		return
 	end
 	moveTo(carrierRoot.Position)
-	local distance = flat(carrierRoot.Position, root.Position)
+	local distance = (carrierRoot.Position - root.Position).Magnitude
 	local prompt = carrierRoot:FindFirstChild("StealPrompt")
 	-- Con robo por toque basta un toque; luego hay que quedarse cerca (el servidor cuenta).
 	if prompt and prompt:IsA("ProximityPrompt") and distance < Config.Chase.StealRange - 1 and not player:GetAttribute("TugEndsAt") then
@@ -248,17 +310,29 @@ local function chase(root: BasePart)
 	end
 end
 
--- Al final de la ronda usa el nido como lo haría un jugador: mejoras, huevos, recoger.
-local function useShop()
-	local round = tonumber(RoundState.get("Round")) or 0
-	if shopRound == round then
-		return
+-- En el lobby usa el nido como lo haría un jugador (mejoras, huevos, recoger) y se apunta
+-- a la cola al cabo de unos segundos.
+local function lobby()
+	if not shopDone then
+		shopDone = true
+		queueAt = os.clock() + math.random(4, 10)
+		Remotes.event("RequestCollectEggs"):FireServer()
+		Remotes.event("RequestBuyEgg"):FireServer()
+		local names = { "Bag", "Boots", "Nest", "Incubator" }
+		Remotes.event("RequestUpgrade"):FireServer(names[math.random(1, #names)])
 	end
-	shopRound = round
-	Remotes.event("RequestCollectEggs"):FireServer()
-	Remotes.event("RequestBuyEgg"):FireServer()
-	local names = { "Bag", "Boots", "Nest", "Incubator" }
-	Remotes.event("RequestUpgrade"):FireServer(names[math.random(1, #names)])
+	if not player:GetAttribute("Queued") and os.clock() >= queueAt then
+		queueAt = os.clock() + 15
+		Remotes.event("RequestQueue"):FireServer(true)
+	end
+	-- Pasea por su nido mientras espera.
+	local nest = player:GetAttribute("NestPosition")
+	if typeof(nest) == "Vector3" and os.clock() >= wanderAt then
+		wanderAt = os.clock() + 6
+		moveTo(nest + Vector3.new(math.random(-10, 10), 0, math.random(-10, 10)))
+	elseif nav then
+		nav:update()
+	end
 end
 
 local function tick()
@@ -272,32 +346,17 @@ local function tick()
 	if not root then
 		return
 	end
-	-- Atascado (un árbol, una pared): saltar y olvidar ese objetivo un rato.
-	if (root.Position - lastPosition).Magnitude < 0.5 then
-		if os.clock() - stuckSince > 2.5 then
-			local h = humanoid()
-			if h then
-				h.Jump = true
-			end
-			if target then
-				blacklist[target] = os.clock() + 8
-				target = nil
-			end
-			stuckSince = os.clock()
-		end
-	else
-		stuckSince = os.clock()
+	if not player:GetAttribute("InMatch") then
+		lobby()
+		return
 	end
-	lastPosition = root.Position
+	shopDone = false -- al volver al lobby, otra vuelta por la tienda
 
 	local phase = RoundState.phase()
 	if phase == "Incubation" then
 		incubation(root)
-	elseif phase == "Chase" or phase == "Overtime" then
+	elseif phase == "Chase" then
 		chase(root)
-	elseif phase == "Results" then
-		release()
-		useShop()
 	elseif phase == "Loot" then
 		-- Noche de Saqueo (fase propia): unos saquean, otros vuelven a defender su nido.
 		if not tryLoot(root) then
@@ -308,6 +367,9 @@ local function tick()
 		end
 	else
 		release()
+		if nav then
+			nav:update()
+		end
 	end
 end
 
@@ -317,9 +379,8 @@ local function setEnabled(value: boolean)
 	label.TextColor3 = if value then UI.Colors.Gold else UI.Colors.Muted
 	if not value then
 		release()
-		local root = rootOf(player)
-		if root then
-			moveTo(root.Position)
+		if nav then
+			nav:stop()
 		end
 	end
 end
