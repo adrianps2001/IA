@@ -34,6 +34,7 @@ export type Profile = {
 	Community: CommunityState, -- aportación al Huevo Comunitario del mes
 	Trades: { TradeRecord },
 	Favorites: { string }, -- ids de criaturas marcadas con ⭐ (Config.Favorites.Max)
+	Shoulder: string?, -- id de la criatura que llevas al hombro (nil = ninguna)
 	Likes: { Week: string, Given: { number } }, -- "me gusta" dados esta semana
 }
 
@@ -227,6 +228,10 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 		end
 	end
 
+	-- Al hombro: solo si la criatura existe.
+	if type(raw.Shoulder) == "string" and PlayerData.findCreature(profile, raw.Shoulder) then
+		profile.Shoulder = raw.Shoulder
+	end
 	-- Favoritas: solo ids de criaturas que existen, sin repetir y como mucho Config.Favorites.Max.
 	if type(raw.Favorites) == "table" then
 		for _, id in raw.Favorites do

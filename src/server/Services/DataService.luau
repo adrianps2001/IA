@@ -319,6 +319,7 @@ function DataService.view(player: Player): any
 			Income = Creature.baseIncome(creature) * multiplier,
 			InNest = index <= slots,
 			Favorite = table.find(profile.Favorites, creature.Id) ~= nil,
+			Shoulder = profile.Shoulder == creature.Id,
 			ReleaseDust = Economy.releaseDust(creature.Rarity),
 		})
 	end

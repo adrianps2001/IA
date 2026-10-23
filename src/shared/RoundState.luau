@@ -21,7 +21,7 @@ RoundState.PhaseNames = {
 } :: { [Phase]: string }
 
 -- Atributos: Phase, PhaseEndsAt (GetServerTimeNow), Bar, BarGoal, MinRarity, Luck,
--- CarrierUserId, ChosenUserId, CreatureName, CreatureRarity, BloodMoon, ServerLuckEndsAt, Round,
+-- CarrierUserId, ChosenUserId, CreatureName, CreatureRarity, BloodMoon, ServerLuckEndsAt (Suerte del Lobby), Round,
 -- ImmuneUntil, SecureProgress (0-1: cuánto le falta al portador para asegurar)
 local folder: Folder
 if RunService:IsServer() then

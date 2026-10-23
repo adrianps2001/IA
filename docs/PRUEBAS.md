@@ -14,6 +14,14 @@ El juego publicado tiene dos lugares: el **lobby** (tu nido, la tienda, la cola)
 - Con **🔁 Seguir jugando: sí** (por defecto) vuelves a la cola solo. Si quieres quedarte en el lobby, ponlo en "no".
 - Si no quieres esperar a la cola: **F7 → 🚀 Jugar ya**.
 
+### ¿Por qué veo el lobby desde la partida?
+
+Porque en Studio los dos lugares están en el mismo mundo: el lobby está a 1000 studs de la arena y, desde lo alto de los árboles, se ve a lo lejos. Es solo el modo de prueba. Al publicar con dos lugares (y sus IDs en `Config.Places`), el servidor de partida construye **solo la arena** y el del lobby **solo el lobby**: buscar partida te lleva a otro servidor con otro mapa.
+
+### ¿Por qué no se ve nada en el editor y sí al pulsar Jugar?
+
+Porque el mapa no está guardado en el archivo: lo **construyen los scripts al arrancar el servidor** (`MapService` llama a `ArenaBuilder`, `LobbyBuilder` y `NestBuilder`, que crean cada pieza con `Instance.new`). El `.rbxlx` solo lleva el código. En modo edición Studio no ejecuta scripts, así que el Workspace está vacío; al pulsar Jugar arranca el servidor, se ejecutan y aparecen el lobby y la arena. Así el mapa sale siempre igual que en el código (y el simulador y la página usan las mismas medidas). Cuando haya un mapa hecho a mano, se guardará en el archivo y se verá en el editor.
+
 ## Preparar la prueba
 
 1. Sincroniza el proyecto (`rojo serve` + plugin, o abre el archivo `TheEggChooses.rbxlx`).
@@ -58,6 +66,7 @@ Panel de depuración (F7):
 | 🌙 Noche de Saqueo on/off | Activa el evento en la ronda actual (o pon `Config.Testing.ForceLootNight = true` para todas) |
 | 🌍 Llenar Huevo Comunitario | Llena la barra global en este servidor y reparte la criatura conmemorativa |
 | 🏆 +3 robos en el ranking | Te suma 3 robos y refresca el cartel del lobby |
+| 🔊 Probar sonidos | Suenan todos los sonidos seguidos, con su grupo, nombre y volumen en el botón. Pulsa otra vez para parar |
 
 ## Lista de comprobación
 
@@ -71,6 +80,8 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 - [ ] Comprar una decoración la coloca en el nido y suma Belleza al cartel.
 - [ ] En la plaza: el **portal** con el texto de la cola, el **cartel del ranking** y la **estatua del Huevo Comunitario** con su porcentaje.
 - [ ] En la entrada de un nido ajeno aparece "Me gusta ❤" (G); en el tuyo, no.
+- [ ] **Criatura al hombro:** en el panel del nido, 🦜 en una criatura la pone en tu hombro derecho (el botón se pone verde). Otra vez 🦜 la quita; 🦜 en otra la cambia. La ven los demás, va pegada al hombro al correr y saltar, y sigue ahí en la partida.
+- [ ] Si compras la **🍀 Suerte del Lobby**, arriba sale la cuenta atrás y los huevos del nido que abra cualquiera salen mejores (sin IDs reales no se puede comprar en Studio: compruébalo al publicar).
 - [ ] 🐦 Bandada e intercambio funcionan en el lobby (el botón 🐦 desaparece en la partida).
 - [ ] La ventana Output del servidor no muestra errores (si no activaste *API Services*, es normal un aviso de DataStore).
 
@@ -96,6 +107,8 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 - [ ] Las brasas, luciérnagas y **cajas sorpresa** se pueden recoger y **desaparecen del todo** al cogerlas (también los "?"). Reaparecen después.
 - [ ] Con la bolsa llena, sale el aviso "Tu bolsa está llena" y las fuentes no se recogen.
 - [ ] Hay muchas brasas y alguna caja sorpresa en lo alto de los árboles.
+- [ ] **Brasas por niveles:** en los pisos bajos, naranjas (5); desde la mitad del árbol (piso 3, 66 studs), **azules** brillantes (10); en la plataforma más alta de cada árbol, **moradas** (20). La bolsa sube lo que dice cada una.
+- [ ] Con la lluvia dorada, las naranjas se vuelven doradas; azules y moradas mantienen su color (y también dan el doble).
 - [ ] Depositar en el huevo sube la barra y tu Afinidad. El huevo **late y suena** más deprisa cuanto más llena está la barra.
 - [ ] A mitad de la incubación empieza la **lluvia de brasas doradas** (brasas doradas que dan el doble 25 s).
 - [ ] Empujar (F) a alguien con la bolsa llena le hace soltar Calor (los novatos están protegidos sus 5 primeras rondas).
@@ -104,6 +117,8 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 
 ### Eclosión (10 s)
 - [ ] El huevo tiembla y el foco salta entre los favoritos; la cámara no se bloquea.
+- [ ] Al romperse, el huevo desaparece y **sale la criatura en su sitio**, grande, girando y con luz de su rareza (si hay varias, en fila). Al empezar la persecución desaparece y vuelve el huevo.
+- [ ] El elegido lee "¡Escóndete y aguanta hasta el final!" (ya no "¡Corre a tu nido!").
 - [ ] Con 7 o más jugadores salen **2 criaturas** (3 con 12 o más).
 
 ### Persecución
@@ -128,7 +143,8 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 ### Sonido
 - [ ] Los **pasos** son golpecitos suaves (ya no chirrían) y cambian un poco en hierba y madera.
 - [ ] Suenan: recoger Calor (más agudo si coges varias seguidas), depositar, bolsa llena, caja sorpresa, empujón, géiser, eclosión, ser portador, tira y afloja, robo, escudo roto, la señal, la cuenta atrás de los últimos 5 s, trampolín, tirolina, compras, cola y los clics de los botones.
-- [ ] Si un sonido no te gusta, cámbialo en `src/shared/Sounds.luau` (ver el comentario del principio).
+- [ ] **Volumen equilibrado:** ningún sonido tapa a los demás ni se pierde; recoger brasas es suave y robar o ganar se oye claro. Los sonidos del parkour (trampolín, tirolina) se oyen bien aunque estén a unos metros.
+- [ ] Si alguno sigue fuerte o flojo: F7 → 🔊 Probar sonidos, apunta su nombre y cambia su `Level` en `src/shared/Sounds.luau` (o el de todo su grupo en `Sounds.Groups`).
 
 ### Datos
 - [ ] Con *API Services* activado: sal y vuelve a entrar y comprueba que se guardó todo.

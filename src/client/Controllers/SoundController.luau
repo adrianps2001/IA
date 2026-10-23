@@ -39,12 +39,16 @@ function SoundController.play(name: string, at: (Vector3 | BasePart)?, pitchBoos
 		anchor.WorldPosition = at
 		anchor.Parent = workspace.Terrain
 		holder = anchor
+		-- Hasta 25 studs suena igual de fuerte que un sonido de interfaz; luego se apaga poco a
+		-- poco (antes, con el mínimo de 10 de Roblox, los sonidos 3D quedaban muy flojos).
+		sound.RollOffMinDistance = 25
 		sound.RollOffMaxDistance = 120
 		sound.Ended:Connect(function()
 			anchor:Destroy()
 		end)
 	elseif typeof(at) == "Instance" then
 		holder = at
+		sound.RollOffMinDistance = 25
 		sound.RollOffMaxDistance = 120
 	end
 	sound.Parent = holder

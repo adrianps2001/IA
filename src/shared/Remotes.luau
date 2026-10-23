@@ -25,11 +25,11 @@ local EVENTS = {
 	"RequestBreed",
 	"RequestCollectEggs",
 	"RequestRebirth",
-	"SetGoldenOffering",
 	"RequestRelease", -- liberar 1 o 2 criaturas seleccionadas
 	"RequestReleaseStored", -- liberar las guardadas de rareza baja
 	"RequestBuyDecoration",
 	"ToggleFavorite", -- marcar o desmarcar una criatura con ⭐
+	"SetShoulder", -- elegir la criatura que llevas al hombro (o nil para quitarla)
 	"PartyInvite",
 	"PartyRespond",
 	"PartyLeave",

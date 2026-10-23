@@ -14,6 +14,7 @@ local Leaderboard = require("../src/shared/Leaderboard")
 local MapLayout = require("../src/shared/MapLayout")
 local PlayerData = require("../src/shared/PlayerData")
 local Quests = require("../src/shared/Quests")
+local Sounds = require("../src/shared/Sounds")
 local Rarity = require("../src/shared/Rarity")
 local Rewards = require("../src/shared/Rewards")
 local Trade = require("../src/shared/Trade")
@@ -781,6 +782,32 @@ test("GDD v2: favoritas, Luna de Sangre en varias franjas y liberación", functi
 		expect(Events.isBloodMoon(saturday + (hour + 0.5) * 3600))
 	end
 	expect(not Events.isBloodMoon(saturday + 6 * 3600))
+end)
+
+test("brasas por niveles: naranjas abajo, azules desde la mitad y moradas en la cima", function()
+	local tiers = ArenaLayout.deckSpotsByTier()
+	expect(#tiers.Low > 0 and #tiers.Mid > 0 and #tiers.Top > 0)
+	for _, spot in tiers.Low do
+		expect(spot.Y < ArenaLayout.MidHeight)
+	end
+	for _, spot in tiers.Mid do
+		expect(spot.Y >= ArenaLayout.MidHeight)
+	end
+	expect(#tiers.Top == #ArenaLayout.get().Trees * ArenaLayout.DeckSides, "una plataforma de cima por árbol")
+	expect(#ArenaLayout.deckSpots() == #tiers.Low + #tiers.Mid + #tiers.Top)
+	-- Cada nivel vale el doble que el anterior.
+	expect(Config.Heat.BlueEmber.Amount == Config.Heat.Ember.Amount * 2)
+	expect(Config.Heat.PurpleEmber.Amount == Config.Heat.BlueEmber.Amount * 2)
+end)
+
+test("los sonidos están equilibrados (ninguno satura ni desaparece)", function()
+	for name, sound in Sounds.Catalog do
+		expect(sound.Volume > 0.03 and sound.Volume <= Sounds.MaxVolume, name)
+		expect(Sounds.Gain[sound.Id] ~= nil, name .. " usa un audio sin Gain")
+	end
+	-- Los momentos clave suenan más que lo que se repite mucho.
+	expect(Sounds.Catalog.Win.Volume > Sounds.Catalog.Pickup.Volume)
+	expect(Sounds.Catalog.Steal.Volume > Sounds.Catalog.StepSoft.Volume * 3)
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

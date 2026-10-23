@@ -107,7 +107,7 @@ local function nearestSource(root: BasePart): BasePart?
 	local now = os.clock()
 	for _, part in folder:GetChildren() do
 		if part:IsA("BasePart") and not part:GetAttribute("Taken") and part.Transparency < 1 and part.Name ~= "Geyser" and (blacklist[part] or 0) < now then
-			local value = if part.Name == "LuckyBlock" then 4 else 1
+			local value = if part.Name == "LuckyBlock" or part.Name == "PurpleEmber" then 4 elseif part.Name == "BlueEmber" then 2 else 1
 			-- Lo que está en lo alto cuesta más de alcanzar (hay que subir la rampa).
 			local climb = math.max(0, part.Position.Y - root.Position.Y) * 2
 			local score = (flat(part.Position, root.Position) + climb) / value
