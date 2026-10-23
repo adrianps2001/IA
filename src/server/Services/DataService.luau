@@ -316,6 +316,7 @@ function DataService.view(player: Player): any
 			Genes = creature.Genes,
 			Income = Creature.baseIncome(creature) * multiplier,
 			InNest = index <= slots,
+			Favorite = table.find(profile.Favorites, creature.Id) ~= nil,
 			ReleaseDust = Economy.releaseDust(creature.Rarity),
 		})
 	end
@@ -345,7 +346,7 @@ function DataService.view(player: Player): any
 		table.insert(eggs, { Id = egg.Id, Kind = egg.Kind, ReadyAt = egg.ReadyAt })
 	end
 
-	local bulk = Economy.bulkReleaseIds(profile.Creatures, slots)
+	local bulk = Economy.bulkReleaseIds(profile.Creatures, slots, profile.Favorites)
 	local bulkDust = 0
 	for _, id in bulk do
 		local creature = PlayerData.findCreature(profile, id)
@@ -382,6 +383,7 @@ function DataService.view(player: Player): any
 		RebirthCreatures = Config.Rebirth.CreaturesNeeded,
 		Stats = profile.Stats,
 		StoredRelease = { Count = #bulk, Dust = bulkDust },
+		FavoritesMax = Config.Favorites.Max,
 		Decorations = decorations,
 		Beauty = Economy.beauty(profile.Decorations),
 		Trades = table.move(profile.Trades, math.max(#profile.Trades - 4, 1), #profile.Trades, 1, {}),

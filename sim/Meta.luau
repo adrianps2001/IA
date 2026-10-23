@@ -39,6 +39,9 @@ type Player = {
 	EggsHatched: number,
 	Bred: number,
 	Released: number,
+	Sessions: number,
+	SessionsWithWin: number,
+	PlaySeconds: number,
 	ChosenEggs: number,
 	DustFromRelease: number,
 	CoinsOnDecor: number,
@@ -103,12 +106,25 @@ function Meta.run(params: Params)
 			local profile = PlayerData.default(SIM_START)
 			-- Igual que NestService: una criatura común de regalo la primera vez.
 			table.insert(profile.Creatures, Creature.new(newId(), Genes.rollSet(rng, "Common"), "Starter", SIM_START))
+			-- ...y el huevo de bienvenida (GDD v2).
+			if Config.Incubator.WelcomeEggSeconds > 0 then
+				local range = Config.EggRanges.Welcome
+				table.insert(profile.Incubator, {
+					Id = newId(),
+					Kind = "Welcome",
+					Genes = nil,
+					MinRarity = range.Min :: Rarity.RarityName,
+					MaxRarity = range.Max :: Rarity.RarityName,
+					ReadyAt = SIM_START + Config.Incubator.WelcomeEggSeconds,
+				})
+			end
 			local bot: Round.Bot = {
 				Id = id,
 				Name = string.format("%s %d", arch.Label, id),
 				Arch = arch,
 				Upgrades = profile.Upgrades,
 				Payer = arch.Payer,
+				RoundsPlayed = 0,
 			}
 			table.insert(players, {
 				Bot = bot,
@@ -124,6 +140,9 @@ function Meta.run(params: Params)
 				EggsHatched = 0,
 				Bred = 0,
 				Released = 0,
+				Sessions = 0,
+				SessionsWithWin = 0,
+				PlaySeconds = 0,
 				ChosenEggs = 0,
 				DustFromRelease = 0,
 				CoinsOnDecor = 0,
@@ -190,7 +209,14 @@ function Meta.run(params: Params)
 
 		if Economy.canRebirth(#profile.Creatures, profile.Coins, profile.Generation) then
 			profile.Generation += 1
-			profile.Creatures = {}
+			-- Los bots marcan como favoritas sus mejores criaturas: sobreviven (GDD v2).
+			local favorites = {}
+			for _, c in Creature.sortByIncome(profile.Creatures) do
+				if #favorites < Config.Favorites.Max then
+					table.insert(favorites, c.Id)
+				end
+			end
+			profile.Creatures = Economy.keptOnRebirth(profile.Creatures, favorites)
 			profile.Coins = 0
 			profile.Upgrades.Nest = 0
 		end
@@ -247,7 +273,7 @@ function Meta.run(params: Params)
 		-- Liberar: cuando hay más de 20 guardadas, usa el botón "liberar guardadas".
 		if #profile.Creatures > slots(p) + 20 then
 			local released = {}
-			for _, id in Economy.bulkReleaseIds(profile.Creatures, slots(p)) do
+			for _, id in Economy.bulkReleaseIds(profile.Creatures, slots(p), profile.Favorites) do
 				released[id] = true
 			end
 			local kept = {}
@@ -335,14 +361,18 @@ function Meta.run(params: Params)
 					table.insert(serverBots, p.Bot)
 				end
 				Round.formParties(serverBots, rng) -- Bandadas para esta sesión
-				local maxRounds: number = 0
+				-- Cada uno juega sus minutos de sesión: caben más o menos rondas según lo que
+				-- dure cada una (así se comparan bien rondas largas y cortas).
+				local sessionEnd: { [Player]: number } = {}
+				local wonThisSession: { [Player]: boolean } = {}
 				for _, p in server do
-					maxRounds = math.max(maxRounds, p.Bot.Arch.RoundsPerSession)
+					sessionEnd[p] = t + p.Bot.Arch.SessionMinutes * 60
+					p.Sessions += 1
 				end
-				for r = 1, maxRounds do
+				while true do
 					local members: { Player } = {}
 					for _, p in server do
-						if p.Bot.Arch.RoundsPerSession >= r then
+						if t < sessionEnd[p] then
 							table.insert(members, p)
 						end
 					end
@@ -351,11 +381,15 @@ function Meta.run(params: Params)
 					end
 					local bots: { Round.Bot } = {}
 					for _, p in members do
+						p.Bot.RoundsPlayed = p.Profile.Stats.RoundsPlayed
 						table.insert(bots, p.Bot)
 					end
 					local summary, perBot = Round.run(bots, rng, { BloodMoon = isBloodMoon(t) })
 					local duration: number = summary.DurationSeconds
 					t += duration
+					for _, p in members do
+						p.PlaySeconds += duration
+					end
 					summary.Day = day
 					table.insert(rounds, summary)
 					for _, p in members do
@@ -381,17 +415,21 @@ function Meta.run(params: Params)
 						else
 							p.Bot.RoundsSinceChosen = (p.Bot.RoundsSinceChosen or 0) + 1
 						end
-						if result.Genes then
-							table.insert(profile.Creatures, Creature.new(newId(), result.Genes, "Hatch", t))
+						for _, won in result.Won do
+							table.insert(profile.Creatures, Creature.new(newId(), won, "Hatch", t))
 							p.Wins += 1
+							if not wonThisSession[p] then
+								wonThisSession[p] = true
+								p.SessionsWithWin += 1
+							end
 							profile.Stats.Wins += 1
 							if not p.FirstWinDay then
 								p.FirstWinDay = day
 							end
 							questProgress(p, "WinCreature", 1)
 						end
-						if result.Copy then
-							table.insert(profile.Creatures, Creature.new(newId(), result.Copy, "Copy", t))
+						for _, copy in result.Copies do
+							table.insert(profile.Creatures, Creature.new(newId(), copy, "Copy", t))
 						end
 						if result.ChosenEgg then
 							local range = Config.EggRanges.Chosen
@@ -504,6 +542,9 @@ function Meta.run(params: Params)
 			EggsHatched = p.EggsHatched,
 			Bred = p.Bred,
 			Released = p.Released,
+			Sessions = p.Sessions,
+			SessionsWithWin = p.SessionsWithWin,
+			PlaySeconds = p.PlaySeconds,
 			ChosenEggs = p.ChosenEggs,
 			DustFromRelease = p.DustFromRelease,
 			CoinsOnDecor = p.CoinsOnDecor,

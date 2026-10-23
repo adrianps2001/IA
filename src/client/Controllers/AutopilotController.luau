@@ -136,9 +136,6 @@ local function tryLoot(root: BasePart): boolean
 end
 
 local function incubation(root: BasePart)
-	if tryLoot(root) then
-		return
-	end
 	local heat = tonumber(player:GetAttribute("Heat")) or 0
 	local capacity = tonumber(player:GetAttribute("BagCapacity")) or 100
 	local offering = player:GetAttribute("Offering")
@@ -216,26 +213,35 @@ local function chase(root: BasePart)
 		return
 	end
 
-	local carrierId = RoundState.get("CarrierUserId")
-	local carrier = if type(carrierId) == "number" and carrierId ~= 0 then Players:GetPlayerByUserId(carrierId) else nil
-	local carrierRoot = carrier and rootOf(carrier)
-	if not carrierRoot then
-		-- Criatura suelta: ir a por ella y recogerla.
-		local creature = workspace:FindFirstChild("RoundCreature")
-		if creature and creature:IsA("Model") then
-			moveTo(creature:GetPivot().Position)
-			local body = creature.PrimaryPart
-			local prompt = body and body:FindFirstChildOfClass("ProximityPrompt")
-			if prompt and flat(creature:GetPivot().Position, root.Position) < 8 then
-				hold(prompt, prompt.HoldDuration + 0.2)
+	-- Puede haber varias criaturas: una suelta cerca es lo primero; si no, el portador más cercano.
+	for _, creature in CollectionService:GetTagged("RoundCreature") do
+		local body = if creature:IsA("Model") then creature.PrimaryPart else nil
+		local pickup = body and body:FindFirstChild("PickupPrompt")
+		if body and pickup and pickup:IsA("ProximityPrompt") and flat(body.Position, root.Position) < 60 then
+			moveTo(body.Position)
+			if flat(body.Position, root.Position) < 8 then
+				hold(pickup, pickup.HoldDuration + 0.2)
 			end
+			return
 		end
+	end
+	local carrierRoot: BasePart? = nil
+	local best = math.huge
+	for _, id in string.split(tostring(RoundState.get("Carriers") or ""), ",") do
+		local carrier = Players:GetPlayerByUserId(tonumber(id) or 0)
+		local r = if carrier and carrier ~= player then rootOf(carrier) else nil
+		if r and flat(r.Position, root.Position) < best then
+			carrierRoot, best = r, flat(r.Position, root.Position)
+		end
+	end
+	if not carrierRoot then
 		return
 	end
 	moveTo(carrierRoot.Position)
 	local distance = flat(carrierRoot.Position, root.Position)
 	local prompt = carrierRoot:FindFirstChild("StealPrompt")
-	if prompt and prompt:IsA("ProximityPrompt") and distance < Config.Chase.StealRange - 1 then
+	-- Con robo por toque basta un toque; luego hay que quedarse cerca (el servidor cuenta).
+	if prompt and prompt:IsA("ProximityPrompt") and distance < Config.Chase.StealRange - 1 and not player:GetAttribute("TugEndsAt") then
 		hold(prompt, prompt.HoldDuration + 0.2)
 	elseif holding and distance > Config.Chase.StealRange then
 		release()
@@ -292,6 +298,14 @@ local function tick()
 	elseif phase == "Results" then
 		release()
 		useShop()
+	elseif phase == "Loot" then
+		-- Noche de Saqueo (fase propia): unos saquean, otros vuelven a defender su nido.
+		if not tryLoot(root) then
+			local nest = player:GetAttribute("NestPosition")
+			if typeof(nest) == "Vector3" then
+				moveTo(nest)
+			end
+		end
 	else
 		release()
 	end

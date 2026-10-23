@@ -1,8 +1,12 @@
 --!strict
--- Persecución y robo (GDD 5.4): el portador lleva la criatura con una correa; quien le toque
--- y mantenga el botón 1,5 s se la quita. Inmunidad tras robo, esprint, pase de relevo,
--- puerta del nido, tratos y traiciones. Todo se valida en el servidor.
+-- Persecución y robo (GDD 5.4, revisado en el GDD v2). Puede haber varias criaturas a la vez:
+-- cada una es una "persecución" con su portador, su modelo y su cuenta para asegurarla.
+-- Robar: con Config.Chase.TapSteal, un toque empieza un tira y afloja que el servidor cuenta
+-- mientras el ladrón siga cerca (se rompe si el portador se aleja); sin él, hay que mantener
+-- el botón como antes. Escudos de Afinidad, inmunidad, esprint, relevo, puerta, tratos y
+-- traiciones. Los zorros del bosque (ForestService) usan foxGrab. Todo se valida aquí.
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -19,44 +23,56 @@ local RoundState = require(Shared.RoundState)
 local AnnouncementService = require(script.Parent.AnnouncementService)
 local DataService = require(script.Parent.DataService)
 local LeaderboardService = require(script.Parent.LeaderboardService)
-local MonetizationService = require(script.Parent.MonetizationService)
 local NestService = require(script.Parent.NestService)
 local QuestService = require(script.Parent.QuestService)
 
-export type ChaseResult = {
+-- Lo que pasó con una criatura (RoundService reparte los premios con esto).
+export type Outcome = {
 	Winner: Player?,
-	Genes: Genes.GeneSet?,
+	Genes: Genes.GeneSet,
 	Partners: { Player },
+	Chosen: Player,
 }
+
+export type Start = { Chosen: Player, Genes: Genes.GeneSet }
+
+type Chase = {
+	Index: number,
+	Genes: Genes.GeneSet,
+	Chosen: Player,
+	Carrier: Player?,
+	Model: Model?,
+	ImmuneUntil: number,
+	StealPrompt: ProximityPrompt?,
+	PickupPrompt: ProximityPrompt?,
+	Fx: { Instance },
+	Connections: { RBXScriptConnection },
+	HomeStreak: number,
+	Secured: boolean,
+	Overtime: boolean,
+	Done: boolean,
+	Winner: Player?,
+}
+
+type Tug = { Chase: Chase, Carrier: Player, StartedAt: number }
 
 local ChaseService = {}
 
 local active = false
-local carrier: Player? = nil
-local genes: Genes.GeneSet? = nil
-local model: Model? = nil
-local immuneUntil = 0
-local stealPrompt: ProximityPrompt? = nil
-local pickupPrompt: ProximityPrompt? = nil
-local carrierFx: { Instance } = {}
-local carrierConnections: { RBXScriptConnection } = {}
+local chases: { Chase } = {}
+local carrying: { [Player]: Chase } = {}
+local wonThisRound: { [Player]: boolean } = {}
 
 local stealAttempts: { [Player]: number } = {}
 local lastAttemptAt: { [Player]: number } = {}
-local holdStart: { [Player]: number } = {}
+local holdStart: { [Player]: { Chase: Chase, At: number } } = {} -- modo "mantener el botón"
+local tugs: { [Player]: Tug } = {} -- modo "toque": tira y afloja en curso
+local shields: { [Player]: number } = {}
 local deals: { [Player]: { [Player]: boolean } } = {}
 local pendingOffers: { [Player]: { From: Player, At: number } } = {}
-local shieldCharges: { [Player]: number } = {}
-local shieldsUsed: { [Player]: number } = {}
 local sprintUntil: { [Player]: number } = {}
 local sprintReadyAt: { [Player]: number } = {}
 local stunnedUntil: { [Player]: number } = {}
-
--- Final de la persecución (ver Config.Chase y ChaseRules): asegurar y prórroga.
-local homeStreak = 0
-local secured = false
-local overtime = false
-local over = false
 
 local function rootOf(player: Player): BasePart?
 	local character = player.Character
@@ -93,8 +109,20 @@ function ChaseService.isActive(): boolean
 	return active
 end
 
-function ChaseService.carrier(): Player?
-	return carrier
+function ChaseService.isCarrier(player: Player): boolean
+	return carrying[player] ~= nil
+end
+
+-- Réplica para los clientes: lista de portadores ("123,456") y el primero (compatibilidad).
+local function publishCarriers()
+	local ids: { string } = {}
+	for _, chase in chases do
+		if not chase.Done and chase.Carrier then
+			table.insert(ids, tostring(chase.Carrier.UserId))
+		end
+	end
+	RoundState.set("Carriers", table.concat(ids, ","))
+	RoundState.set("CarrierUserId", tonumber(ids[1]) or 0)
 end
 
 -- Velocidad ------------------------------------------------------------------------------
@@ -119,7 +147,7 @@ local function updateSpeed(player: Player)
 		atHome = here ~= nil and here == own
 		intruding = here ~= nil and here ~= own
 	end
-	humanoid.WalkSpeed = if stunned then 0 else Economy.walkSpeed(boots, player == carrier, sprinting, atHome, intruding)
+	humanoid.WalkSpeed = if stunned then 0 else Economy.walkSpeed(boots, carrying[player] ~= nil, sprinting, atHome, intruding)
 	player:SetAttribute("Sprinting", sprinting)
 	player:SetAttribute("Stunned", stunned)
 	player:SetAttribute("Intruding", intruding)
@@ -127,53 +155,84 @@ end
 
 -- Portador -------------------------------------------------------------------------------
 
-local function clearCarrierFx()
-	for _, instance in carrierFx do
+local function clearFx(chase: Chase)
+	for _, instance in chase.Fx do
 		instance:Destroy()
 	end
-	table.clear(carrierFx)
-	for _, connection in carrierConnections do
+	table.clear(chase.Fx)
+	for _, connection in chase.Connections do
 		connection:Disconnect()
 	end
-	table.clear(carrierConnections)
-	if stealPrompt then
-		stealPrompt:Destroy()
-		stealPrompt = nil
+	table.clear(chase.Connections)
+	if chase.StealPrompt then
+		chase.StealPrompt:Destroy()
+		chase.StealPrompt = nil
+	end
+	if chase.PickupPrompt then
+		chase.PickupPrompt:Destroy()
+		chase.PickupPrompt = nil
 	end
 end
 
-local drop: (position: Vector3?) -> ()
+local function cancelTug(thief: Player, reason: string?)
+	if tugs[thief] then
+		tugs[thief] = nil
+		if thief.Parent then
+			thief:SetAttribute("TugEndsAt", nil)
+			if reason then
+				AnnouncementService.player(thief, reason)
+			end
+		end
+	end
+end
 
-local function onStealTriggered(thief: Player)
-	local current = carrier
-	if not active or not current or thief == current then
+-- Quita todos los tira y afloja sobre esta persecución (cambió el portador o terminó).
+local function cancelTugsOn(chase: Chase)
+	for thief, tug in tugs do
+		if tug.Chase == chase then
+			cancelTug(thief, nil)
+		end
+	end
+	for thief, hold in holdStart do
+		if hold.Chase == chase then
+			holdStart[thief] = nil
+		end
+	end
+end
+
+local function updateTugWarning(carrier: Player?)
+	if not carrier or not carrier.Parent then
+		return
+	end
+	local count = 0
+	for _, tug in tugs do
+		if tug.Carrier == carrier then
+			count += 1
+		end
+	end
+	carrier:SetAttribute("BeingTugged", count > 0)
+end
+
+local setCarrier: (chase: Chase, player: Player) -> ()
+local drop: (chase: Chase, position: Vector3?) -> ()
+
+-- Un robo que ya ha pasado todas las comprobaciones: escudo o cambio de portador.
+local function completeSteal(chase: Chase, thief: Player)
+	local current = chase.Carrier
+	if not current then
 		return
 	end
 	local now = os.clock()
-	local began = holdStart[thief]
-	holdStart[thief] = nil
-	if (stunnedUntil[thief] or 0) > now then
-		return -- aturdido o esperando la ventaja del elegido
-	end
-	-- El tiempo de pulsación lo mide el servidor: un cliente modificado no puede saltárselo.
-	local atHome = NestService.isInsideOwnNest(current)
-	local check = ChaseRules.canSteal(now, began, immuneUntil, distance(thief, current), atHome)
-	if check == "immune" then
-		AnnouncementService.player(thief, "¡El portador es inmune unos segundos!")
-	end
-	if check ~= "ok" then
+	-- Escudo de Afinidad: se rompe y el robo no ocurre.
+	if (shields[current] or 0) > 0 then
+		shields[current] -= 1
+		current:SetAttribute("Shields", shields[current])
+		chase.ImmuneUntil = now + Config.Chase.ImmunityAfterSteal
+		cancelTugsOn(chase)
+		updateTugWarning(current)
+		AnnouncementService.server(string.format("🛡️ ¡El escudo de %s ha bloqueado a %s!", current.DisplayName, thief.DisplayName), "info")
 		return
 	end
-
-	-- Escudo de Cáscara: bloquea un robo, como mucho uno por ronda.
-	if (shieldCharges[current] or 0) > 0 and (shieldsUsed[current] or 0) < Config.Chase.ShieldsPerRound then
-		shieldCharges[current] -= 1
-		shieldsUsed[current] = (shieldsUsed[current] or 0) + 1
-		immuneUntil = now + Config.Chase.ImmunityAfterSteal
-		AnnouncementService.server(string.format("¡El Escudo de Cáscara de %s ha bloqueado un robo!", current.DisplayName), "info")
-		return
-	end
-
 	if ChaseService.allied(current, thief) then
 		deals[current][thief] = nil
 		if deals[thief] then
@@ -190,39 +249,91 @@ local function onStealTriggered(thief: Player)
 	if Config.Chase.StunSeconds > 0 then
 		stunnedUntil[current] = now + Config.Chase.StunSeconds
 		AnnouncementService.player(current, string.format("¡Te la han robado! Aturdido %d s", Config.Chase.StunSeconds))
-		updateSpeed(current)
 	end
-	ChaseService.setCarrier(thief)
+	setCarrier(chase, thief)
 end
 
-function ChaseService.setCarrier(player: Player)
-	local previous = carrier
-	clearCarrierFx()
-	if pickupPrompt then
-		pickupPrompt:Destroy()
-		pickupPrompt = nil
+-- ¿Puede este jugador intentar robar o recoger ahora? (no lleva otra, no ganó ya, no está aturdido)
+local function canAct(player: Player): boolean
+	return active and carrying[player] == nil and not wonThisRound[player] and (stunnedUntil[player] or 0) <= os.clock()
+end
+
+local function countAttempt(thief: Player)
+	local now = os.clock()
+	if now - (lastAttemptAt[thief] or 0) > 2 then
+		lastAttemptAt[thief] = now
+		stealAttempts[thief] = (stealAttempts[thief] or 0) + 1
+		DataService.addStat(thief, "StealAttempts", 1)
 	end
-	if previous and previous.Parent then
-		previous:SetAttribute("IsCarrier", false)
-		updateSpeed(previous)
+end
+
+local function onStealTriggered(chase: Chase, thief: Player)
+	local current = chase.Carrier
+	if chase.Done or not current or thief == current or not canAct(thief) then
+		return
+	end
+	local now = os.clock()
+	local atHome = NestService.isInsideOwnNest(current)
+	if Config.Chase.TapSteal then
+		-- Un toque empieza el tira y afloja; el Heartbeat lo termina o lo rompe.
+		if tugs[thief] then
+			return
+		end
+		if now < chase.ImmuneUntil then
+			AnnouncementService.player(thief, "¡El portador es inmune unos segundos!")
+			return
+		end
+		if distance(thief, current) > Config.Chase.StealRange + ChaseRules.DistanceTolerance then
+			return
+		end
+		countAttempt(thief)
+		tugs[thief] = { Chase = chase, Carrier = current, StartedAt = now }
+		thief:SetAttribute("TugEndsAt", workspace:GetServerTimeNow() + ChaseRules.holdTime(atHome))
+		updateTugWarning(current)
+		return
+	end
+	-- Modo clásico: el tiempo de pulsación lo mide el servidor.
+	local hold = holdStart[thief]
+	holdStart[thief] = nil
+	local began = if hold and hold.Chase == chase then hold.At else nil
+	local check = ChaseRules.canSteal(now, began, chase.ImmuneUntil, distance(thief, current), atHome)
+	if check == "immune" then
+		AnnouncementService.player(thief, "¡El portador es inmune unos segundos!")
+	end
+	if check == "ok" then
+		completeSteal(chase, thief)
+	end
+end
+
+setCarrier = function(chase: Chase, player: Player)
+	local previous = chase.Carrier
+	clearFx(chase)
+	cancelTugsOn(chase)
+	if previous then
+		carrying[previous] = nil
+		if previous.Parent then
+			previous:SetAttribute("IsCarrier", false)
+			previous:SetAttribute("SecureProgress", nil)
+			previous:SetAttribute("BeingTugged", false)
+			updateSpeed(previous)
+		end
 	end
 
-	carrier = player
-	immuneUntil = os.clock() + Config.Chase.ImmunityAfterSteal
-	-- Las pulsaciones empezadas sobre el portador anterior no cuentan para el nuevo.
-	table.clear(holdStart)
-	homeStreak = 0
-	RoundState.set("SecureProgress", 0)
+	chase.Carrier = player
+	carrying[player] = chase
+	chase.ImmuneUntil = os.clock() + Config.Chase.ImmunityAfterSteal
+	chase.HomeStreak = 0
 	player:SetAttribute("IsCarrier", true)
-	RoundState.set("CarrierUserId", player.UserId)
-	RoundState.set("ImmuneUntil", workspace:GetServerTimeNow() + Config.Chase.ImmunityAfterSteal)
+	player:SetAttribute("ImmuneUntil", workspace:GetServerTimeNow() + Config.Chase.ImmunityAfterSteal)
+	player:SetAttribute("SecureProgress", 0)
+	publishCarriers()
 	updateSpeed(player)
 
 	local character = player.Character
 	local root = rootOf(player)
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not character or not root or not humanoid then
-		drop(nil)
+		drop(chase, nil)
 		return
 	end
 
@@ -232,7 +343,7 @@ function ChaseService.setCarrier(player: Player)
 	highlight.OutlineColor = Color3.fromRGB(255, 240, 150)
 	highlight.FillTransparency = 0.6
 	highlight.Parent = character
-	table.insert(carrierFx, highlight)
+	table.insert(chase.Fx, highlight)
 
 	local sparkles = Instance.new("ParticleEmitter")
 	sparkles.Color = ColorSequence.new(Color3.fromRGB(255, 210, 60))
@@ -242,9 +353,10 @@ function ChaseService.setCarrier(player: Player)
 	sparkles.Speed = NumberRange.new(2, 4)
 	sparkles.Size = NumberSequence.new(0.4, 0)
 	sparkles.Parent = root
-	table.insert(carrierFx, sparkles)
+	table.insert(chase.Fx, sparkles)
 
 	-- Correa visual entre el portador y la criatura.
+	local model = chase.Model
 	if model and model.PrimaryPart then
 		local a0 = Instance.new("Attachment")
 		a0.Parent = root
@@ -259,57 +371,65 @@ function ChaseService.setCarrier(player: Player)
 		beam.LightEmission = 1
 		beam.FaceCamera = true
 		beam.Parent = root
-		table.insert(carrierFx, a0)
-		table.insert(carrierFx, a1)
-		table.insert(carrierFx, beam)
+		table.insert(chase.Fx, a0)
+		table.insert(chase.Fx, a1)
+		table.insert(chase.Fx, beam)
 	end
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "StealPrompt"
 	prompt.ActionText = "Robar"
 	prompt.ObjectText = "Criatura"
-	prompt.HoldDuration = Config.Chase.StealHoldTime
+	-- Con robo por toque, el prompt es instantáneo: el tiempo lo cuenta el servidor.
+	prompt.HoldDuration = if Config.Chase.TapSteal then 0 else Config.Chase.StealHoldTime
 	prompt.MaxActivationDistance = Config.Chase.StealRange
 	prompt.RequiresLineOfSight = false
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.Parent = root
-	stealPrompt = prompt
+	chase.StealPrompt = prompt
 
-	prompt.PromptButtonHoldBegan:Connect(function(thief)
-		holdStart[thief] = os.clock()
-		local last = lastAttemptAt[thief] or 0
-		if os.clock() - last > 2 then
-			lastAttemptAt[thief] = os.clock()
-			stealAttempts[thief] = (stealAttempts[thief] or 0) + 1
-			DataService.addStat(thief, "StealAttempts", 1)
-		end
+	if not Config.Chase.TapSteal then
+		prompt.PromptButtonHoldBegan:Connect(function(thief)
+			holdStart[thief] = { Chase = chase, At = os.clock() }
+			countAttempt(thief)
+		end)
+		prompt.PromptButtonHoldEnded:Connect(function(thief)
+			-- Soltar antes de tiempo anula el intento; si se completó, Triggered lo valida.
+			local hold = holdStart[thief]
+			if hold and os.clock() - hold.At < Config.Chase.StealHoldTime - 0.15 then
+				holdStart[thief] = nil
+			end
+		end)
+	end
+	prompt.Triggered:Connect(function(thief)
+		onStealTriggered(chase, thief)
 	end)
-	prompt.PromptButtonHoldEnded:Connect(function(thief)
-		-- Soltar antes de tiempo anula el intento; si se completó, Triggered lo valida.
-		local began = holdStart[thief]
-		if began and os.clock() - began < Config.Chase.StealHoldTime - 0.15 then
-			holdStart[thief] = nil
-		end
-	end)
-	prompt.Triggered:Connect(onStealTriggered)
 
-	table.insert(carrierConnections, humanoid.Died:Connect(function()
-		if carrier == player then
-			drop(root.Position)
+	table.insert(chase.Connections, humanoid.Died:Connect(function()
+		if chase.Carrier == player then
+			drop(chase, root.Position)
 		end
 	end))
 end
 
--- Si el portador muere o se va, la criatura queda en el suelo y cualquiera puede cogerla.
-drop = function(position: Vector3?)
-	clearCarrierFx()
-	table.clear(holdStart)
-	if carrier and carrier.Parent then
-		carrier:SetAttribute("IsCarrier", false)
-		updateSpeed(carrier)
+-- Sin portador (murió, se fue o un zorro se la tiró): la criatura queda en el suelo y
+-- cualquiera que no lleve otra puede cogerla.
+drop = function(chase: Chase, position: Vector3?)
+	clearFx(chase)
+	cancelTugsOn(chase)
+	local previous = chase.Carrier
+	if previous then
+		carrying[previous] = nil
+		if previous.Parent then
+			previous:SetAttribute("IsCarrier", false)
+			previous:SetAttribute("SecureProgress", nil)
+			previous:SetAttribute("BeingTugged", false)
+			updateSpeed(previous)
+		end
 	end
-	carrier = nil
-	RoundState.set("CarrierUserId", 0)
+	chase.Carrier = nil
+	publishCarriers()
+	local model = chase.Model
 	if not model or not model.PrimaryPart then
 		return
 	end
@@ -317,100 +437,169 @@ drop = function(position: Vector3?)
 		model:PivotTo(CFrame.new(position + Vector3.new(0, 1, 0)))
 	end
 	local prompt = Instance.new("ProximityPrompt")
+	prompt.Name = "PickupPrompt"
 	prompt.ActionText = "Coger criatura"
 	prompt.HoldDuration = 1
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = model.PrimaryPart
-	pickupPrompt = prompt
+	chase.PickupPrompt = prompt
 	prompt.Triggered:Connect(function(player)
-		if active and not carrier then
+		if not chase.Done and not chase.Carrier and canAct(player) then
 			AnnouncementService.server(string.format("¡%s ha recogido la criatura!", player.DisplayName), "info")
-			ChaseService.setCarrier(player)
+			setCarrier(chase, player)
 		end
 	end)
-	AnnouncementService.server("¡La criatura está suelta! Corre a por ella.", "threshold")
+	AnnouncementService.server("¡Una criatura está suelta! Corre a por ella.", "threshold")
+end
+
+-- Termina una persecución (asegurada, ganada en la prórroga o al acabar el tiempo).
+local function settle(chase: Chase, winner: Player?)
+	if chase.Done then
+		return
+	end
+	chase.Done = true
+	chase.Winner = winner
+	clearFx(chase)
+	cancelTugsOn(chase)
+	local carrier = chase.Carrier
+	if carrier then
+		carrying[carrier] = nil
+		if carrier.Parent then
+			carrier:SetAttribute("IsCarrier", false)
+			carrier:SetAttribute("SecureProgress", nil)
+			carrier:SetAttribute("BeingTugged", false)
+			updateSpeed(carrier)
+		end
+	end
+	if winner then
+		wonThisRound[winner] = true
+	end
+	if chase.Model then
+		chase.Model:Destroy()
+		chase.Model = nil
+	end
+	publishCarriers()
 end
 
 -- Ciclo de persecución -------------------------------------------------------------------
 
-function ChaseService.begin(chosen: Player, creatureGenes: Genes.GeneSet)
+-- Empieza una persecución por cada criatura. shieldsOf da los escudos de cada jugador
+-- (los calcula RoundService con la Afinidad de la ronda).
+function ChaseService.begin(starts: { Start }, shieldsOf: (Player) -> number)
 	active = true
-	genes = creatureGenes
-	local preview = Creature.new("round", creatureGenes, "Hatch", os.time())
-	local built = CreatureModel.build(preview, 1)
-	built.Name = "RoundCreature"
-	built.Parent = workspace
-	model = built
-	local root = rootOf(chosen)
-	if root then
-		built:PivotTo(root.CFrame * CFrame.new(0, 1, 5))
-	end
-	homeStreak, secured, overtime, over = 0, false, false, false
+	table.clear(chases)
+	table.clear(carrying)
+	table.clear(wonThisRound)
 	table.clear(stunnedUntil)
-	ChaseService.setCarrier(chosen)
-	-- El elegido empieza con más inmunidad y los demás tardan unos segundos en poder moverse.
+	table.clear(tugs)
+	table.clear(holdStart)
 	local now = os.clock()
-	immuneUntil = now + Config.Chase.StartImmunitySeconds
-	RoundState.set("ImmuneUntil", workspace:GetServerTimeNow() + Config.Chase.StartImmunitySeconds)
 	for _, player in Players:GetPlayers() do
-		if player ~= chosen then
+		shields[player] = shieldsOf(player)
+		player:SetAttribute("Shields", shields[player])
+	end
+	for index, start in starts do
+		local preview = Creature.new("round" .. index, start.Genes, "Hatch", os.time())
+		local built = CreatureModel.build(preview, 1)
+		built.Name = "RoundCreature"
+		built:SetAttribute("ChaseIndex", index)
+		CollectionService:AddTag(built, "RoundCreature")
+		built.Parent = workspace
+		local root = rootOf(start.Chosen)
+		if root then
+			built:PivotTo(root.CFrame * CFrame.new(0, 1, 5))
+		end
+		local chase: Chase = {
+			Index = index,
+			Genes = start.Genes,
+			Chosen = start.Chosen,
+			Carrier = nil,
+			Model = built,
+			ImmuneUntil = 0,
+			StealPrompt = nil,
+			PickupPrompt = nil,
+			Fx = {},
+			Connections = {},
+			HomeStreak = 0,
+			Secured = false,
+			Overtime = false,
+			Done = false,
+			Winner = nil,
+		}
+		table.insert(chases, chase)
+		setCarrier(chase, start.Chosen)
+		-- Los elegidos empiezan con más inmunidad.
+		chase.ImmuneUntil = now + Config.Chase.StartImmunitySeconds
+		start.Chosen:SetAttribute("ImmuneUntil", workspace:GetServerTimeNow() + Config.Chase.StartImmunitySeconds)
+	end
+	-- Los demás tardan unos segundos en poder moverse (ventaja de los elegidos).
+	for _, player in Players:GetPlayers() do
+		if not carrying[player] then
 			stunnedUntil[player] = now + Config.Chase.HeadStartSeconds
 			updateSpeed(player)
 		end
 	end
 end
 
--- ¿Ya está decidida? (asegurada, o alguien llegó a su nido en la prórroga)
+-- ¿Ya están decididas todas? (aseguradas, o ganadas en la prórroga)
 function ChaseService.isOver(): boolean
-	return over
-end
-
--- Empieza la prórroga si hace falta: el portador no está en su nido. Devuelve si empezó.
-function ChaseService.startOvertime(): boolean
-	local current = carrier
-	if over or Config.Chase.OvertimeSeconds <= 0 then
-		return false
+	for _, chase in chases do
+		if not chase.Done then
+			return false
+		end
 	end
-	if current and NestService.isInsideOwnNest(current) then
-		return false
-	end
-	overtime = true
 	return true
 end
 
-function ChaseService.finish(): ChaseResult
-	active = false
-	local winner: Player? = nil
-	if carrier and carrier.Parent and (secured or ChaseRules.carrierWins(NestService.isInsideOwnNest(carrier))) then
-		winner = carrier
+-- Se acaba el tiempo: gana quien tenga la criatura en su nido; las demás pasan a la
+-- prórroga (gol de oro). Devuelve si hay prórroga.
+function ChaseService.startOvertime(): boolean
+	local any = false
+	for _, chase in chases do
+		if not chase.Done then
+			local carrier = chase.Carrier
+			if carrier and NestService.isInsideOwnNest(carrier) then
+				settle(chase, carrier)
+			elseif Config.Chase.OvertimeSeconds > 0 then
+				chase.Overtime = true
+				any = true
+			end
+		end
 	end
-	overtime = false
-	RoundState.set("SecureProgress", 0)
-	table.clear(stunnedUntil)
-	local partners = if winner then ChaseService.partnersOf(winner) else {}
-	local result: ChaseResult = { Winner = winner, Genes = genes, Partners = partners }
+	return any
+end
 
-	clearCarrierFx()
-	if pickupPrompt then
-		pickupPrompt:Destroy()
-		pickupPrompt = nil
+function ChaseService.finish(): { Outcome }
+	active = false
+	local outcomes: { Outcome } = {}
+	for _, chase in chases do
+		if not chase.Done then
+			local carrier = chase.Carrier
+			local winner = if carrier and carrier.Parent and ChaseRules.carrierWins(NestService.isInsideOwnNest(carrier)) then carrier else nil
+			settle(chase, winner)
+		end
+		local winner: Player? = if chase.Winner and chase.Winner.Parent then chase.Winner else nil
+		local outcome: Outcome = {
+			Winner = winner,
+			Genes = chase.Genes,
+			Partners = if winner then ChaseService.partnersOf(winner) else {},
+			Chosen = chase.Chosen,
+		}
+		table.insert(outcomes, outcome)
 	end
-	if carrier and carrier.Parent then
-		carrier:SetAttribute("IsCarrier", false)
-	end
-	carrier = nil
-	genes = nil
-	RoundState.set("CarrierUserId", 0)
-	if model then
-		model:Destroy()
-		model = nil
-	end
+	table.clear(chases)
+	table.clear(carrying)
+	table.clear(stunnedUntil)
+	table.clear(tugs)
+	publishCarriers()
 	for _, player in Players:GetPlayers() do
 		sprintUntil[player] = nil
+		player:SetAttribute("Shields", nil)
+		player:SetAttribute("TugEndsAt", nil)
 		updateSpeed(player)
 	end
-	return result
+	return outcomes
 end
 
 -- Los tratos se cumplen al ganar: el aliado recibe su parte (GDD 5.4).
@@ -427,8 +616,71 @@ function ChaseService.resetRound()
 	table.clear(holdStart)
 	table.clear(deals)
 	table.clear(pendingOffers)
-	table.clear(shieldsUsed)
 	NestService.resetRound()
+end
+
+-- Para los zorros del bosque y la depuración ---------------------------------------------
+
+export type Target = { Index: number, Carrier: Player, Position: Vector3 }
+
+-- Criaturas que alguien lleva ahora mismo (a por ellas van los zorros).
+function ChaseService.targets(): { Target }
+	local list: { Target } = {}
+	for _, chase in chases do
+		local carrier = chase.Carrier
+		local root = carrier and rootOf(carrier)
+		if not chase.Done and carrier and root then
+			table.insert(list, { Index = chase.Index, Carrier = carrier, Position = root.Position })
+		end
+	end
+	return list
+end
+
+local function chaseByIndex(index: number): Chase?
+	for _, chase in chases do
+		if chase.Index == index then
+			return chase
+		end
+	end
+	return nil
+end
+
+-- Un zorro completa su tira y afloja (ForestService mide el tiempo con ChaseRules). La
+-- criatura cae al suelo; nunca se la queda. Devuelve "dropped", "shield" o "no".
+function ChaseService.foxGrab(index: number, foxPosition: Vector3, startedAt: number): string
+	local chase = chaseByIndex(index)
+	local carrier = chase and chase.Carrier
+	local root = carrier and rootOf(carrier)
+	if not chase or chase.Done or not carrier or not root then
+		return "no"
+	end
+	local now = os.clock()
+	local atHome = NestService.isInsideOwnNest(carrier)
+	local check = ChaseRules.canSteal(now, startedAt, chase.ImmuneUntil, (root.Position - foxPosition).Magnitude, atHome)
+	if check ~= "ok" then
+		return "no"
+	end
+	if (shields[carrier] or 0) > 0 then
+		shields[carrier] -= 1
+		carrier:SetAttribute("Shields", shields[carrier])
+		chase.ImmuneUntil = now + Config.Chase.ImmunityAfterSteal
+		AnnouncementService.server(string.format("🛡️ ¡El escudo de %s ha espantado a un zorro!", carrier.DisplayName), "info")
+		return "shield"
+	end
+	stunnedUntil[carrier] = now + Config.Chase.StunSeconds
+	AnnouncementService.server(string.format("🦊 ¡Un zorro le ha tirado la criatura al suelo a %s!", carrier.DisplayName), "threshold")
+	drop(chase, root.Position)
+	return "dropped"
+end
+
+-- Depuración (solo Studio): quedarse la primera criatura activa.
+function ChaseService.debugTake(player: Player)
+	for _, chase in chases do
+		if not chase.Done and chase.Carrier ~= player and not carrying[player] then
+			setCarrier(chase, player)
+			return
+		end
+	end
 end
 
 -- Tratos ---------------------------------------------------------------------------------
@@ -484,19 +736,92 @@ local function respondDeal(player: Player, fromUserId: any, accept: any)
 	AnnouncementService.player(from, string.format(text, player.DisplayName), "quest")
 end
 
-function ChaseService.init()
-	MonetizationService.registerProduct("ShellShield", function(player)
-		shieldCharges[player] = (shieldCharges[player] or 0) + 1
-		AnnouncementService.player(player, "Escudo de Cáscara listo: bloqueará un robo.", "quest")
-		return true
-	end)
+-- Bucle: criaturas que siguen al portador, tira y afloja, asegurar y prórroga --------------
+
+local function step(elapsed: number)
+	local now = os.clock()
+	-- Las criaturas siguen a su portador.
+	for _, chase in chases do
+		local carrier = chase.Carrier
+		local model = chase.Model
+		local root = carrier and rootOf(carrier)
+		if model and root then
+			local target = root.CFrame * CFrame.new(0, 0.5, 5)
+			model:PivotTo(model:GetPivot():Lerp(target, 0.35))
+		end
+	end
+	if not active then
+		return
+	end
+
+	-- Tira y afloja (robo por toque): se rompe si el portador se aleja.
+	for thief, tug in tugs do
+		local chase = tug.Chase
+		local carrier = chase.Carrier
+		if chase.Done or carrier ~= tug.Carrier or not carrier or not thief.Parent then
+			cancelTug(thief, nil)
+			continue
+		end
+		local d = distance(thief, carrier)
+		if d > Config.Chase.StealRange + ChaseRules.DistanceTolerance or (stunnedUntil[thief] or 0) > now then
+			cancelTug(thief, "¡Se te ha escapado!")
+			updateTugWarning(carrier)
+			continue
+		end
+		local atHome = NestService.isInsideOwnNest(carrier)
+		if now - tug.StartedAt >= ChaseRules.holdTime(atHome) then
+			local check = ChaseRules.canSteal(now, tug.StartedAt, chase.ImmuneUntil, d, atHome)
+			cancelTug(thief, nil)
+			updateTugWarning(carrier)
+			if check == "ok" then
+				completeSteal(chase, thief)
+			end
+		end
+	end
+
+	for _, chase in chases do
+		local carrier = chase.Carrier
+		if chase.Done or not carrier then
+			continue
+		end
+		-- Defensa en casa: el prompt clásico tarda más dentro del nido.
+		local atHome = NestService.isInsideOwnNest(carrier)
+		local prompt = chase.StealPrompt
+		if prompt and not Config.Chase.TapSteal then
+			local hold = ChaseRules.holdTime(atHome)
+			if prompt.HoldDuration ~= hold then
+				prompt.HoldDuration = hold
+			end
+		end
+		if chase.Overtime and ChaseRules.overtimeWin(true, atHome) then
+			AnnouncementService.server(string.format("⚡ ¡%s mete la criatura en su nido y gana la prórroga!", carrier.DisplayName), "rare")
+			settle(chase, carrier)
+			continue
+		end
+		chase.HomeStreak = if atHome then chase.HomeStreak + elapsed else 0
+		if Config.Chase.SecureSeconds > 0 then
+			-- Solo se replica cuando cambia de forma visible (no 20 veces por segundo).
+			local progress = math.clamp(chase.HomeStreak / Config.Chase.SecureSeconds, 0, 1)
+			local sent = tonumber(carrier:GetAttribute("SecureProgress")) or 0
+			if math.abs(progress - sent) >= 0.02 or (progress == 0 and sent ~= 0) then
+				carrier:SetAttribute("SecureProgress", progress)
+			end
+		end
+		if ChaseRules.isSecured(chase.HomeStreak) then
+			chase.Secured = true
+			AnnouncementService.server(string.format("🔒 ¡%s ha asegurado la criatura en su nido!", carrier.DisplayName), "rare")
+			settle(chase, carrier)
+		end
+	end
 end
+
+function ChaseService.init() end
 
 function ChaseService.start()
 	Remotes.event("RespondDeal").OnServerEvent:Connect(respondDeal)
 
 	Remotes.event("RequestSprint").OnServerEvent:Connect(function(player)
-		if not active or player ~= carrier then
+		if not active or not carrying[player] then
 			return
 		end
 		local now = os.clock()
@@ -509,24 +834,25 @@ function ChaseService.start()
 		updateSpeed(player)
 	end)
 
-	-- Pase de relevo al aliado más cercano.
+	-- Pase de relevo al aliado más cercano que no lleve ya otra criatura.
 	Remotes.event("RequestPass").OnServerEvent:Connect(function(player)
-		if not active or player ~= carrier then
+		local chase = carrying[player]
+		if not active or not chase then
 			return
 		end
 		local best: Player? = nil
 		local bestDistance = Config.Chase.PassRange
 		for _, partner in ChaseService.partnersOf(player) do
 			local d = distance(player, partner)
-			if d <= bestDistance then
+			if d <= bestDistance and canAct(partner) then
 				best, bestDistance = partner, d
 			end
 		end
 		if best then
 			AnnouncementService.server(string.format("¡%s le pasa el relevo a %s!", player.DisplayName, best.DisplayName), "info")
-			ChaseService.setCarrier(best)
+			setCarrier(chase, best)
 		else
-			AnnouncementService.player(player, "No hay ningún aliado cerca para pasarle el relevo.")
+			AnnouncementService.player(player, "No hay ningún aliado libre cerca para pasarle el relevo.")
 		end
 	end)
 
@@ -556,26 +882,27 @@ function ChaseService.start()
 	end
 
 	Players.PlayerRemoving:Connect(function(player)
-		if player == carrier then
+		local chase = carrying[player]
+		if chase then
 			local root = rootOf(player)
-			drop(if root then root.Position else nil)
+			drop(chase, if root then root.Position else nil)
 		end
+		cancelTug(player, nil)
 		stealAttempts[player] = nil
 		lastAttemptAt[player] = nil
 		holdStart[player] = nil
 		pendingOffers[player] = nil
-		shieldCharges[player] = nil
-		shieldsUsed[player] = nil
+		shields[player] = nil
 		sprintUntil[player] = nil
 		sprintReadyAt[player] = nil
 		stunnedUntil[player] = nil
+		wonThisRound[player] = nil
 		deals[player] = nil
 		for _, set in deals do
 			set[player] = nil
 		end
 	end)
 
-	-- La criatura sigue al portador; las velocidades se recalculan (esprint, botas).
 	local accumulator = 0
 	RunService.Heartbeat:Connect(function(dt)
 		accumulator += dt
@@ -584,43 +911,7 @@ function ChaseService.start()
 		end
 		local elapsed = accumulator
 		accumulator = 0
-		local current = carrier
-		if model and current then
-			local root = rootOf(current)
-			if root then
-				local target = root.CFrame * CFrame.new(0, 0.5, 5)
-				model:PivotTo(model:GetPivot():Lerp(target, 0.35))
-			end
-		end
-		if not active or not current or over then
-			return
-		end
-		-- Defensa en casa, asegurar y prórroga.
-		local atHome = NestService.isInsideOwnNest(current)
-		local prompt = stealPrompt
-		local hold = ChaseRules.holdTime(atHome)
-		if prompt and prompt.HoldDuration ~= hold then
-			prompt.HoldDuration = hold
-		end
-		if overtime and ChaseRules.overtimeWin(true, atHome) then
-			over = true
-			AnnouncementService.server(string.format("⚡ ¡%s mete la criatura en su nido y gana la prórroga!", current.DisplayName), "rare")
-			return
-		end
-		homeStreak = if atHome then homeStreak + elapsed else 0
-		if Config.Chase.SecureSeconds > 0 then
-			-- Solo se replica cuando cambia de forma visible (no 20 veces por segundo).
-			local progress = math.clamp(homeStreak / Config.Chase.SecureSeconds, 0, 1)
-			local sent = tonumber(RoundState.get("SecureProgress")) or 0
-			if math.abs(progress - sent) >= 0.02 or (progress == 0 and sent ~= 0) then
-				RoundState.set("SecureProgress", progress)
-			end
-		end
-		if ChaseRules.isSecured(homeStreak) then
-			secured = true
-			over = true
-			AnnouncementService.server(string.format("🔒 ¡%s ha asegurado la criatura en su nido!", current.DisplayName), "rare")
-		end
+		step(elapsed)
 	end)
 
 	task.spawn(function()

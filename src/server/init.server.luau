@@ -16,6 +16,7 @@ local services = {
 	require(script.Services.EggService),
 	require(script.Services.HeatService),
 	require(script.Services.ChaseService),
+	require(script.Services.ForestService),
 	require(script.Services.RoundService),
 	require(script.Services.DebugService), -- solo responde en Studio
 }

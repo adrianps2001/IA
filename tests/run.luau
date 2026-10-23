@@ -243,7 +243,9 @@ end)
 test("Economy: bolsa de 100 a 1.000", function()
 	expect(Economy.bagCapacity(0, false) == 100)
 	expect(Economy.bagCapacity(Config.Upgrades.Bag.MaxLevel, false) == 1000)
-	expect(Economy.bagCapacity(0, true) == 150)
+	-- GDD v2: ningún pase da más Calor.
+	expect(Economy.bagCapacity(0, true) == math.floor(100 * Config.Heat.BagGamePassMultiplier))
+	expect(Config.Heat.BagGamePassMultiplier == 1)
 	expect(Economy.upgradeCost("Bag", Config.Upgrades.Bag.MaxLevel) == nil)
 end)
 
@@ -389,18 +391,34 @@ test("Economy: territorio y meta de la barra", function()
 end)
 
 test("Rewards: ganador, aliado y consolación", function()
-	local participants = {
+	local participants: { Rewards.Participant } = {
 		{ Key = "gana", Affinity = 400, StealAttempts = 1 },
 		{ Key = "aliado", Affinity = 100, StealAttempts = 0 },
 		{ Key = "otro", Affinity = 0, StealAttempts = 3 },
 	}
-	local r = Rewards.compute(participants, "gana", { "aliado" })
+	local r = Rewards.compute(participants, { { Winner = "gana", Partners = { "aliado" } } })
 	local winnerDust = Config.Consolation.WinnerBonusDust + Economy.consolationDust(400, 1)
-	expect(r.gana.Creature and r.gana.Dust == winnerDust)
-	expect(r.aliado.Copy and r.aliado.Dust == Economy.consolationDust(100, 0) + math.floor(winnerDust * Config.Deal.DustShare))
-	expect(not r.otro.Copy and not r.otro.Creature and r.otro.Dust == Economy.consolationDust(0, 3))
-	local escaped = Rewards.compute(participants, nil, { "aliado" })
-	expect(not escaped.aliado.Copy and not escaped.gana.Creature)
+	expect(r.gana.Won[1] == 1 and r.gana.Dust == winnerDust)
+	expect(r.aliado.Copies[1] == 1 and r.aliado.Dust == Economy.consolationDust(100, 0) + math.floor(winnerDust * Config.Deal.DustShare))
+	expect(#r.otro.Copies == 0 and #r.otro.Won == 0 and r.otro.Dust == Economy.consolationDust(0, 3))
+	local escaped = Rewards.compute(participants, { { Winner = nil, Partners = { "aliado" } } })
+	expect(#escaped.aliado.Copies == 0 and #escaped.gana.Won == 0)
+end)
+
+test("Rewards: varias criaturas e inactivos", function()
+	local participants: { Rewards.Participant } = {
+		{ Key = "a", Affinity = 300, StealAttempts = 0 },
+		{ Key = "b", Affinity = 300, StealAttempts = 0 },
+		{ Key = "c", Affinity = 300, StealAttempts = 0 },
+		{ Key = "afk", Affinity = 0, StealAttempts = 0, Active = false },
+	}
+	local r = Rewards.compute(participants, {
+		{ Winner = "a", Partners = {}, Chosen = "a" },
+		{ Winner = "b", Partners = {}, Chosen = "c" },
+	})
+	expect(r.a.Won[1] == 1 and r.b.Won[1] == 2 and #r.c.Won == 0)
+	expect(r.c.ChosenEgg and not r.a.ChosenEgg, "el elegido de la segunda criatura la perdió")
+	expect(r.afk.Dust == 0, "un AFK no cobra consuelo")
 end)
 
 test("MapLayout: nidos, entradas y géiseres", function()
@@ -474,14 +492,14 @@ test("Rewards: premio al elegido que pierde", function()
 		{ Key = "elegido", Affinity = 800, StealAttempts = 0 },
 		{ Key = "otro", Affinity = 800, StealAttempts = 0 },
 	}
-	local r = Rewards.compute(participants, "gana", {}, "elegido")
+	local r = Rewards.compute(participants, { { Winner = "gana", Partners = {}, Chosen = "elegido" } })
 	expect(r.elegido.ChosenEgg and not r.otro.ChosenEgg and not r.gana.ChosenEgg)
 	expect(r.elegido.Dust == r.otro.Dust + Config.Consolation.ChosenBonusDust)
 	-- Si el elegido gana, no hay premio extra: ya tiene la criatura.
-	local own = Rewards.compute(participants, "elegido", {}, "elegido")
-	expect(own.elegido.Creature and not own.elegido.ChosenEgg)
+	local own = Rewards.compute(participants, { { Winner = "elegido", Partners = {}, Chosen = "elegido" } })
+	expect(own.elegido.Won[1] == 1 and not own.elegido.ChosenEgg)
 	-- Si la criatura escapa, el elegido también recibe su huevo.
-	expect(Rewards.compute(participants, nil, {}, "elegido").elegido.ChosenEgg)
+	expect(Rewards.compute(participants, { { Winner = nil, Partners = {}, Chosen = "elegido" } }).elegido.ChosenEgg)
 end)
 
 test("Events: ventanas horarias y Huevo Comunitario", function()
@@ -622,6 +640,57 @@ test("Leaderboard: semanas, \"me gusta\" y combinación del top", function()
 	expect(#top == 3)
 	expect(top[1].UserId == 3 and top[1].Value == 13, "suma lo pendiente")
 	expect(top[2].UserId == 1 and top[3].UserId == 2, "orden estable en empates")
+end)
+
+test("GDD v2: criaturas por ronda, escudos, novatos y Elección múltiple", function()
+	expect(Economy.creatureCount(2) == 1 and Economy.creatureCount(6) == 1)
+	expect(Economy.creatureCount(7) == 2 and Economy.creatureCount(11) == 2)
+	expect(Economy.creatureCount(12) == 3 and Economy.creatureCount(16) == 3)
+	expect(Economy.creatureCount(100) == Config.Round.MaxCreatures)
+	expect(Economy.shields(0) == 0)
+	expect(Economy.shields(Config.Shields.HeatPerShield) == 1)
+	expect(Economy.shields(10 ^ 6) == Config.Shields.Max)
+	expect(Election.minFor(0, 0) == Config.Election.PityMaxChance, "primera ronda: mínimo alto")
+	expect(Election.minFor(0, 50) == Config.Election.MinChance)
+	local entries: { Election.Entry } = {
+		{ Key = "a", Affinity = 100 },
+		{ Key = "b", Affinity = 50 },
+		{ Key = "c", Affinity = 0 },
+	}
+	local rng = seeded(4)
+	for _ = 1, 50 do
+		local picked = Election.pickMany(entries, 0.02, 2, rng)
+		expect(#picked == 2 and picked[1] ~= picked[2], "sin repetir")
+	end
+	expect(#Election.pickMany(entries, 0.02, 5, rng) == 3, "no más elegidos que jugadores")
+	-- La Secreta es rara pero alcanzable (1 entre 50 000).
+	expect(near(Rarity.Info.Secret.Weight / 1_000_000, 1 / 50_000))
+end)
+
+test("GDD v2: favoritas, Luna de Sangre en varias franjas y liberación", function()
+	local rng = seeded(77)
+	local creatures = {}
+	for i = 1, 50 do
+		table.insert(creatures, Creature.new("f" .. i, Genes.rollSet(rng, if i <= 3 then "Epic" else "Common"), "Test", 0))
+	end
+	local favorites = { "f10", "f20", "f30", "f40" }
+	local kept = Economy.keptOnRebirth(creatures, favorites)
+	expect(#kept == Config.Favorites.Max, "como mucho Config.Favorites.Max sobreviven")
+	for _, id in Economy.bulkReleaseIds(creatures, 3, favorites) do
+		expect(not table.find(favorites, id), "las favoritas no se liberan")
+	end
+	-- Los datos guardados solo conservan favoritas que existen.
+	local profile = PlayerData.reconcile({
+		Creatures = { creatures[1], creatures[2] },
+		Favorites = { "f1", "no-existe", "f1", "f2" },
+	}, 0)
+	expect(#profile.Favorites == 2 and profile.Favorites[1] == "f1" and profile.Favorites[2] == "f2")
+	-- Luna de Sangre: sábado a las 02:30, 12:30 y 20:30 UTC.
+	local saturday = 1792800000 - (1792800000 % 86400)
+	for _, hour in Config.Events.BloodMoon.StartHours do
+		expect(Events.isBloodMoon(saturday + (hour + 0.5) * 3600))
+	end
+	expect(not Events.isBloodMoon(saturday + 6 * 3600))
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

@@ -36,7 +36,12 @@ end
 
 function Events.isBloodMoon(t: number): boolean
 	local def = Config.Events.BloodMoon
-	return Events.inWindow({ WeekDays = { def.WeekDay }, StartHour = def.StartHour, Hours = def.Hours }, t)
+	for _, hour in def.StartHours do
+		if Events.inWindow({ WeekDays = { def.WeekDay }, StartHour = hour, Hours = def.Hours }, t) then
+			return true
+		end
+	end
+	return false
 end
 
 function Events.isLootNight(t: number): boolean

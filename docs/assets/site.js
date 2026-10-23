@@ -316,10 +316,10 @@ function drawCreature(svg, genes) {
 
 const PHASES = [
   { key: "IntermissionTime", name: "Preparados", icon: "⏳", color: "#8a7f92", text: "RoundService reinicia el huevo (EggService.reset), el Calor de todos (HeatService.resetRound) y los tratos (ChaseService.resetRound)." },
-  { key: "IncubationTime", name: "Incubación", icon: "🔥", color: "#ff8a2a", text: "HeatService activa las fuentes de Calor. Cada depósito suma Afinidad y llena la barra; si llega al 100 % la fase termina antes." },
-  { key: "HatchTime", name: "Eclosión", icon: "🥚", color: "#7b5cff", text: "EggService tira la criatura, Election elige dueño y todos los clientes reproducen el espectáculo (HatchController)." },
-  { key: "ChaseTime", name: "Persecución", icon: "🏃", color: "#e0464d", text: "ChaseService pone la correa al elegido. Robar = mantener E 1,5 s junto al portador; el servidor mide el tiempo." },
-  { key: "ResultsTime", name: "Resultados", icon: "🏆", color: "#2fa85a", text: "Quien tenga la criatura dentro de su nido se la queda (NestService.giveCreature); el resto recibe Polvo de cáscara." },
+  { key: "IncubationTime", name: "Incubación", icon: "🔥", color: "#ff8a2a", text: "HeatService activa las fuentes de Calor. Cada depósito suma Afinidad (y escudos para la persecución) y llena la barra; a mitad hay una lluvia de brasas doradas. Si la barra llega al 100 % la fase termina antes." },
+  { key: "HatchTime", name: "Eclosión", icon: "🥚", color: "#7b5cff", text: "Sale una criatura por cada pocos jugadores; Election elige un dueño distinto para cada una y los clientes ven los focos (10 s, sin bloquear la cámara)." },
+  { key: "ChaseTime", name: "Persecución", icon: "🏃", color: "#e0464d", text: "ChaseService pone una correa a cada elegido. Robar = un toque y quedarse cerca 1,5 s (tira y afloja); el servidor cuenta el tiempo y los escudos de Afinidad bloquean un robo." },
+  { key: "ResultsTime", name: "Resultados", icon: "🏆", color: "#2fa85a", text: "Quien tenga su criatura dentro de su nido se la queda; el elegido que la perdió recibe un Huevo del Elegido y el resto, Polvo de cáscara (si participó)." },
 ];
 
 function demoRound(root) {

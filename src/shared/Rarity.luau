@@ -22,8 +22,8 @@ local INFO: { [RarityName]: RarityInfo } = {
 	Rare = { Name = "Rare", Tier = 2, DisplayName = "Rara", Weight = 280_000, Income = 4, Color = { 85, 200, 95 } },
 	Epic = { Name = "Epic", Tier = 3, DisplayName = "Épica", Weight = 95_000, Income = 15, Color = { 70, 140, 255 } },
 	Legendary = { Name = "Legendary", Tier = 4, DisplayName = "Legendaria", Weight = 22_000, Income = 60, Color = { 170, 85, 255 } },
-	Mythic = { Name = "Mythic", Tier = 5, DisplayName = "Mítica", Weight = 2_999, Income = 250, Color = { 255, 150, 40 } },
-	Secret = { Name = "Secret", Tier = 6, DisplayName = "Secreta", Weight = 1, Income = 2000, Color = { 255, 60, 60 } },
+	Mythic = { Name = "Mythic", Tier = 5, DisplayName = "Mítica", Weight = 2_980, Income = 250, Color = { 255, 150, 40 } },
+	Secret = { Name = "Secret", Tier = 6, DisplayName = "Secreta", Weight = 20, Income = 2000, Color = { 255, 60, 60 } },
 }
 Rarity.Info = INFO
 

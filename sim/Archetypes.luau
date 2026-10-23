@@ -15,7 +15,7 @@ export type Archetype = {
 	Idle: number, -- probabilidad por segundo de quedarse parado un rato
 	Reaction: number, -- segundos que tarda en reaccionar a dónde está el portador
 	SessionsPerDay: number, -- sesiones de juego al día (de media)
-	RoundsPerSession: number,
+	SessionMinutes: number, -- minutos que juega en cada sesión (las rondas que quepan)
 	Reserve: number, -- fracción de Monedas que se guarda en vez de gastar
 	Payer: boolean, -- tiene los pases x2 Monedas, Nido VIP y Bolsa Grande
 }
@@ -36,7 +36,7 @@ Archetypes.List = {
 		Idle = 0.01,
 		Reaction = 0.6,
 		SessionsPerDay = 2,
-		RoundsPerSession = 3,
+		SessionMinutes = 36,
 		Reserve = 0.1,
 		Payer = false,
 	},
@@ -53,7 +53,7 @@ Archetypes.List = {
 		Idle = 0.01,
 		Reaction = 0.35,
 		SessionsPerDay = 2,
-		RoundsPerSession = 3,
+		SessionMinutes = 36,
 		Reserve = 0.1,
 		Payer = false,
 	},
@@ -70,7 +70,7 @@ Archetypes.List = {
 		Idle = 0.06,
 		Reaction = 0.9,
 		SessionsPerDay = 1,
-		RoundsPerSession = 2,
+		SessionMinutes = 24,
 		Reserve = 0.3,
 		Payer = false,
 	},
@@ -87,7 +87,7 @@ Archetypes.List = {
 		Idle = 0.12,
 		Reaction = 1.4,
 		SessionsPerDay = 0.7,
-		RoundsPerSession = 2,
+		SessionMinutes = 24,
 		Reserve = 0.5,
 		Payer = false,
 	},
@@ -104,7 +104,7 @@ Archetypes.List = {
 		Idle = 0.01,
 		Reaction = 0.4,
 		SessionsPerDay = 4,
-		RoundsPerSession = 3,
+		SessionMinutes = 36,
 		Reserve = 0.05,
 		Payer = false,
 	},
@@ -121,7 +121,7 @@ Archetypes.List = {
 		Idle = 0.02,
 		Reaction = 0.6,
 		SessionsPerDay = 2,
-		RoundsPerSession = 3,
+		SessionMinutes = 36,
 		Reserve = 0.05,
 		Payer = true,
 	},

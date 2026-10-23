@@ -17,6 +17,16 @@ function Election.pityMin(roundsSinceChosen: number): number
 	return math.min(e.MinChance + e.PityPerRound * math.max(roundsSinceChosen, 0), math.max(e.PityMaxChance, e.MinChance))
 end
 
+-- Mínimo de un jugador teniendo en cuenta también si es nuevo: en sus primeras rondas
+-- (Config.Election.NewPlayerRounds) tiene el mínimo más alto, para que pruebe la persecución.
+function Election.minFor(roundsSinceChosen: number, roundsPlayed: number): number
+	local e = Config.Election
+	if roundsPlayed < e.NewPlayerRounds then
+		return math.max(e.PityMaxChance, e.MinChance)
+	end
+	return Election.pityMin(roundsSinceChosen)
+end
+
 function Election.chances(entries: { Entry }, minChance: number): { [string]: number }
 	local result: { [string]: number } = {}
 	local count = #entries
@@ -99,6 +109,29 @@ function Election.pick(entries: { Entry }, minChance: number, rng: () -> number)
 		end
 	end
 	return entries[#entries].Key, chances
+end
+
+-- Varios elegidos sin repetir (una criatura para cada uno). Tras cada elección se quita al
+-- elegido y se recalculan las probabilidades del resto. Devuelve las claves en orden y las
+-- probabilidades de la primera tirada (las que se enseñan en la ruleta).
+function Election.pickMany(entries: { Entry }, minChance: number, count: number, rng: () -> number): ({ string }, { [string]: number })
+	local remaining = table.clone(entries)
+	local picked: { string } = {}
+	local firstChances = Election.chances(entries, minChance)
+	for _ = 1, math.min(count, #entries) do
+		local key = Election.pick(remaining, minChance, rng)
+		if not key then
+			break
+		end
+		table.insert(picked, key)
+		for i, entry in remaining do
+			if entry.Key == key then
+				table.remove(remaining, i)
+				break
+			end
+		end
+	end
+	return picked, firstChances
 end
 
 return Election

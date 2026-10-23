@@ -8,6 +8,7 @@ local controllers = {
 	require(script.Controllers.NestController),
 	require(script.Controllers.EffectsController),
 	require(script.Controllers.SocialController),
+	require(script.Controllers.CosmeticsController),
 	require(script.Controllers.DebugController),
 	require(script.Controllers.AutopilotController),
 }

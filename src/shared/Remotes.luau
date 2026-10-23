@@ -29,6 +29,7 @@ local EVENTS = {
 	"RequestRelease", -- liberar 1 o 2 criaturas seleccionadas
 	"RequestReleaseStored", -- liberar las guardadas de rareza baja
 	"RequestBuyDecoration",
+	"ToggleFavorite", -- marcar o desmarcar una criatura con ⭐
 	"PartyInvite",
 	"PartyRespond",
 	"PartyLeave",

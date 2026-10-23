@@ -1,5 +1,5 @@
 --!strict
--- Noche de Saqueo (GDD 7): los fines de semana por la noche, durante la Incubación, se puede
+-- Noche de Saqueo (GDD 7 y v2): los fines de semana por la noche, en una fase de saqueo tras los resultados, se puede
 -- saquear una criatura expuesta en un nido ajeno manteniendo el botón 4 s, si su dueño no
 -- está dentro (defensas activas). Reglas en Events.canLoot.
 -- Versión prudente por defecto (Config.Events.LootNight.OwnerLoses = false): el dueño no
@@ -44,12 +44,14 @@ local function setPromptsEnabled(value: boolean)
 end
 
 local function update()
-	local shouldOpen = RoundState.get("LootNight") == true and RoundState.phase() == "Incubation"
+	-- GDD v2: el saqueo tiene su propia fase tras los resultados (antes competía con la
+	-- incubación: había que elegir entre recoger Calor o vigilar el nido).
+	local shouldOpen = RoundState.get("LootNight") == true and RoundState.phase() == "Loot"
 	if shouldOpen ~= open then
 		open = shouldOpen
 		setPromptsEnabled(open)
 		if open then
-			AnnouncementService.server("🌙 ¡Noche de Saqueo! Mantén E junto a una criatura de un nido ajeno para saquearla. Quédate en tu nido para defender el tuyo.", "threshold")
+			AnnouncementService.server(string.format("🌙 ¡Hora del saqueo! %d s: mantén E junto a una criatura de un nido ajeno para saquearla. Quédate en tu nido para defender el tuyo.", Config.Events.LootNight.PhaseSeconds), "threshold")
 		end
 	end
 end

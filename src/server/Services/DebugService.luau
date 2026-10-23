@@ -39,7 +39,7 @@ local commands: { [string]: (Player, any) -> () } = {
 	end,
 	BecomeCarrier = function(player)
 		if ChaseService.isActive() then
-			ChaseService.setCarrier(player)
+			ChaseService.debugTake(player)
 		end
 	end,
 	GiveCreature = function(player, rarity)

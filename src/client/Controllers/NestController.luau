@@ -65,13 +65,13 @@ local function renderCreatures()
 		UI.label({
 			Position = UDim2.fromOffset(40, 26),
 			Size = UDim2.new(0.55, -40, 0, 18),
-			Text = creature.RarityName .. (if creature.InNest then " · en el nido" else " · guardada"),
+			Text = creature.RarityName .. (if creature.InNest then " · en el nido" else " · guardada") .. (if creature.Favorite then " · ⭐ favorita" else ""),
 			TextColor3 = rarityColor(creature.Rarity),
 			TextXAlignment = Enum.TextXAlignment.Left,
 		}, r)
 		UI.label({
 			Position = UDim2.new(0.55, 0, 0, 10),
-			Size = UDim2.new(0.45, -10, 0, 28),
+			Size = UDim2.new(0.45, -56, 0, 28),
 			Text = string.format("%s/s", UI.formatNumber(creature.Income)),
 			TextColor3 = UI.Colors.Gold,
 			TextXAlignment = Enum.TextXAlignment.Right,
@@ -94,6 +94,17 @@ local function renderCreatures()
 			confirmRelease = ""
 			render()
 		end)
+		-- Favorita: sobrevive a la Nueva generación, no se libera y la primera te acompaña.
+		local star = UI.button({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -8, 0.5, 0),
+			Size = UDim2.fromOffset(40, 36),
+			Text = if creature.Favorite then "⭐" else "☆",
+			BackgroundColor3 = if creature.Favorite then UI.Colors.Gold else UI.Colors.Panel,
+		}, r, function()
+			Remotes.event("ToggleFavorite"):FireServer(creature.Id)
+		end)
+		star.ZIndex = 3
 	end
 
 	local hidden = (profile.TotalCreatures or #profile.Creatures) - #profile.Creatures
@@ -213,7 +224,7 @@ local function renderIncubator()
 	local offset = serverNowOffset()
 	for index, egg in profile.Incubator do
 		local r = row(44, index)
-		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada", Chosen = "Huevo del Elegido" }
+		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada", Chosen = "Huevo del Elegido", Welcome = "Huevo de bienvenida" }
 		UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(0.6, -12, 1, -12), Text = "🥚 " .. (names[egg.Kind] or egg.Kind), TextXAlignment = Enum.TextXAlignment.Left }, r)
 		local t = UI.label({ Position = UDim2.new(0.6, 0, 0, 6), Size = UDim2.new(0.4, -12, 1, -12), TextXAlignment = Enum.TextXAlignment.Right }, r)
 		timeLabels[t] = egg.ReadyAt - offset
@@ -304,11 +315,10 @@ end
 local function renderShop()
 	local products = {
 		{ Key = "ServerLuck", Text = "🍀 Suerte del Servidor (15 min, para TODOS)", Product = true },
-		{ Key = "ShellShield", Text = "🛡️ Escudo de Cáscara (bloquea 1 robo, máx. 1 por ronda)", Product = true },
 		{ Key = "SeasonEgg", Text = "🥚 Huevo de Temporada: " .. oddsText(Config.EggRanges.Season), Product = true, Random = true },
 		{ Key = "BreedReroll", Text = "🔁 Repetir la última cría", Product = true, Random = true },
 		{ Key = "CoinsSmall", Text = "🪙 Pack pequeño de Monedas", Product = true },
-		{ Key = "BigBag", Text = "🎒 Bolsa Grande (+50 % de Calor)", Product = false },
+		{ Key = "EmberTrail", Text = "🔥 Estela de Brasas (estética)", Product = false },
 		{ Key = "AutoDeposit", Text = "🔥 Auto-Depósito", Product = false },
 		{ Key = "DoubleCoins", Text = "🪙 x2 Monedas del nido", Product = false },
 		{ Key = "VipNest", Text = "👑 Nido VIP (+10 ranuras)", Product = false },
