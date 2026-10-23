@@ -2,7 +2,7 @@
 
 Juego social para Roblox: todos los jugadores de una partida alimentan **un único huevo gigante**, el huevo **elige a un dueño** al eclosionar (con muchos jugadores, a varios: una criatura para cada uno) y los demás tienen 2 minutos para **robárselo** por un parkour de árboles gigantes: quien la tenga al acabar se la queda. Las criaturas que consigues se lucen en tu nido del **lobby**, producen Monedas aunque no estés y se pueden criar para obtener genes nuevos.
 
-El diseño completo está en [`docs/GDD.md`](docs/GDD.md) (**versión 3**: la sección 13 explica qué se cambió tras la primera prueba y la 12, la versión 2). La **guía visual del proyecto** (Roblox para creadores, archivos, Luau y todo el código explicado con demos interactivas) está en [`docs/index.html`](docs/index.html) y se publica con GitHub Pages en https://adrianps2001.github.io/IA/. El **informe del simulador de bots** (repetición de una partida y gráficas que comparan la v2 y la v3 de las mecánicas) está en [`docs/simulacion.html`](docs/simulacion.html), y la **galería de criaturas** (todas, construidas con el código del juego) en [`docs/criaturas.html`](docs/criaturas.html). Este repositorio contiene el **prototipo jugable** (fase 1 del roadmap: una ronda completa en gris) junto con el nido, la cría, la economía, las misiones y la monetización.
+El diseño completo está en [`docs/GDD.md`](docs/GDD.md) (**versión 3**: la sección 13 explica qué se cambió tras la primera prueba y la 12, la versión 2). La **guía visual del proyecto** (Roblox para creadores, archivos, Luau y todo el código explicado con demos interactivas) está en [`docs/index.html`](docs/index.html) y se publica con GitHub Pages en https://adrianps2001.github.io/IA/. El **informe del simulador de bots** (repetición de una partida y gráficas que comparan la v2 y la v3 de las mecánicas) está en [`docs/simulacion.html`](docs/simulacion.html), la **galería de criaturas** (todas, construidas con el código del juego) en [`docs/criaturas.html`](docs/criaturas.html), y **cómo se juega**, sin código, mecánica a mecánica y con demos (una ronda en miniatura, el parkour en 3D, abrir huevos y calculadoras), en [`docs/juego.html`](docs/juego.html). Este repositorio contiene el **prototipo jugable** (fase 1 del roadmap: una ronda completa en gris) junto con el nido, la cría, la economía, las misiones y la monetización.
 
 ## Cómo probarlo
 
@@ -97,6 +97,7 @@ docs/GDD.md                 Documento de diseño
 docs/index.html, assets/    Web de documentación (GitHub Pages)
 docs/simulacion.html        Informe del simulador (lo genera tools/sim_report.py)
 docs/criaturas.html         Galería de criaturas (la genera tools/build_creatures.py)
+docs/juego.html             Cómo se juega, sin código (datos de tools/build_docs.py)
 docs/PRUEBAS.md             Cómo probar en Studio y lista de comprobación
 docs/REVISION.md            Resumen del último trabajo y decisiones a revisar
 tools/                      export_data.luau, build_docs.py, sim_report.py, build_creatures.py,
