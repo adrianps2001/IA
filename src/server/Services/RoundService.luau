@@ -401,7 +401,15 @@ local function playRound()
 		"threshold"
 	)
 	ChaseService.begin(valid, function(player)
-		return Economy.shields(HeatService.affinity(player))
+		local isChosen = false
+		for _, start in valid do
+			if start.Chosen == player then
+				isChosen = true
+			end
+		end
+		local profile = DataService.get(player)
+		local played = if profile then profile.Stats.RoundsPlayed or 0 else 0
+		return Economy.startShields(HeatService.affinity(player), isChosen, played)
 	end, chaseTime)
 	if Config.Chase.HeadStartSeconds > 0 then
 		AnnouncementService.match(string.format("¡Los elegidos tienen %d s de ventaja!", Config.Chase.HeadStartSeconds), "info")

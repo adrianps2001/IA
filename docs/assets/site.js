@@ -318,8 +318,8 @@ const PHASES = [
   { key: "IntermissionTime", name: "Preparados", icon: "⏳", color: "#8a7f92", text: "RoundService reinicia el huevo (EggService.reset), el Calor de todos (HeatService.resetRound) y los tratos (ChaseService.resetRound)." },
   { key: "IncubationTime", name: "Incubación", icon: "🔥", color: "#ff8a2a", text: "HeatService activa las fuentes de Calor. Cada depósito suma Afinidad (y escudos para la persecución) y llena la barra; a mitad hay una lluvia de brasas doradas. Si la barra llega al 100 % la fase termina antes." },
   { key: "HatchTime", name: "Eclosión", icon: "🥚", color: "#7b5cff", text: "Sale una criatura por cada pocos jugadores; Election elige un dueño distinto para cada una y los clientes ven los focos (10 s, sin bloquear la cámara)." },
-  { key: "ChaseTime", name: "Persecución", icon: "🏃", color: "#e0464d", text: "ChaseService pone una correa a cada elegido. Robar = un toque y quedarse cerca 1,5 s (tira y afloja); el servidor cuenta el tiempo y los escudos de Afinidad bloquean un robo." },
-  { key: "ResultsTime", name: "Resultados", icon: "🏆", color: "#2fa85a", text: "Quien tenga su criatura dentro de su nido se la queda; el elegido que la perdió recibe un Huevo del Elegido y el resto, Polvo de cáscara (si participó)." },
+  { key: "ChaseTime", name: "Persecución", icon: "🏃", color: "#e0464d", text: "ChaseService pone una correa a cada elegido, que huye y se esconde por el parkour; cada 8 s da la señal y todos lo ven. Robar = un toque y quedarse cerca 1,5 s (tira y afloja); el servidor cuenta el tiempo y los escudos de Afinidad bloquean un robo." },
+  { key: "ResultsTime", name: "Resultados", icon: "🏆", color: "#2fa85a", text: "Quien tenga la criatura al acabar el tiempo se la queda; el elegido que la perdió recibe un Huevo del Elegido y el resto, Polvo de cáscara (si participó). Después, todos vuelven al lobby." },
 ];
 
 function demoRound(root) {
@@ -631,18 +631,14 @@ function demoHeartbeat(root) {
 
 function demoMap(root) {
   const svg = $("svg", root);
-  const R = 150, nestR = 128, nestSize = 26, zoneR = 82;
+  const R = 150, nestR = 128, zoneR = 82;
   const add = (tag, attrs, parent = svg) => { const n = svgEl(tag, attrs); parent.append(n); return n; };
   add("circle", { cx: 0, cy: 0, r: R + 10, fill: "#4a5c3a" });
   add("circle", { cx: 0, cy: 0, r: R + 8, fill: "none", stroke: "#fff", "stroke-dasharray": "4 4", opacity: 0.5 });
-  const zones = { Swamp: [45, "#3c5a46", "Pantano (luciérnagas, pluma)"], CrystalCave: [135, "#5aa7c8", "Cueva de cristales (cristal)"], Ruins: [225, "#a8a396", "Ruinas (hueso)"], Bridge: [315, "#8a6a4a", "Puente colgante"] };
+  const zones = { Swamp: [45, "#3c5a46"], CrystalCave: [135, "#5aa7c8"], Ruins: [225, "#a8a396"], Bridge: [315, "#8a6a4a"] };
   for (const [, [deg, color]] of Object.entries(zones)) {
     const a = (deg * Math.PI) / 180;
-    add("circle", { cx: Math.cos(a) * zoneR, cy: Math.sin(a) * zoneR, r: 23, fill: color, opacity: 0.85 });
-  }
-  for (let i = 0; i < 40; i++) {
-    const a = Math.random() * Math.PI * 2, r = Math.sqrt(28 * 28 + Math.random() * (110 * 110 - 28 * 28));
-    add("circle", { cx: Math.cos(a) * r, cy: Math.sin(a) * r, r: 1.6, fill: "#ff7a1f" });
+    add("circle", { cx: Math.cos(a) * zoneR, cy: Math.sin(a) * zoneR, r: 23, fill: color, opacity: 0.6 });
   }
   for (let i = 1; i <= 4; i++) {
     const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
@@ -650,19 +646,33 @@ function demoMap(root) {
   }
   add("circle", { cx: 0, cy: 0, r: 25, fill: "#78644a" });
   add("ellipse", { cx: 0, cy: 0, rx: 7, ry: 9, fill: "#fff0d2", stroke: "#ff9a40", "stroke-width": 2 });
-  add("rect", { x: -5, y: 27, width: 10, height: 10, fill: "#fff", opacity: 0.6 });
-  const tip = $(".map-tip", root);
+  // Campamentos de salida.
   for (let i = 1; i <= CFG.Nest.Count; i++) {
     const a = (i / CFG.Nest.Count) * Math.PI * 2;
-    const x = Math.cos(a) * nestR, y = Math.sin(a) * nestR;
-    const deg = (a * 180) / Math.PI;
-    const g = add("g", { transform: `translate(${x} ${y}) rotate(${deg + 90})`, style: "cursor:pointer" });
-    const h = nestSize / 2;
-    add("rect", { x: -h, y: -h, width: nestSize, height: nestSize, fill: "#b48c5a", stroke: "#6e553c", "stroke-width": 1.5 }, g);
-    add("rect", { x: -4.5, y: h - 1.5, width: 9, height: 3, fill: "#ffd060" }, g); // entrada hacia el huevo
-    add("text", { x: 0, y: 4, "text-anchor": "middle", "font-size": 9, fill: "#2a2233", "font-family": "Fredoka, Inter, sans-serif", transform: `rotate(${-(deg + 90)})` }, g).textContent = i;
-    g.addEventListener("mouseenter", () => (tip.textContent = `Nido ${i}: parcela de ${nestSize}×${nestSize} studs a ${nestR} studs del huevo. La entrada (amarilla) mira al centro y es donde se cierra la puerta 10 s.`));
+    add("circle", { cx: Math.cos(a) * nestR, cy: Math.sin(a) * nestR, r: 10, fill: "#b48c5a", stroke: "#6e553c", "stroke-width": 1.5 });
   }
+  const arena = DATA.Arena;
+  if (!arena) return;
+  const tip = $(".map-tip", root);
+  // Árboles: plataforma cuadrada y tronco.
+  arena.Trees.forEach((t, i) => {
+    const g = add("g", { style: "cursor:pointer" });
+    add("rect", { x: t.X - t.Half, y: t.Z - t.Half, width: t.Half * 2, height: t.Half * 2, rx: 2, fill: "#8a6a4a", opacity: 0.8 }, g);
+    add("circle", { cx: t.X, cy: t.Z, r: t.Radius, fill: "#5a3d28", stroke: "#e88a4a", "stroke-width": 1.2 }, g);
+    if (t.Ramp) add("circle", { cx: t.X, cy: t.Z, r: t.Half + 3, fill: "none", stroke: "#d9b07a", "stroke-width": 2.5, "stroke-dasharray": "3 2", opacity: 0.8 }, g);
+    const decks = t.Decks.map((d) => `${d}`).join(", ");
+    g.addEventListener("mouseenter", () => (tip.textContent = `Árbol ${i + 1}: plataformas a ${decks} studs de altura · ${t.Ramp ? "rampa en espiral con barandilla" : "escalera de mano"}${t.Hut ? " · cabaña para esconderse" : ""}.`));
+  });
+  const colors = { Bridge: ["#d9b07a", 3.5, ""], Beam: ["#5a3d28", 1.6, ""], Stones: ["#9aa3a8", 2.5, "2 4"] };
+  for (const l of arena.Links) {
+    const [color, width, dash] = colors[l.Kind];
+    add("line", { x1: l.From[0], y1: l.From[1], x2: l.To[0], y2: l.To[1], stroke: color, "stroke-width": width, "stroke-dasharray": dash, "stroke-linecap": "round" });
+  }
+  for (const r of arena.Rides) {
+    add("line", { x1: r.From[0], y1: r.From[1], x2: r.To[0], y2: r.To[1], stroke: "#4c9be8", "stroke-width": 1.4, "stroke-dasharray": r.Kind === "Zipline" ? "5 3" : "", "marker-end": "" });
+    add("circle", { cx: r.To[0], cy: r.To[1], r: 1.8, fill: "#4c9be8" });
+  }
+  for (const [x, z] of arena.Trampolines) add("circle", { cx: x, cy: z, r: 2.6, fill: "#e0464d", stroke: "#fff", "stroke-width": 0.8 });
 }
 
 const DEMOS = {

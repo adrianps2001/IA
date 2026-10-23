@@ -76,6 +76,7 @@ Config.Chase = {
 	-- GDD v3: el portador va a la misma velocidad que los demás. Sin nido al que llegar, si
 	-- fuera más lento le alcanzarían siempre (simulador: el elegido solo la conservaba el 16 %).
 	CarrierSpeedMultiplier = 1,
+	CarrierMaxBoots = false, -- el portador corre como con las botas al máximo
 	SprintMultiplier = 1.4,
 	SprintDuration = 2,
 	SprintCooldown = 8,
@@ -107,6 +108,11 @@ Config.Shields = {
 	Enabled = true,
 	HeatPerShield = 800,
 	Max = 1,
+	-- GDD v3: escudos extra al empezar la persecución (aparte del máximo). Sin nido donde
+	-- asegurar, los que menos persiguen casi nunca conservaban la criatura.
+	ChosenBonus = 1, -- para cada elegido
+	NewPlayerBonus = 1, -- para quien lleva menos de NewPlayerRounds rondas
+	NewPlayerRounds = 10,
 }
 
 -- Ladrones del bosque (GDD v2): en servidores con menos de FillTo jugadores aparecen zorros

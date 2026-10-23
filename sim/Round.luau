@@ -694,7 +694,13 @@ function Round.run(bots: { Bot }, rng: Rng, options: Options?)
 	end
 	-- Escudos de Afinidad: los da el Calor depositado en esta ronda.
 	for _, a in agents do
-		a.Shields = Economy.shields(a.Affinity)
+		local isChosen = false
+		for _, c in chases do
+			if c.Chosen == a then
+				isChosen = true
+			end
+		end
+		a.Shields = Economy.startShields(a.Affinity, isChosen, a.Bot.RoundsPlayed or math.huge)
 	end
 
 	-- Zorros del bosque en servidores pequeños: salen del borde del mapa.

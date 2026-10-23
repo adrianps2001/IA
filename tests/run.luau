@@ -258,7 +258,9 @@ end)
 
 test("Economy: velocidades de persecución", function()
 	expect(near(Economy.walkSpeed(0, false, false), 16))
-	expect(near(Economy.walkSpeed(0, true, false), 16 * Config.Chase.CarrierSpeedMultiplier))
+	if not Config.Chase.CarrierMaxBoots then
+		expect(near(Economy.walkSpeed(0, true, false), 16 * Config.Chase.CarrierSpeedMultiplier))
+	end
 	expect(near(Economy.walkSpeed(10, false, false), 16 * 1.1))
 	expect(near(Economy.walkSpeed(99, false, false), 16 * 1.1))
 end)
@@ -396,6 +398,21 @@ test("ChaseRules: señal del portador cada pocos segundos y al final", function(
 	expect(ChaseRules.isRevealed(total - 1, 1), "al final se le ve siempre")
 	expect(not ChaseRules.isRevealed(0, total), "al empezar está escondido")
 	expect(near(ChaseRules.holdTime(), c.StealHoldTime))
+end)
+
+test("Economy: escudos al empezar la persecución (Afinidad, elegido y novato)", function()
+	local sh = Config.Shields
+	local base = Economy.shields(sh.HeatPerShield * 5)
+	expect(base == sh.Max, "la Afinidad da como mucho Max escudos")
+	expect(Economy.startShields(0, false, 999) == 0)
+	expect(Economy.startShields(0, true, 999) == sh.ChosenBonus, "el elegido recibe su escudo extra")
+	expect(Economy.startShields(0, false, 0) == sh.NewPlayerBonus, "el novato recibe el suyo")
+	expect(Economy.startShields(sh.HeatPerShield, true, 0) == 1 + sh.ChosenBonus + sh.NewPlayerBonus, "se suman")
+	expect(Economy.startShields(0, false, sh.NewPlayerRounds) == 0, "solo las primeras rondas")
+	-- Llevar la criatura: con CarrierMaxBoots, como unas botas al máximo.
+	local carrier = Economy.walkSpeed(0, true, false)
+	local expected = Config.Movement.BaseWalkSpeed * Config.Chase.CarrierSpeedMultiplier * (if Config.Chase.CarrierMaxBoots then 1 + Config.Movement.BootsMaxLevel * Config.Movement.BootsPerLevel else 1)
+	expect(near(carrier, expected))
 end)
 
 test("Economy: meta de la barra", function()

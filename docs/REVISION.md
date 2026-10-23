@@ -1,118 +1,91 @@
-# GDD v2: qué se ha cambiado, qué revisar y qué más mejoraría
+# GDD v3: qué se ha cambiado, qué revisar y qué falta
 
-Este documento resume la **versión 2** de las mecánicas y termina con un **nuevo repaso** de lo que todavía podría mejorarse. El GDD actualizado está en [`GDD.md`](GDD.md). Su sección 12 explica cada cambio y la sección **(v2)** de cada mecánica cuenta el porqué.
+Este documento resume la **versión 3**, que sale de tu primera prueba del juego, y lo que conviene revisar. El GDD está en [`GDD.md`](GDD.md): la sección 13 explica cada cambio y las secciones marcadas **(v3)**, los detalles. Los cambios de la v2 siguen en la sección 12.
+
+## Lo que pediste y cómo ha quedado
+
+| Tu nota | Qué se ha hecho |
+|---|---|
+| No se pueden enseñar las criaturas | **Nido del lobby** con 12 pedestales en gradas: placa con nombre, rareza y producción, aro del color de la rareza (dorado las favoritas), foco en las Legendarias o mejores y saltitos. Valla, farolillos, arco con tu cartel y cuenco con la incubadora, que brilla cuando hay huevos listos. En la partida, tu campamento muestra tus 3 favoritas. |
+| Pasos chirriantes | Sustituidos por pasos propios: un golpecito suave por zancada, distinto en hierba y madera. |
+| Más sonidos | Catálogo [`src/shared/Sounds.luau`](../src/shared/Sounds.luau) con unos 35 sonidos: Calor (con combo), depósito, bolsa llena, cajas sorpresa, empujones, géiseres, latido del huevo, eclosión, portador, tira y afloja, robos, escudos, señal, cuenta atrás, trampolines, tirolinas, compras, cola y clics. |
+| Lobby antes de las partidas | **Lugar aparte** con más jugadores, tu nido y todo lo del nido (tienda, mejoras, cría, liberar, decorar, intercambios, Bandada). Cola con emparejamiento, teletransporte a una partida y vuelta al lobby. En la partida apareces con tu campamento. |
+| La criatura es fea | **Estilo chibi** (ojos grandes con brillo, mofletes, boquita "ω", barriguita, patitas) y un rasgo por gen. Míralas en [`criaturas.html`](criaturas.html). Se cambia de estilo en `Config.Creatures.Style` y se pueden usar modelos de un artista sin tocar código (ver la galería). |
+| Bots atascados en paredes | Bots y zorros con **PathfindingService** (`Navigator`): rodean, suben rampas y, si no avanzan, saltan, se apartan y buscan otro camino. |
+| Las cajas sorpresa no desaparecen | Se ocultaba la caja, pero no los "?" de sus caras. Ahora se apaga todo, y con la bolsa llena sale un aviso. |
+| Quedarte la criatura al acabar, parkour, sin llevarla al nido | **Gana quien la tenga al acabar.** Parkour de 12 árboles gigantes con rampas, escaleras, puentes, vigas, piedras flotantes, tirolinas, toboganes, setas trampolín y escondites. Caer no tiene castigo. **Señal** del portador cada 8 s y en los últimos 10 s. |
 
 ## Resultado, medido con el simulador
 
-30 días con 72 bots de 6 tipos y **las mismas horas de juego** en las dos versiones (las sesiones se miden en minutos). Las gráficas están en [`simulacion.html`](simulacion.html).
+Mismas semillas y horas de juego que la v2 (30 días, 60 jugadores; 12 jugadores para la persecución). Las gráficas están en [`simulacion.html`](simulacion.html).
 
-| | v1 | v2 |
+| | v2 | v3 |
 |---|---|---|
-| Duración de la ronda | 11,5 min | 6,0 min |
-| Victorias por hora de juego | 0,53 | 2,29 |
-| Sesiones con alguna victoria | 24 % | 71 % |
-| Novato: victorias por hora | 0 | 0,34 |
-| Casual: victorias por hora | 0,02 | 0,9 |
-| El elegido conserva su criatura (12 jugadores) | 9 % | 36 % |
-| Robos por criatura (12 jugadores) | 8,5 | 3,5 |
-| La criatura escapa | ~0 % | ~0 % |
-| Nuevas generaciones al mes (media) | 0,62 | 0,72 |
+| Duración de la ronda (la v3 incluye ~35 s de cola y viajes) | 6,0 min | 6,5 min |
+| Victorias por hora de juego | 2,29 | 2,14 |
+| Sesiones con alguna victoria | 71 % | 62 % |
+| El elegido conserva su criatura | 36 % | 30 % |
+| Robos por criatura | 3,5 | 2,9 |
+| La criatura cambia de manos en los últimos 10 s | — | 28 % |
+| Novato: victorias por hora | 0,34 | 0,10 |
+| Casual: victorias por hora | 1,02 | 0,17 |
+| Ladrón: victorias por hora | 3,47 | 3,73 |
 
-**Nada de esto se ha probado aún dentro de Roblox Studio.** Todo pasa los 44 tests, el análisis de tipos y la compilación, y el simulador juega con las mismas reglas que el servidor. Pero la eclosión nueva, el tira y afloja, los zorros y el compañero hay que verlos en Studio con [`PRUEBAS.md`](PRUEBAS.md).
+**Nada de esto se ha probado aún dentro de Roblox Studio.** Todo pasa los 46 tests, el análisis de tipos y la compilación, y el simulador juega con las mismas reglas. Pero el lobby, la cola, el parkour, las tirolinas, los sonidos y las criaturas nuevas hay que verlos en Studio con [`PRUEBAS.md`](PRUEBAS.md).
 
 ## Decisiones que debes revisar
 
-Todas están en `src/shared/Config.luau` salvo la Secreta (en `Rarity.luau`).
+1. **El punto débil: los que persiguen poco ganan mucho menos.** Sin nido donde asegurar, gana quien recupera la criatura al final, y esos son los que más persiguen. Ya están puestos un escudo extra para el elegido y otro para los novatos (`Config.Shields.ChosenBonus` y `NewPlayerBonus`). El simulador no imita el parkour, que debería ayudar al portador, así que puede que jugando sea mejor. Si se confirma, hay más palancas:
+   - `Chase.CarrierMaxBoots = true`: el portador corre como con las botas al máximo.
+   - Más escudos de bonus o persecución de 90 s. Con todo junto, novatos y casuales llegan a ~0,3 victorias por hora, pero queda menos de un robo por criatura (aburrido).
+   - Emparejamiento por nivel (novatos con novatos).
+2. **La señal: cada 8 s, 2 s visible, y los últimos 10 s siempre** (`Config.Chase.RevealEvery`, `RevealSeconds`, `FinalRevealSeconds`). Es la decisión que más cambia la sensación de la persecución: con señales más espaciadas hay más escondite y más búsqueda.
+3. **El portador va a la misma velocidad que los demás** (`Chase.CarrierSpeedMultiplier = 1`; en la v2 era 0,9). Más lento, le alcanzaban siempre.
+4. **Una ronda por partida** (`Config.Matchmaking.RoundsPerMatch = 1`) y vuelta al lobby. Cada viaje cuesta unos segundos de carga. Si se hace pesado, 2 o 3 rondas por partida.
+5. **Cuándo sale una partida:** con 8 jugadores enseguida, con 4 tras 20 s, con los que haya tras 45 s (`Config.Matchmaking`). Partidas de 12 como mucho.
+6. **"Seguir jugando" activado por defecto:** al volver al lobby vuelves solo a la cola a los 3 s. Así se juega seguido, pero quizá quieras que por defecto te quedes en el lobby a ver tu nido.
+7. **El parkour sale siempre igual** (semilla `Config.Arena.Seed`). Con otra semilla cambian los bloques flotantes y los arbustos; los árboles y los puentes son fijos. Es un prototipo: un mapa hecho a mano en Studio sería mejor.
+8. **Sonidos provisionales:** usan los que trae Roblox con distintos tonos (funcionan sin subir nada). Habría que elegir audios mejores de la Caja de herramientas y poner sus ID en `Sounds.luau`.
+9. **Suerte del Servidor y Ofrenda Dorada:** son compras que afectan a la partida, pero la tienda está en el lobby. Habría que poder comprarlas desde la partida (o quitarlas).
 
-1. **Rondas de ~6 min** (`Config.Round`): incubación 210 s, eclosión 10 s, persecución 120 s, prórroga 30 s, resultados 8 s y preparados 6 s. Son mi propuesta; el simulador dice que funcionan, pero el "ritmo" se juzga jugando.
-2. **Varias criaturas por ronda** (`PlayersPerCreature = 5`, `MaxCreatures = 3`). Con 2-6 jugadores sale 1; con 7-11, 2; con 12 o más, 3. Con una sola criatura para 8 jugadores el elegido solo la conservaba el 13 % de las veces. Si quieres que una criatura sea más especial, sube `PlayersPerCreature` (con 6: 1 hasta 7 jugadores, 2 hasta 13, luego 3).
-3. **Escudos de Afinidad**: 1 por cada 800 de Calor, máximo 1 (`Config.Shields`). Con 2 escudos o más baratos, el portador casi siempre ganaba (82 % aseguradas).
-4. **Robo por toque** (`Chase.TapSteal = true`) y **asegurar en 30 s** (`Chase.SecureSeconds`). Con `false` vuelve el "mantener el botón".
-5. **Precios ×2,5** (`PriceScale = 2.5`). Con 4,6 veces más victorias por hora, sin esto las Monedas se multiplicaban casi por 3 y las Nuevas generaciones llegaban el doble de rápido. Afecta a mejoras, cría, Nueva generación y decoración de Monedas.
-6. **Inactivos fuera de la Elección y sin consuelo** (`Election.RequireActivity`). Ojo al probar en Studio: si dejas a Player1 quieto, no saldrá elegido.
-7. **Zorros del bosque** con menos de 6 jugadores (`Config.ForestThieves`). En una prueba con 4 jugadores salen 2 zorros. Nunca se quedan la criatura: la tiran al suelo.
-8. **Pago por ganar retirado**: se quitan el Escudo de Cáscara de pago y la Bolsa Grande (+50 % de Calor), que pasa a ser la **Estela de Brasas** (estética). Si querías esos ingresos, ver el punto 10 del repaso.
-9. **Secreta 1 entre 50.000** (`Rarity.luau`, peso 20 sobre 1.000.000). Es una estimación: habría que ajustarla al volumen real de eclosiones.
-10. **Favoritas**: 3, sobreviven a la Nueva generación. El compañero es solo estético.
-11. **Noche de Saqueo como fase propia** de 60 s tras los resultados (`Events.LootNight.PhaseSeconds`). Sigue en versión prudente (`OwnerLoses = false`).
-12. **Luna de Sangre en 3 franjas** los sábados (02:00, 12:00 y 20:00 UTC).
-13. **"Liberar guardadas" también libera Raras** (`Release.BulkMaxRarity`): en la v2 casi no salen Comunes.
+Decisiones de la v2 que siguen abiertas: la meta del Huevo Comunitario (25 millones al mes), que la Bandada no dé alianza automática y que se puedan intercambiar Secretas.
 
-Decisiones anteriores que siguen abiertas: la meta del Huevo Comunitario (25 millones al mes, depende de cuánta gente juegue), que la Bandada no dé alianza automática y que se puedan intercambiar Secretas.
+## Para publicar el juego con lobby
 
-La versión de Claude Docs del GDD (el documento original) **no se ha tocado**. Se ha actualizado `docs/GDD.md` del repositorio.
+1. En el Creator Hub, crea un segundo lugar en tu experiencia: el de inicio será el lobby y el nuevo, el de las partidas.
+2. Publica el mismo archivo en los dos y pon sus `PlaceId` en `Config.Places`.
+3. Lobby con más jugadores por servidor (por ejemplo, 30); partidas con 12.
+
+Mientras `Config.Places` esté a 0, todo funciona en un solo servidor (como en Studio).
 
 ---
 
-## Nuevo repaso: qué más se podría mejorar
+## Qué más se podría mejorar
 
-Con la v2 en el simulador han salido problemas nuevos, y quedan pendientes algunos de antes. Ordenados por importancia.
+Lo nuevo que ha salido con la v3, y lo pendiente de antes que sigue importando.
 
-### Problemas de fondo
+### De la v3
 
-**1. Los huevos personales eclipsan a la persecución.** En un mes, un jugador muy activo abre **866 huevos personales** y gana unas 250 criaturas persiguiendo. El polvo sobra (unas 100.000 al mes para un jugador muy activo), así que la incubadora siempre está llena de huevos de 100 de polvo. El premio de la ronda pierde valor, porque las criaturas te llegan solas.
-- Además, **la cría casi no se usa**: los jugadores activos crían 0-0,3 veces al mes, porque la única ranura de la incubadora siempre está ocupada. Es un sistema entero que no aporta.
-- *Propuesta:*
-  - limitar los huevos personales (por ejemplo, 3 al día) y que cuesten más;
-  - dar a la cría una ranura propia;
-  - llevar el polvo sobrante a cosas sin efecto en la ronda: decoración, accesorios del compañero o re-tirar un gen.
+1. **Que el portador se sienta perseguido y no solo, a ratos, visto.** Un sonido de "corazón" o vibración cuando un ladrón está cerca (a menos de 20 studs) le diría al portador que huya, y a los ladrones que van bien.
+2. **Ayudas para encontrar al portador sin señal.** Huellas brillantes que se desvanecen o plumas que suelta la criatura al correr: dan algo que seguir entre señales sin delatarlo del todo.
+3. **El lobby necesita algo que hacer mientras esperas.** Un minijuego en la plaza (recoger brasas sueltas o un circuito de parkour corto con tiempo) haría la espera divertida y enseñaría a moverse por el parkour.
+4. **Tutorial del parkour.** La primera partida de un novato podría tener flechas en el suelo hacia la rampa más cercana y un cartel "pulsa E en el poste para la tirolina".
+5. **Galería del nido en el móvil.** Las placas se leen de cerca. Un botón "Ver mi nido" en el panel que mueva la cámara a las gradas lo haría lucir más.
+6. **Visitar nidos ajenos.** Ahora el lobby tiene muchos nidos juntos: un botón "Ir al nido de…" en el ranking de "me gusta" convierte el salón de la fama en algo que se visita.
 
-**2. Inflación de rarezas.** En la v2, el **58 %** de las criaturas de los nidos son Épicas (en la v1, lo más común era la Rara, con un 51 %). Ocurre porque la barra garantiza Rara desde el 25 % y Épica desde el 75 %, y ahora salen 4,6 veces más criaturas. Si todo es Épico, nada es emocionante.
-- *Propuesta:* que la garantía de la barra se aplique solo a la **primera** criatura de la ronda (las demás, con la tirada normal), y subir el umbral de la Rara al 50 %.
+### De antes (siguen pendientes)
 
-**3. La brecha de habilidad sigue siendo enorme.** Los novatos ya ganan (0,34 por hora), pero los jugadores hábiles ganan unas **10 veces más** (3,3 por hora).
-- *Propuesta:*
-  - **emparejamiento por nivel**: las primeras horas de un jugador, en servidores de novatos;
-  - o un hándicap suave: quien ha ganado mucho recientemente necesita más Calor por escudo.
-
-**4. La Afinidad da doble ventaja a los veteranos.** La bolsa mejorada lleva hasta 10 veces más Calor (de 100 a 1.000). Más Calor da más probabilidad de ser elegido **y**, desde la v2, más escudos.
-- *Propuesta:*
-  - rendimientos decrecientes en la Elección (que cuente la raíz cuadrada de la Afinidad);
-  - o que las mejoras de bolsa a partir de cierto nivel den velocidad de recogida en vez de capacidad.
-
-**5. Demasiados sistemas para el público objetivo (9-13 años).** Hay Calor, Afinidad, escudos, Monedas, polvo, mejoras, cría, incubadora, Nueva generación, favoritas, decoración, misiones, racha, Bandada, tratos, intercambio, ranking, me gusta, Huevo Comunitario y Noche de Saqueo. Es mucho para la primera hora.
-- *Propuesta:* **desbloqueo progresivo**. Por ejemplo:
-  - la tienda y las mejoras, desde el principio;
-  - la cría, con 3 criaturas;
-  - los tratos, desde la ronda 5;
-  - el intercambio, tras 2 horas de juego;
-  - la Nueva generación, cuando te acercas.
-
-  Cada sistema nuevo llega con su aviso.
-
-### Lo que más ayudaría a la retención
-
-**6. Tutorial guiado y sonido.** Siguen pendientes desde la v1 y son lo que más pesa en la retención del primer día. El GDD llama al latido del huevo "la firma sonora del juego", y el juego todavía no tiene sonido.
-
-**7. Botón de acción contextual en móvil.** Hay muchas teclas: E, F, Q, R, T, G y Shift. Tocar un prompt pequeño sobre alguien que corre es difícil en móvil. El GDD ya pedía "un botón de acción contextual (recoger / depositar / robar / pasar)".
-- *Propuesta:* un botón grande que cambie según el contexto.
-
-**8. Que los robos también tengan su ranking de defensa.** El ranking semanal solo premia robar. Un "ranking de criaturas aseguradas" y títulos semanales (por ejemplo, "Guardián del Nido") premiarían también defender.
-
-### Antes de publicar
-
-**9. Seguridad de movimiento.** El servidor fija la velocidad y valida distancias en cada robo y depósito, pero no detecta un **teletransporte** (un cliente modificado puede mover su personaje).
-- *Propuesta:* comprobar la velocidad real entre muestras (posición cada 0,5 s) y registrar anomalías, antes de abrir el juego.
-
-**10. Intercambio y dinero real.** Con Secretas intercambiables, aparecerán cuentas secundarias y ventas por dinero real fuera de Roblox.
-- *Propuesta:*
-  - intercambio desbloqueado tras X horas de juego;
-  - límite diario;
-  - Secretas y Míticas intransferibles los primeros 7 días;
-  - aviso si los valores de las dos ofertas son muy distintos.
-
-**11. Ingresos sin pago por ganar.** Al quitar el Escudo de pago y la Bolsa Grande, los ingresos dependen de la Suerte del Servidor, los pases de comodidad y la suscripción.
-- *Propuesta:*
-  - el compañero abre un catálogo natural de **cosméticos**: sombreros, estelas y accesorios para tu criatura favorita;
-  - temas de nido;
-  - **poner nombre** a tus criaturas, filtrado con `TextService` (refuerza el apego).
-
-**12. Accesibilidad.** La rareza se distingue sobre todo por el color.
-- *Propuesta:* añadir icono o texto en el mundo (no solo en el panel) para jugadores daltónicos, y un ajuste de tamaño de interfaz.
-
-**13. Medir en la beta lo que predice el simulador.** Los bots persiguen en línea recta, sin árboles ni física.
-- *Propuesta:* añadir a la analítica las métricas de la tabla de arriba (victorias por sesión, robos por criatura, el elegido conserva, rondas por sesión) para comprobar en la beta cerrada si los números se parecen.
+7. **Los huevos personales eclipsan a la persecución.** Un jugador muy activo abre cientos de huevos al mes. Limitar los huevos personales y dar a la cría una ranura propia.
+8. **Inflación de rarezas.** Muchas Épicas: la garantía de la barra solo para la primera criatura de la ronda y Rara desde el 50 %.
+9. **La Afinidad da doble ventaja** (Elección y escudos): rendimientos decrecientes.
+10. **Demasiados sistemas para 9-13 años:** desbloqueo progresivo.
+11. **Botón de acción contextual en móvil** (recoger / depositar / robar / tirolina).
+12. **Seguridad de movimiento:** ahora el cliente mueve al personaje en tirolinas y trampolines; el servidor debería comprobar velocidades razonables (y registrar teletransportes raros) antes de abrir el juego.
+13. **Intercambio y dinero real:** límites diarios y Secretas intransferibles los primeros días.
+14. **Ingresos sin pago por ganar:** cosméticos para el compañero, temas de nido (encajan muy bien con los pedestales) y poner nombre a las criaturas.
+15. **Accesibilidad:** la rareza se distingue por color; añadir icono y un ajuste de tamaño de interfaz.
+16. **Medir en la beta** lo que predice el simulador (victorias por sesión, robos por criatura, el elegido conserva, tiempo en la cola).
 
 ### Lo primero, siempre
 
-**14. Probar en Studio.** Sigue siendo el paso más importante: [`PRUEBAS.md`](PRUEBAS.md) tiene la lista con lo nuevo de la v2. Con 4 jugadores verás también los zorros.
+17. **Probar en Studio** con [`PRUEBAS.md`](PRUEBAS.md): tú solo con los zorros (F5 → Jugar) y con 4 jugadores.

@@ -40,7 +40,10 @@ end
 -- atHome: el portador está dentro de su nido; intruding: está dentro de un nido ajeno
 -- durante la persecución (ver Config.Chase).
 function Economy.walkSpeed(bootsLevel: number, isCarrier: boolean, isSprinting: boolean): number
-	local boots = math.clamp(bootsLevel, 0, Config.Movement.BootsMaxLevel) * Config.Movement.BootsPerLevel
+	-- GDD v3: llevar la criatura te da la velocidad de unas botas al máximo. Si no, un novato
+	-- sin botas acababa siempre alcanzado por quien las tiene mejoradas.
+	local level = if isCarrier and Config.Chase.CarrierMaxBoots then Config.Movement.BootsMaxLevel else bootsLevel
+	local boots = math.clamp(level, 0, Config.Movement.BootsMaxLevel) * Config.Movement.BootsPerLevel
 	local speed = Config.Movement.BaseWalkSpeed * (1 + boots)
 	if isCarrier then
 		speed *= Config.Chase.CarrierSpeedMultiplier
@@ -213,6 +216,17 @@ function Economy.shields(affinity: number): number
 		return 0
 	end
 	return math.clamp(math.floor(affinity / s.HeatPerShield), 0, s.Max)
+end
+
+-- Escudos al empezar la persecución (GDD v3): los de Afinidad más los extra del elegido y
+-- de los novatos (roundsPlayed = rondas jugadas antes de esta).
+function Economy.startShields(affinity: number, isChosen: boolean, roundsPlayed: number): number
+	if not Config.Shields.Enabled then
+		return 0
+	end
+	local extra = (if isChosen then Config.Shields.ChosenBonus else 0)
+		+ (if roundsPlayed < Config.Shields.NewPlayerRounds then Config.Shields.NewPlayerBonus else 0)
+	return Economy.shields(affinity) + extra
 end
 
 -- Polvo de cáscara de consolación según Afinidad e intentos de robo (GDD 5.5).

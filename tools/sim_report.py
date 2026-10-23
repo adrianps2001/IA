@@ -36,6 +36,8 @@ LABELS = {"before": "v2", "after": "v3"}
 # existen en Config se muestran como "(quitado)".
 CHANGES = [
     ("Chase.CarrierSpeedMultiplier", 0.9, "Sin nido al que llegar, un portador más lento acababa siempre alcanzado (el elegido solo la conservaba el 16 %). Va a la misma velocidad que los demás."),
+    ("Shields.ChosenBonus", None, "Un escudo extra para cada elegido: sin nido donde asegurar, quien menos persigue casi nunca conservaba la criatura."),
+    ("Shields.NewPlayerBonus", None, "Un escudo extra en las 10 primeras rondas de un jugador."),
     ("Chase.SecureSeconds", 30, "Ya no se asegura en el nido: gana quien tenga la criatura cuando se acaba el tiempo."),
     ("Chase.OvertimeSeconds", 30, "Sin nido no hay prórroga de \"el primero que llegue\"."),
     ("Chase.HomeHoldMultiplier", 1.5, "Sin defensa en casa."),

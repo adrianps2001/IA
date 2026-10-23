@@ -281,8 +281,8 @@ function economy() {
     }
     lineChart($(".chart-box", root), { xs: v === "both" ? SIM.Meta.after.Daily.map((d) => d.Day) : xs, series, format: m.format, log: !!m.log });
   }
-  variantSel.append(el("option", { value: "after" }, "Después (valores actuales)"));
-  variantSel.append(el("option", { value: "before" }, "Antes (valores originales)"));
+  variantSel.append(el("option", { value: "after" }, `${VARIANT.after} (actual)`));
+  variantSel.append(el("option", { value: "before" }, `${VARIANT.before} (anterior)`));
   variantSel.append(el("option", { value: "both" }, "Comparar Casual y Fiel"));
   metricSel.addEventListener("change", render);
   variantSel.addEventListener("change", render);
