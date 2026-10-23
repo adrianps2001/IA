@@ -12,6 +12,9 @@ local EVENTS = {
 	"Notify", -- mensaje para un jugador
 	"DealOffered", -- alguien te ofrece un trato
 	"ProfileUpdated", -- vista resumida de los datos guardados
+	"PartyInvited", -- te invitan a una Bandada
+	"TradeRequested", -- alguien quiere intercambiar contigo
+	"TradeUpdated", -- estado de tu ventana de intercambio (nil = cerrada)
 	-- cliente -> servidor
 	"RequestSprint",
 	"RequestPass",
@@ -23,6 +26,19 @@ local EVENTS = {
 	"RequestCollectEggs",
 	"RequestRebirth",
 	"SetGoldenOffering",
+	"RequestRelease", -- liberar 1 o 2 criaturas seleccionadas
+	"RequestReleaseStored", -- liberar las guardadas de rareza baja
+	"RequestBuyDecoration",
+	"PartyInvite",
+	"PartyRespond",
+	"PartyLeave",
+	"TradeRequest",
+	"TradeRespond",
+	"TradeSetOffer",
+	"TradeReady",
+	"TradeConfirm",
+	"TradeCancel",
+	"DebugCommand", -- solo Studio (Config.Testing.DebugTools)
 }
 
 local FUNCTIONS = {

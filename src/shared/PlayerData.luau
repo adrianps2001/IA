@@ -29,7 +29,16 @@ export type Profile = {
 	Receipts: { string },
 	LastBreed: { string }?,
 	Funnel: { [string]: boolean },
+	Decorations: { string }, -- ids de Config.Decorations compradas
+	Community: CommunityState, -- aportación al Huevo Comunitario del mes
+	Trades: { TradeRecord },
+	Likes: { Week: string, Given: { number } }, -- "me gusta" dados esta semana
 }
+
+export type CommunityState = { Month: string, Heat: number, Claimed: boolean }
+
+-- Historial de intercambios (los últimos Config.Trade.HistorySize).
+export type TradeRecord = { With: number, WithName: string, Gave: { string }, Got: { string }, At: number }
 
 local PlayerData = {}
 
@@ -45,6 +54,9 @@ PlayerData.StatNames = {
 	"RoundsPlayed",
 	"HeatDeposited",
 	"RoundsSinceChosen", -- para la suerte acumulada de la Elección
+	"Released", -- criaturas liberadas
+	"Trades", -- intercambios completados
+	"LikesReceived", -- "me gusta" recibidos en el nido (total)
 }
 
 function PlayerData.default(now: number): Profile
@@ -66,6 +78,10 @@ function PlayerData.default(now: number): Profile
 		Receipts = {},
 		LastBreed = nil,
 		Funnel = {},
+		Decorations = {},
+		Community = { Month = "", Heat = 0, Claimed = false },
+		Trades = {},
+		Likes = { Week = "", Given = {} },
 	}
 end
 
@@ -74,6 +90,16 @@ local function number(value: any, fallback: number): number
 		return value
 	end
 	return fallback
+end
+
+local function strings(list: { any }): { string }
+	local out = {}
+	for _, value in list do
+		if type(value) == "string" then
+			table.insert(out, value)
+		end
+	end
+	return out
 end
 
 -- Rellena campos que falten y descarta datos corruptos sin perder lo válido.
@@ -165,6 +191,48 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 				profile.Funnel[key] = true
 			end
 		end
+	end
+
+	if type(raw.Decorations) == "table" then
+		for _, id in raw.Decorations do
+			if type(id) == "string" and not table.find(profile.Decorations, id) then
+				table.insert(profile.Decorations, id)
+			end
+		end
+	end
+
+	local community = raw.Community
+	if type(community) == "table" and type(community.Month) == "string" then
+		profile.Community = {
+			Month = community.Month,
+			Heat = math.max(number(community.Heat, 0), 0),
+			Claimed = community.Claimed == true,
+		}
+	end
+
+	if type(raw.Trades) == "table" then
+		for _, record in raw.Trades do
+			if type(record) == "table" and type(record.WithName) == "string" and type(record.Gave) == "table" and type(record.Got) == "table" then
+				table.insert(profile.Trades, {
+					With = number(record.With, 0),
+					WithName = record.WithName,
+					Gave = strings(record.Gave),
+					Got = strings(record.Got),
+					At = number(record.At, 0),
+				})
+			end
+		end
+	end
+
+	local likes = raw.Likes
+	if type(likes) == "table" and type(likes.Week) == "string" and type(likes.Given) == "table" then
+		local given = {}
+		for _, userId in likes.Given do
+			if type(userId) == "number" then
+				table.insert(given, userId)
+			end
+		end
+		profile.Likes = { Week = likes.Week, Given = given }
 	end
 
 	return profile

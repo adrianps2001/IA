@@ -9,11 +9,13 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Creature = require(Shared.Creature)
 local Election = require(Shared.Election)
+local Events = require(Shared.Events)
 local Genes = require(Shared.Genes)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 local Rewards = require(Shared.Rewards)
 local RoundState = require(Shared.RoundState)
+local Testing = require(Shared.Testing)
 
 local AnalyticsHelper = require(script.Parent.Parent.Util.Analytics)
 local AnnouncementService = require(script.Parent.AnnouncementService)
@@ -21,7 +23,9 @@ local ChaseService = require(script.Parent.ChaseService)
 local DataService = require(script.Parent.DataService)
 local EggService = require(script.Parent.EggService)
 local HeatService = require(script.Parent.HeatService)
+local LootService = require(script.Parent.LootService)
 local NestService = require(script.Parent.NestService)
+local PartyService = require(script.Parent.PartyService)
 local QuestService = require(script.Parent.QuestService)
 
 local RoundService = {}
@@ -67,20 +71,31 @@ local function readyPlayers(): { Player }
 end
 
 function RoundService.isBloodMoon(): boolean
-	local def = Config.Events.BloodMoon
-	local now = os.date("!*t")
-	return now.wday == def.WeekDay and now.hour >= def.StartHour and now.hour < def.StartHour + def.Hours
+	return Events.isBloodMoon(os.time())
+end
+
+local skipRequested = false
+
+-- Herramienta de depuración (solo Studio): termina la fase actual.
+function RoundService.skipPhase()
+	skipRequested = true
 end
 
 -- Espera hasta que acabe el tiempo o se cumpla la condición.
 local function waitPhase(duration: number, stopEarly: (() -> boolean)?)
 	local endsAt = os.clock() + duration
+	skipRequested = false
 	while os.clock() < endsAt do
-		if stopEarly and stopEarly() then
+		if skipRequested or (stopEarly and stopEarly()) then
+			skipRequested = false
 			return
 		end
 		task.wait(0.25)
 	end
+end
+
+local function secondsText(seconds: number): string
+	return if seconds >= 60 and seconds % 60 == 0 then string.format("%d minutos", seconds // 60) else string.format("%d segundos", seconds)
 end
 
 local function runElection(players: { Player }): (Player?, { [string]: number })
@@ -146,7 +161,7 @@ local function hatch(players: { Player }, bloodMoon: boolean): (Player?, Genes.G
 	return chosen, genes
 end
 
-local function awardResults(players: { Player }, result: ChaseService.ChaseResult)
+local function awardResults(players: { Player }, result: ChaseService.ChaseResult, chosen: Player)
 	local genes = result.Genes
 	-- Si el ganador se fue justo al acabar, la criatura cuenta como escapada.
 	local winner = if result.Winner and result.Winner.Parent and genes then result.Winner else nil
@@ -168,7 +183,7 @@ local function awardResults(players: { Player }, result: ChaseService.ChaseResul
 	for _, partner in result.Partners do
 		table.insert(partnerKeys, tostring(partner.UserId))
 	end
-	local rewards = Rewards.compute(participants, if winner then tostring(winner.UserId) else nil, partnerKeys)
+	local rewards = Rewards.compute(participants, if winner then tostring(winner.UserId) else nil, partnerKeys, tostring(chosen.UserId))
 
 	if winner and genes then
 		DataService.addStat(winner, "Wins", 1)
@@ -190,9 +205,14 @@ local function awardResults(players: { Player }, result: ChaseService.ChaseResul
 			NestService.giveCreature(player, Genes.commonCopy(genes, rng), "Copy")
 			AnnouncementService.player(player, "Tu aliado ganó: recibes tu parte del polvo y una copia común.", "quest")
 		end
-		DataService.addDust(player, reward.Dust)
+		if reward.ChosenEgg then
+			NestService.giveChosenEgg(player)
+			AnnouncementService.player(player, "El huevo te eligió: te deja un Huevo del Elegido en la incubadora.", "rare")
+		end
+		local dust = math.floor(reward.Dust * PartyService.dustMultiplier(player))
+		DataService.addDust(player, dust)
 		if not reward.Creature then
-			AnnouncementService.player(player, string.format("+%d Polvo de cáscara de consuelo", reward.Dust))
+			AnnouncementService.player(player, string.format("+%d Polvo de cáscara de consuelo", dust))
 		end
 		DataService.addStat(player, "RoundsPlayed", 1)
 		QuestService.progress(player, "PlayRounds", 1)
@@ -205,6 +225,8 @@ local function playRound()
 
 	local bloodMoon = RoundService.isBloodMoon()
 	RoundState.set("BloodMoon", bloodMoon)
+	RoundState.set("LootNight", Events.isLootNight(os.time()) or Testing.enabled("ForceLootNight"))
+	LootService.resetRound()
 
 	-- Preparados
 	ChaseService.resetRound()
@@ -212,18 +234,20 @@ local function playRound()
 	EggService.reset(#readyPlayers())
 	RoundState.set("ChosenUserId", 0)
 	RoundState.set("CarrierUserId", 0)
-	setPhase("Intermission", Config.Round.IntermissionTime)
+	local intermission = Testing.duration(Config.Round.IntermissionTime)
+	setPhase("Intermission", intermission)
 	setMood("Intermission")
 	if bloodMoon then
 		AnnouncementService.server("🌕 ¡LUNA DE SANGRE! Huevos de rareza mínima Épica y persecución de 5 minutos.", "rare")
 	end
-	waitPhase(Config.Round.IntermissionTime)
+	waitPhase(intermission)
 
-	-- Incubación
-	setPhase("Incubation", Config.Round.IncubationTime)
+	-- Incubación (en Studio, más corta: Config.Testing.TimeScale)
+	local incubation = Testing.duration(Config.Round.IncubationTime)
+	setPhase("Incubation", incubation)
 	setMood("Incubation")
 	HeatService.setActive(true)
-	waitPhase(Config.Round.IncubationTime, EggService.isFull)
+	waitPhase(incubation, EggService.isFull)
 	HeatService.setActive(false)
 
 	local players = readyPlayers()
@@ -247,10 +271,10 @@ local function playRound()
 	end
 
 	-- Persecución
-	local chaseTime = if bloodMoon then Config.Round.BloodMoonChaseTime else Config.Round.ChaseTime
+	local chaseTime = Testing.duration(if bloodMoon then Config.Round.BloodMoonChaseTime else Config.Round.ChaseTime)
 	setPhase("Chase", chaseTime)
 	setMood("Chase")
-	AnnouncementService.server(string.format("¡El huevo ha elegido a %s! Tenéis %d minutos para robársela.", chosen.DisplayName, chaseTime // 60), "threshold")
+	AnnouncementService.server(string.format("¡El huevo ha elegido a %s! Tenéis %s para robársela.", chosen.DisplayName, secondsText(math.floor(chaseTime))), "threshold")
 	ChaseService.begin(chosen, genes)
 	if Config.Chase.HeadStartSeconds > 0 then
 		AnnouncementService.server(string.format("¡%s tiene %d s de ventaja!", chosen.DisplayName, Config.Chase.HeadStartSeconds), "info")
@@ -259,17 +283,19 @@ local function playRound()
 
 	-- Prórroga (gol de oro): si el portador no está en su nido, gana el primero que llegue.
 	if ChaseService.startOvertime() then
-		setPhase("Overtime", Config.Chase.OvertimeSeconds)
+		local overtime = Testing.duration(Config.Chase.OvertimeSeconds)
+		setPhase("Overtime", overtime)
 		AnnouncementService.server("⚡ ¡PRÓRROGA! Gana el primero que meta la criatura en su nido.", "threshold")
-		waitPhase(Config.Chase.OvertimeSeconds, ChaseService.isOver)
+		waitPhase(overtime, ChaseService.isOver)
 	end
 
 	-- Resultados
 	local result = ChaseService.finish()
-	setPhase("Results", Config.Round.ResultsTime)
+	local results = Testing.duration(Config.Round.ResultsTime)
+	setPhase("Results", results)
 	setMood("Incubation")
-	awardResults(readyPlayers(), result)
-	waitPhase(Config.Round.ResultsTime)
+	awardResults(readyPlayers(), result, chosen)
+	waitPhase(results)
 end
 
 function RoundService.init()

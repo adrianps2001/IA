@@ -62,6 +62,7 @@ local function makeBots(count: number, rng: Rng.Rng): { Round.Bot }
 			Payer = arch.Payer,
 		})
 	end
+	Round.formParties(bots, rng)
 	return bots
 end
 

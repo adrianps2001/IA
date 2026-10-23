@@ -4,14 +4,18 @@
 local ChaseRules = require("../src/shared/ChaseRules")
 local Config = require("../src/shared/Config")
 local Creature = require("../src/shared/Creature")
+local Decorations = require("../src/shared/Decorations")
 local Economy = require("../src/shared/Economy")
 local Election = require("../src/shared/Election")
+local Events = require("../src/shared/Events")
 local Genes = require("../src/shared/Genes")
+local Leaderboard = require("../src/shared/Leaderboard")
 local MapLayout = require("../src/shared/MapLayout")
 local PlayerData = require("../src/shared/PlayerData")
 local Quests = require("../src/shared/Quests")
 local Rarity = require("../src/shared/Rarity")
 local Rewards = require("../src/shared/Rewards")
+local Trade = require("../src/shared/Trade")
 
 local passed, failed = 0, 0
 
@@ -414,6 +418,210 @@ test("MapLayout: nidos, entradas y géiseres", function()
 		local d = MapLayout.distance(p, { X = 0, Z = 0 })
 		expect(d >= MapLayout.SourceRing.Min - 1e-6 and d <= MapLayout.SourceRing.Max + 1e-6)
 	end
+end)
+
+test("Economy: liberar criaturas", function()
+	expect(Economy.releaseDust("Common") == Config.Release.Dust.Common)
+	expect(Economy.releaseDust("Secret") == nil, "las Secretas no se liberan")
+	local rng = seeded(21)
+	local creatures = {}
+	for i = 1, 60 do
+		local rarity: Rarity.RarityName = if i <= 5 then "Epic" elseif i == 6 then "Secret" else "Common"
+		table.insert(creatures, Creature.new("c" .. i, Genes.rollSet(rng, rarity), "Test", 0))
+	end
+	local slots = 10
+	local ids = Economy.bulkReleaseIds(creatures, slots)
+	-- Nunca baja del mínimo, nunca toca las que producen y solo libera Comunes.
+	expect(#ids == #creatures - Config.Release.KeepAtLeast, tostring(#ids))
+	local top = Creature.sortByIncome(creatures)
+	local active = {}
+	for i = 1, slots do
+		active[top[i].Id] = true
+	end
+	local byId = {}
+	for _, c in creatures do
+		byId[c.Id] = c
+	end
+	for _, id in ids do
+		expect(not active[id], "liberó una criatura del nido")
+		expect(byId[id].Rarity == "Common")
+	end
+	-- Con pocas criaturas no libera nada.
+	local few = table.move(creatures, 1, 30, 1, {})
+	expect(#Economy.bulkReleaseIds(few, 5) == 0)
+end)
+
+test("Decoraciones: catálogo, aspecto y datos guardados", function()
+	local seen = {}
+	for _, def in Config.Decorations do
+		expect(not seen[def.Id], "id repetido " .. def.Id)
+		seen[def.Id] = true
+		expect(def.Currency == "Coins" or def.Currency == "Dust")
+		expect(Decorations.Pieces[def.Id] ~= nil, "sin aspecto: " .. def.Id)
+		expect(Economy.decoration(def.Id) == def)
+		expect(Economy.decorationCost(def) > 0)
+	end
+	expect(Economy.decoration("nope") == nil)
+	expect(Economy.beauty({ "lanterns", "flowers", "desconocida" }) == 3)
+	local profile = PlayerData.reconcile({ Decorations = { "lanterns", "lanterns", 5, "rug" } }, 0)
+	expect(#profile.Decorations == 2)
+	expect(#PlayerData.reconcile({}, 0).Decorations == 0)
+end)
+
+test("Rewards: premio al elegido que pierde", function()
+	local participants: { Rewards.Participant } = {
+		{ Key = "gana", Affinity = 500, StealAttempts = 2 },
+		{ Key = "elegido", Affinity = 800, StealAttempts = 0 },
+		{ Key = "otro", Affinity = 800, StealAttempts = 0 },
+	}
+	local r = Rewards.compute(participants, "gana", {}, "elegido")
+	expect(r.elegido.ChosenEgg and not r.otro.ChosenEgg and not r.gana.ChosenEgg)
+	expect(r.elegido.Dust == r.otro.Dust + Config.Consolation.ChosenBonusDust)
+	-- Si el elegido gana, no hay premio extra: ya tiene la criatura.
+	local own = Rewards.compute(participants, "elegido", {}, "elegido")
+	expect(own.elegido.Creature and not own.elegido.ChosenEgg)
+	-- Si la criatura escapa, el elegido también recibe su huevo.
+	expect(Rewards.compute(participants, nil, {}, "elegido").elegido.ChosenEgg)
+end)
+
+test("Events: ventanas horarias y Huevo Comunitario", function()
+	-- 2026-10-24 es sábado. 20:30 UTC: Luna de Sangre; 21:30: Noche de Saqueo.
+	local saturday = 1792800000 - (1792800000 % 86400) -- medianoche UTC del 2026-10-24
+	expect(os.date("!*t", saturday).wday == 7, "la fecha base debería ser sábado")
+	expect(Events.isBloodMoon(saturday + 20.5 * 3600))
+	expect(not Events.isBloodMoon(saturday + 21.5 * 3600))
+	expect(Events.isLootNight(saturday + 21.5 * 3600))
+	expect(not Events.isLootNight(saturday + 23.5 * 3600))
+	expect(not Events.isLootNight(saturday - 86400 + 21.5 * 3600), "el viernes no hay saqueo")
+	-- Ventana que cruza la medianoche.
+	local late = { WeekDays = { 7 }, StartHour = 23, Hours = 2 }
+	expect(Events.inWindow(late, saturday + 86400 + 0.5 * 3600))
+	expect(not Events.inWindow(late, saturday + 86400 + 1.5 * 3600))
+	expect(Events.monthKey(saturday) == "2026-10")
+	local a = Events.communityGenes("2026-10")
+	local b = Events.communityGenes("2026-10")
+	expect(a.Body == b.Body and a.Pattern == b.Pattern and a.Mutation == b.Mutation, "misma criatura para todos")
+	expect(Genes.rarityOf(a) == Config.Events.Community.Rarity)
+	local goal = Config.Events.Community.Goal
+	expect(Events.communityEligible(Config.Events.Community.MinContribution, false, goal))
+	expect(not Events.communityEligible(Config.Events.Community.MinContribution, true, goal))
+	expect(not Events.communityEligible(Config.Events.Community.MinContribution - 1, false, goal))
+	expect(not Events.communityEligible(10 ^ 6, false, goal - 1))
+end)
+
+test("Events.canLoot: defensas, Secretas, límites y pulsación", function()
+	local hold = Config.Events.LootNight.HoldSeconds
+	local base: Events.LootCheck = {
+		Now = 100,
+		HoldStartedAt = 100 - hold,
+		Distance = 5,
+		IsOwner = false,
+		OwnerHome = false,
+		Rarity = "Rare",
+		LootsThisRound = 0,
+		NestCooldownUntil = 0,
+	}
+	local function with(changes: { [string]: any }): Events.LootCheck
+		local c = table.clone(base) :: any
+		for k, v in changes do
+			c[k] = v
+		end
+		return c
+	end
+	expect((Events.canLoot(base)))
+	expect(not Events.canLoot(with({ OwnerHome = true })), "dueño en casa")
+	expect(not Events.canLoot(with({ Rarity = "Secret" })), "Secreta")
+	expect(not Events.canLoot(with({ IsOwner = true })))
+	expect(not Events.canLoot(with({ LootsThisRound = Config.Events.LootNight.PerRound })))
+	expect(not Events.canLoot(with({ NestCooldownUntil = 101 })))
+	expect(not Events.canLoot(with({ Distance = Config.Events.LootNight.MaxDistance + 1 })))
+	expect(not Events.canLoot(with({ HoldStartedAt = 100 - hold / 2 })), "pulsación corta")
+end)
+
+test("Economy.partyShare: la Bandada reparte el 10 % del depósito", function()
+	local keep, each = Economy.partyShare(1000, 3)
+	expect(each == math.floor(1000 * Config.Party.HeatShare / 3))
+	expect(keep + each * 3 == 1000, "no se crea ni se pierde Calor")
+	local solo, none = Economy.partyShare(1000, 0)
+	expect(solo == 1000 and none == 0)
+end)
+
+test("Trade: doble confirmación y cambio atómico", function()
+	local rng = seeded(31)
+	local function make(prefix: string, n: number): { Creature.Creature }
+		local list = {}
+		for i = 1, n do
+			table.insert(list, Creature.new(prefix .. i, Genes.rollSet(rng, "Rare"), "Test", 0))
+		end
+		return list
+	end
+	local a, b = make("a", 5), make("b", 5)
+	local function owns(list: { Creature.Creature }): (string) -> boolean
+		return function(id)
+			for _, c in list do
+				if c.Id == id then
+					return true
+				end
+			end
+			return false
+		end
+	end
+	local t = Trade.new("1", "2")
+	expect(Trade.sideOf(t, "2") == "B" and Trade.sideOf(t, "3") == nil)
+	expect(not Trade.setReady(t, "A", 0), "no se puede estar listo sin ofertas")
+	expect(not Trade.setOffer(t, "A", { "b1" }, owns(a)), "no puedes ofrecer lo que no tienes")
+	expect(not Trade.setOffer(t, "A", { "a1", "a1" }, owns(a)), "sin repetidos")
+	expect(not Trade.setOffer(t, "A", { "a1", "a2", "a3", "a4", "a5" }, owns(a)), "máximo por lado")
+	expect(Trade.setOffer(t, "A", { "a1", "a2" }, owns(a)))
+	expect(Trade.setOffer(t, "B", { "b3" }, owns(b)))
+	expect(Trade.setReady(t, "A", 10) and Trade.setReady(t, "B", 11))
+	expect(t.ReadyAt == 11)
+	-- Antes de la espera no se puede confirmar.
+	expect(not Trade.confirm(t, "A", 11 + Config.Trade.ConfirmDelay - 1) and not t.Confirmed.A)
+	-- Un cambio de oferta quita el "Listo" de los dos.
+	expect(Trade.setOffer(t, "B", { "b3", "b4" }, owns(b)))
+	expect(not t.Ready.A and not t.Ready.B and t.ReadyAt == nil)
+	Trade.setReady(t, "A", 20)
+	Trade.setReady(t, "B", 20)
+	local later = 20 + Config.Trade.ConfirmDelay
+	expect(not Trade.confirm(t, "A", later), "falta el otro")
+	expect(Trade.confirm(t, "B", later), "los dos han confirmado")
+	local ok, newA, newB = Trade.apply(t, a, b)
+	expect(ok and #newA == 5 and #newB == 5)
+	expect(owns(newA)("b3") and owns(newA)("b4") and not owns(newA)("a1"))
+	expect(owns(newB)("a1") and owns(newB)("a2") and not owns(newB)("b3"))
+	-- Si una criatura ya no está (liberada, saqueada…), no cambia nada.
+	local gone = table.move(a, 2, 5, 1, {})
+	local ok2, sameA, sameB = Trade.apply(t, gone, b)
+	expect(not ok2 and sameA == gone and sameB == b)
+	expect(Trade.value({ a[1] }) == Creature.baseIncome(a[1]))
+end)
+
+test("Leaderboard: semanas, \"me gusta\" y combinación del top", function()
+	-- La semana empieza el lunes 00:00 UTC.
+	local monday = 1792800000 - (1792800000 % 86400) + 2 * 86400 -- lunes 2026-10-26
+	expect(os.date("!*t", monday).wday == 2, "debería ser lunes")
+	expect(Leaderboard.weekKey(monday) ~= Leaderboard.weekKey(monday - 1))
+	expect(Leaderboard.weekKey(monday) == Leaderboard.weekKey(monday + 6 * 86400 + 86399))
+	expect(Leaderboard.previousWeekKey(monday) == Leaderboard.weekKey(monday - 1))
+	expect(Leaderboard.secondsToReset(monday) == 7 * 86400)
+	expect(Leaderboard.secondsToReset(monday - 10) == 10)
+
+	local state = Leaderboard.rollLikes({ Week = "viejo", Given = { 5 } }, "W1")
+	expect(state.Week == "W1" and #state.Given == 0, "la semana nueva empieza de cero")
+	expect(not Leaderboard.canLike(state, 1, 1), "a uno mismo no")
+	expect((Leaderboard.canLike(state, 1, 2)))
+	table.insert(state.Given, 2)
+	expect(not Leaderboard.canLike(state, 1, 2), "una vez por nido y semana")
+	for i = 1, Config.Leaderboard.LikesPerWeek do
+		table.insert(state.Given, 100 + i)
+	end
+	expect(not Leaderboard.canLike(state, 1, 3), "tope semanal")
+
+	local top = Leaderboard.merge({ { UserId = 1, Value = 10 }, { UserId = 2, Value = 8 }, { UserId = 3, Value = 8 } }, { [3] = 5, [4] = 1 }, 3)
+	expect(#top == 3)
+	expect(top[1].UserId == 3 and top[1].Value == 13, "suma lo pendiente")
+	expect(top[2].UserId == 1 and top[3].UserId == 2, "orden estable en empates")
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

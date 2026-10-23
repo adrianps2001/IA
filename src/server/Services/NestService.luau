@@ -2,6 +2,7 @@
 -- Nido personal (GDD 5.6, 5.7, 6): parcela, producción por segundo, incubadora, cría,
 -- mejoras permanentes y "Nueva generación".
 
+local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
@@ -9,6 +10,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Creature = require(Shared.Creature)
 local CreatureModel = require(Shared.CreatureModel)
+local DecorationModel = require(Shared.DecorationModel)
 local Economy = require(Shared.Economy)
 local Genes = require(Shared.Genes)
 local PlayerData = require(Shared.PlayerData)
@@ -34,6 +36,7 @@ end
 
 local owners: { [number]: Player } = {} -- índice de nido -> dueño
 local displays: { [Player]: { Signature: string, Folder: Folder } } = {}
+local decorated: { [Player]: { Signature: string, Folder: Folder } } = {}
 local doorUsed: { [Player]: boolean } = {}
 
 local function newId(): string
@@ -46,6 +49,10 @@ function NestService.nestOf(player: Player): MapService.Nest?
 		return MapService.Nests[index]
 	end
 	return nil
+end
+
+function NestService.ownerOf(index: number): Player?
+	return owners[index]
 end
 
 -- Índice del nido que contiene esa posición (o nil si está fuera de todos).
@@ -108,12 +115,32 @@ function NestService.refreshDisplay(player: Player)
 	end
 	local signature = table.concat(ids, ",")
 
+	local beauty = Economy.beauty(profile.Decorations)
 	nest.Sign.Text = string.format(
-		"Nido de %s\n%d criaturas · %d/s",
+		"Nido de %s\n%d criaturas · %d/s%s",
 		player.DisplayName,
 		#profile.Creatures,
-		math.floor(DataService.incomePerSecond(player))
+		math.floor(DataService.incomePerSecond(player)),
+		if beauty > 0 then string.format(" · ✨%d", beauty) else ""
 	)
+
+	local decorSignature = table.concat(profile.Decorations, ",")
+	local decor = decorated[player]
+	if not decor or decor.Signature ~= decorSignature then
+		if decor then
+			decor.Folder:Destroy()
+		end
+		local decorFolder = Instance.new("Folder")
+		decorFolder.Name = "Decorations"
+		decorFolder.Parent = nest.Model
+		decorated[player] = { Signature = decorSignature, Folder = decorFolder }
+		for _, id in profile.Decorations do
+			local model = DecorationModel.build(id, nest.Origin)
+			if model then
+				model.Parent = decorFolder
+			end
+		end
+	end
 
 	local current = displays[player]
 	if current and current.Signature == signature then
@@ -137,6 +164,22 @@ function NestService.refreshDisplay(player: Player)
 		local row = math.floor((i - 1) / columns)
 		local offset = CFrame.new((col - (columns - 1) / 2) * spacing, 2.6, 7 - row * spacing)
 		model:PivotTo(nest.Origin * offset) -- de frente a la entrada
+		-- Para la Noche de Saqueo: LootService activa este prompt cuando toca.
+		model:SetAttribute("CreatureId", creature.Id)
+		model:SetAttribute("OwnerUserId", player.UserId)
+		local body = model.PrimaryPart
+		if body and Config.Events.LootNight.Enabled then
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.Name = "LootPrompt"
+			prompt.ActionText = "Saquear"
+			prompt.ObjectText = Creature.name(creature)
+			prompt.HoldDuration = Config.Events.LootNight.HoldSeconds
+			prompt.MaxActivationDistance = Config.Events.LootNight.MaxDistance - 2
+			prompt.RequiresLineOfSight = false
+			prompt.Enabled = false
+			prompt.Parent = body
+			CollectionService:AddTag(prompt, "LootPrompt")
+		end
 		model.Parent = folder
 	end
 
@@ -168,6 +211,11 @@ local function releaseNest(player: Player)
 	if display then
 		display.Folder:Destroy()
 		displays[player] = nil
+	end
+	local decor = decorated[player]
+	if decor then
+		decor.Folder:Destroy()
+		decorated[player] = nil
 	end
 	doorUsed[player] = nil
 end
@@ -231,6 +279,16 @@ local function addEgg(
 	DataService.markChanged(player)
 end
 
+-- Premio al elegido que pierde la criatura (Rewards). Entra aunque la incubadora esté llena,
+-- como el huevo de racha.
+function NestService.giveChosenEgg(player: Player)
+	if not DataService.get(player) then
+		return
+	end
+	local range = Config.EggRanges.Chosen
+	addEgg(player, "Chosen", Config.Incubator.PersonalEggSeconds, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName)
+end
+
 local function buyPersonalEgg(player: Player)
 	local profile = DataService.get(player)
 	if not profile then
@@ -273,7 +331,7 @@ local function collectEggs(player: Player)
 					string.format("¡Ha nacido %s (%s)!", Creature.name(creature), Rarity.Info[creature.Rarity].DisplayName),
 					"rare"
 				)
-				if egg.Kind == "Personal" or egg.Kind == "Streak" or egg.Kind == "Season" then
+				if egg.Kind ~= "Breed" then
 					QuestService.progress(player, "HatchPersonal", 1)
 				end
 			end
@@ -315,6 +373,87 @@ local function startBreed(player: Player, idA: string, idB: string, free: boolea
 	profile.LastBreed = { idA, idB }
 	QuestService.progress(player, "Breed", 1)
 	return true
+end
+
+-- Liberar criaturas y decorar (sumideros de criaturas, Monedas y Polvo) ----------------
+
+local function releaseIds(player: Player, ids: { string }): (number, number)
+	local profile = DataService.get(player)
+	if not profile then
+		return 0, 0
+	end
+	local released, dust = 0, 0
+	for _, id in ids do
+		local creature, index = PlayerData.findCreature(profile, id)
+		local value = creature and Economy.releaseDust(creature.Rarity)
+		if creature and index and value then
+			table.remove(profile.Creatures, index)
+			released += 1
+			dust += value
+		end
+	end
+	if released > 0 then
+		DataService.addDust(player, dust)
+		DataService.addStat(player, "Released", released)
+		DataService.markChanged(player)
+		NestService.refreshDisplay(player)
+		AnnouncementService.player(player, string.format("Has liberado %d criatura%s: +%d de Polvo de cáscara.", released, if released == 1 then "" else "s", dust))
+	end
+	return released, dust
+end
+
+local function release(player: Player, ids: any)
+	if type(ids) ~= "table" or #ids > 2 then
+		return
+	end
+	local clean = {}
+	for _, id in ids do
+		if type(id) == "string" then
+			table.insert(clean, id)
+		end
+	end
+	local released = releaseIds(player, clean)
+	if released == 0 then
+		AnnouncementService.player(player, "Esa criatura no se puede liberar.")
+	end
+end
+
+local function releaseStored(player: Player)
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	local released = releaseIds(player, Economy.bulkReleaseIds(profile.Creatures, DataService.nestSlots(player)))
+	if released == 0 then
+		AnnouncementService.player(player, "No hay criaturas guardadas que liberar.")
+	end
+end
+
+local function buyDecoration(player: Player, id: any)
+	local profile = DataService.get(player)
+	local def = Economy.decoration(id)
+	if not profile or not def or not Config.Sinks.Decorations then
+		return
+	end
+	if table.find(profile.Decorations, def.Id) then
+		AnnouncementService.player(player, "Ya tienes esa decoración.")
+		return
+	end
+	local cost = Economy.decorationCost(def)
+	local balance = if def.Currency == "Coins" then profile.Coins else profile.Dust
+	if balance < cost then
+		AnnouncementService.player(player, if def.Currency == "Coins" then "No tienes Monedas suficientes." else "Te falta Polvo de cáscara.")
+		return
+	end
+	if def.Currency == "Coins" then
+		DataService.addCoins(player, -cost)
+	else
+		DataService.addDust(player, -cost)
+	end
+	table.insert(profile.Decorations, def.Id)
+	DataService.markChanged(player)
+	NestService.refreshDisplay(player)
+	AnnouncementService.player(player, string.format("¡%s colocada en tu nido!", def.Name), "rare")
 end
 
 -- Mejoras y Nueva generación ------------------------------------------------------------
@@ -432,6 +571,9 @@ function NestService.start()
 	Remotes.event("RequestCollectEggs").OnServerEvent:Connect(collectEggs)
 	Remotes.event("RequestUpgrade").OnServerEvent:Connect(upgrade)
 	Remotes.event("RequestRebirth").OnServerEvent:Connect(rebirth)
+	Remotes.event("RequestRelease").OnServerEvent:Connect(release)
+	Remotes.event("RequestReleaseStored").OnServerEvent:Connect(releaseStored)
+	Remotes.event("RequestBuyDecoration").OnServerEvent:Connect(buyDecoration)
 	Remotes.event("RequestBreed").OnServerEvent:Connect(function(player, idA, idB)
 		if type(idA) == "string" and type(idB) == "string" then
 			startBreed(player, idA, idB, false)

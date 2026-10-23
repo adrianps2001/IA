@@ -29,6 +29,7 @@ local STYLE_COLORS: { [string]: Color3 } = {
 local gui: ScreenGui
 local phaseLabel: TextLabel
 local timerLabel: TextLabel
+local communityLabel: TextLabel
 local barFill: Frame
 local barLabel: TextLabel
 local bagFill: Frame
@@ -91,11 +92,14 @@ local function buildCurrencies()
 		Name = "Currencies",
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -8, 0, 8),
-		Size = UDim2.fromOffset(170, 74),
+		Size = UDim2.fromOffset(170, 96),
 	}, gui)
 	UI.round(panel, 14)
 	coinsLabel = UI.label({ Position = UDim2.fromOffset(10, 6), Size = UDim2.new(1, -20, 0, 30), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = UI.Colors.Gold }, panel)
 	dustLabel = UI.label({ Position = UDim2.fromOffset(10, 38), Size = UDim2.new(1, -20, 0, 28), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = UI.Colors.Muted }, panel)
+	-- Barra global del Huevo Comunitario (todos los servidores).
+	communityLabel = UI.label({ Position = UDim2.fromOffset(10, 68), Size = UDim2.new(1, -20, 0, 20), TextXAlignment = Enum.TextXAlignment.Right, TextColor3 = UI.Colors.Muted }, panel)
+	communityLabel.Visible = Config.Events.Community.Enabled
 end
 
 local function buildBag()
@@ -323,6 +327,11 @@ function HUDController.start()
 		if RoundState.get("BloodMoon") then
 			name = "🌕 " .. name
 		end
+		if RoundState.get("LootNight") then
+			name = "🌙 " .. name .. " · Noche de Saqueo"
+		end
+		local community = tonumber(RoundState.get("CommunityProgress")) or 0
+		communityLabel.Text = if community >= 1 then "🌍 Huevo Comunitario ¡lleno!" else string.format("🌍 Huevo Comunitario %d %%", math.floor(community * 100))
 		phaseLabel.Text = name
 		timerLabel.Text = if phase == "Waiting" then "" else UI.formatTime(RoundState.timeLeft())
 		local secure = tonumber(RoundState.get("SecureProgress")) or 0

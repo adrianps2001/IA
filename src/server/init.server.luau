@@ -7,11 +7,17 @@ local services = {
 	require(script.Services.MonetizationService),
 	require(script.Services.MapService),
 	require(script.Services.QuestService),
+	require(script.Services.PartyService),
 	require(script.Services.NestService),
+	require(script.Services.CommunityService),
+	require(script.Services.LootService),
+	require(script.Services.TradeService),
+	require(script.Services.LeaderboardService),
 	require(script.Services.EggService),
 	require(script.Services.HeatService),
 	require(script.Services.ChaseService),
 	require(script.Services.RoundService),
+	require(script.Services.DebugService), -- solo responde en Studio
 }
 
 for _, service in services do

@@ -15,6 +15,10 @@ El diseño completo está en [`docs/GDD.md`](docs/GDD.md). La **guía visual del
 
 El mapa (bosque, huevo y 16 nidos) se genera por código al arrancar el servidor, así que no hace falta ningún archivo de mapa.
 
+**Último trabajo y decisiones pendientes de revisar:** [`docs/REVISION.md`](docs/REVISION.md).
+
+**Modo de prueba en Studio:** los jugadores Player2, Player3... juegan solos con un **piloto automático** (F8 lo activa o desactiva) y **F7** abre un panel de depuración (saltar fase, llenar la barra, ser el portador, dar monedas o criaturas). En Studio las fases duran el 35 % (`Config.Testing.TimeScale`). Nada de esto funciona fuera de Studio. La guía y la lista de comprobación están en [`docs/PRUEBAS.md`](docs/PRUEBAS.md).
+
 ## Cómo se juega una ronda (~12 min)
 
 | Fase | Duración | Qué pasa |
@@ -24,7 +28,7 @@ El mapa (bosque, huevo y 16 nidos) se genera por código al arrancar el servidor
 | Eclosión | 30 s | El huevo tiembla y un foco recorre a los jugadores como una ruleta. Probabilidad = Afinidad / total, con un **mínimo del 2 %** que sube un 2 % por cada ronda sin ser elegido (hasta un 12 %: "suerte acumulada"). |
 | Persecución | 3 min (5 con Luna de Sangre) | El elegido lleva la criatura a su nido, con 10 s de inmunidad y 4 s de ventaja. Para robarla hay que mantener **E** 1,5 s junto al portador (2,25 s si está en su nido). Tras un robo hay 3 s de inmunidad y quien la pierde queda **aturdido** 2 s. Dentro de un nido ajeno se va al 60 % de velocidad. El portador tiene **esprint** (Shift), **relevo** a un aliado (Q) y **puerta del nido** 10 s (R). Aguantar **25 s seguidos** en tu nido **asegura** la criatura. |
 | Prórroga | hasta 45 s | Si al acabar el tiempo el portador no está en su nido, gana el primero que meta la criatura en el suyo. |
-| Resultados | 15 s | Se la queda quien la aseguró o la tenía en su nido. El resto recibe **Polvo de cáscara** de consuelo. |
+| Resultados | 15 s | Se la queda quien la aseguró o la tenía en su nido. El resto recibe **Polvo de cáscara** de consuelo, y el elegido que la perdió, un **Huevo del Elegido**. |
 
 **Tratos (T):** puedes ofrecer un trato a otro jugador. Si uno de los dos gana, el otro se lleva el 30 % de su polvo y una copia común de la criatura. Robarle a un aliado cuenta como traición y suma al título "Traidor".
 
@@ -38,7 +42,12 @@ src/shared/                 ReplicatedStorage.Shared (servidor y cliente)
   Election, Economy,        La Elección, fórmulas de economía, misiones diarias,
   Quests, PlayerData        esquema de datos guardados (lógica pura, con tests)
   CreatureModel             Construye el modelo 3D modular de una criatura
+  Decorations, DecorationModel  Decoraciones del nido: datos y construcción
   Remotes, RoundState       Remotos y estado de ronda replicado
+  Events                    Horarios de eventos, reglas del saqueo, criatura comunitaria
+  Trade                     Máquina de estados del intercambio (doble confirmación)
+  Leaderboard               Semanas, "me gusta" y top del ranking
+  Testing                   Modo de prueba en Studio (Config.Testing)
 src/server/                 ServerScriptService.Server
   Services/DataService      Guardado con bloqueo de sesión, autosave, vista para la UI
   Services/MapService       Mapa en gris: bosque circular, huevo y 16 nidos
@@ -50,12 +59,21 @@ src/server/                 ServerScriptService.Server
   Services/QuestService     Misiones diarias y racha de 7 días
   Services/MonetizationService  Pases, productos, suscripción, recibos idempotentes
   Services/AnnouncementService  Avisos locales y globales (MessagingService)
+  Services/CommunityService Huevo Comunitario (barra global en MemoryStore)
+  Services/LootService      Noche de Saqueo
+  Services/PartyService     Bandadas
+  Services/TradeService     Intercambio de criaturas
+  Services/LeaderboardService  Ranking semanal, salón de la fama y cartel
+  Services/DebugService     Comandos de depuración (solo Studio)
 src/client/                 StarterPlayerScripts.Client
   Controllers/HUDController     Bolsa, barra, temporizador, flecha de objetivo, avisos
   Controllers/HatchController   Espectáculo de eclosión y ruleta
   Controllers/ChaseController   Botones del portador y ventana de tratos
-  Controllers/NestController    Panel del nido: criaturas, incubadora, mejoras, misiones, tienda
+  Controllers/NestController    Panel del nido: criaturas (cría y liberar), incubadora, mejoras, decorar, misiones, tienda
   Controllers/EffectsController Latido del huevo y criaturas arcoíris
+  Controllers/SocialController  Bandada, intercambio e historial
+  Controllers/DebugController   Panel de depuración (F7, solo Studio)
+  Controllers/AutopilotController Piloto automático para probar en Studio (F8)
   ChaseRules, Rewards,       Reglas de la persecución, reparto de premios y geometría
   MapLayout                 del mapa (lógica pura, compartida con el simulador)
 sim/                        Simulador de bots: Round (una ronda), Meta (semanas), run (CLI)
@@ -63,6 +81,8 @@ tests/run.luau              Tests de la lógica pura
 docs/GDD.md                 Documento de diseño
 docs/index.html, assets/    Web de documentación (GitHub Pages)
 docs/simulacion.html        Informe del simulador (lo genera tools/sim_report.py)
+docs/PRUEBAS.md             Cómo probar en Studio y lista de comprobación
+docs/REVISION.md            Resumen del último trabajo y decisiones a revisar
 tools/                      export_data.luau, build_docs.py, sim_report.py, Json.luau
 ```
 
@@ -71,7 +91,7 @@ tools/                      export_data.luau, build_docs.py, sim_report.py, Json
 ## Tests y comprobaciones
 
 ```sh
-luau tests/run.luau                    # 33 tests de rarezas, genes, Elección, economía, reglas, misiones y datos
+luau tests/run.luau                    # tests de rarezas, genes, Elección, economía, reglas, misiones y datos
 rojo sourcemap default.project.json -o sourcemap.json
 luau-lsp analyze --flag:LuauSolverV2=true --sourcemap=sourcemap.json \
   --definitions=globalTypes.d.luau src  # análisis de tipos con las APIs de Roblox
@@ -96,6 +116,7 @@ Con él se encontraron problemas serios de equilibrio, que ya están corregidos 
 - **La barra se llenaba siempre a mitad de tiempo**, así que siempre salía Épica como mínimo. Nueva meta `base + por jugador`.
 - **La economía estaba inflada unas 100 veces.** Curvas de precio más empinadas y producción sin conexión al 25 %.
 - **Los novatos casi nunca eran elegidos.** Suerte acumulada.
+- **Cientos de criaturas y Monedas sin uso a final de mes.** Liberar criaturas y decoración del nido.
 
 Los detalles, con gráficas antes/después, están en `docs/simulacion.html`.
 
@@ -119,28 +140,28 @@ Implementado:
 - Elección con mínimo del 2 %.
 - Persecución con robo, inmunidad, esprint, relevo, puerta del nido y Escudo de Cáscara, más las mecánicas añadidas con el simulador: prórroga, asegurar, territorio, aturdimiento y ventaja del elegido (configurables en `Config.Chase`).
 - Tratos y traiciones, con títulos Leal/Traidor.
-- Consuelo con Polvo de cáscara.
+- Bandada (grupos de hasta 4: reparten el 10 % del Calor, se ven a través de las paredes y +10 % de polvo con un amigo) e intercambio de criaturas con doble confirmación, cambio atómico e historial.
+- Consuelo con Polvo de cáscara, y premio al elegido que pierde la criatura: polvo extra y un Huevo del Elegido (Rara a Épica).
 - Nido con producción, también sin conexión (tope de 8 h).
 - 60 genes, 6 rarezas y cría con mutación.
 - Incubadora y huevos personales.
 - Las 5 mejoras permanentes y la Nueva generación.
 - Misiones diarias y racha de 7 días.
-- Luna de Sangre.
+- Luna de Sangre, Noche de Saqueo (sábados y domingos, 21-23 UTC; por defecto el ladrón se lleva una copia común y el dueño no pierde nada) y Huevo Comunitario (barra global mensual en MemoryStore con criatura conmemorativa).
 - Anuncios globales de Míticas y Secretas.
 - Pases, productos y suscripción, con probabilidades públicas y comprobación de `PolicyService` para los objetos aleatorios de pago.
+- Ranking semanal de robos y salón de la fama (nidos con más "me gusta"), en un cartel junto al huevo, con un OrderedDataStore por semana.
 - Embudo de analítica.
 - Ciclo visual de la ronda (atardecer, eclipse y noche).
+- Liberar criaturas a cambio de polvo (una a una o las guardadas) y decoración del nido (12 piezas de Monedas o polvo, solo estéticas). Se pueden apagar con `Config.Sinks`.
 
 Pendiente (siguientes fases del roadmap):
-- Huevo Doble, Noche de Saqueo, Huevo del Admin y Huevo Comunitario.
-- Grupos ("Bandada").
-- Intercambio de criaturas.
-- Visitas y "me gusta" en nidos, y salón de la fama.
-- Ranking semanal de robos.
+- Huevo Doble (requiere varias persecuciones a la vez) y Huevo del Admin.
+- Visitar nidos de otros servidores y títulos semanales para el campeón.
 - Emotes de reacción.
 - Selector de gen para la Ofrenda Dorada (el servidor ya la admite).
-- Liberar criaturas a cambio de polvo y más sumideros de Monedas (el simulador muestra acumulación a final de mes).
-- Emparejamiento por nivel o premio al elegido que pierde (los novatos casi nunca ganan la persecución).
+- Más sumideros de Monedas: pase de temporada y cosméticos.
+- Emparejamiento por nivel (los novatos casi nunca ganan la persecución).
 - Sonido.
 - Tutorial guiado.
 - Pase de temporada.

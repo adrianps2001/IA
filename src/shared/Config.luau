@@ -99,6 +99,9 @@ Config.Consolation = {
 	PerStealAttempt = 15,
 	MaxStealAttempts = 5,
 	WinnerBonusDust = 25,
+	-- El elegido que pierde la criatura: polvo extra y un Huevo del Elegido en la incubadora.
+	ChosenBonusDust = 50,
+	ChosenEgg = true,
 }
 
 Config.Nest = {
@@ -157,6 +160,59 @@ Config.Rebirth = {
 	MultiplierPerGeneration = 0.5,
 }
 
+-- Interruptores de los sumideros (el informe del simulador los apaga para comparar).
+Config.Sinks = { Release = true, Decorations = true }
+
+-- Liberar criaturas a cambio de Polvo de cáscara (sumidero de criaturas sobrantes).
+Config.Release = {
+	Dust = { Common = 2, Rare = 8, Epic = 30, Legendary = 120, Mythic = 500 } :: { [string]: number }, -- las Secretas no se liberan
+	BulkMaxRarity = "Common", -- "liberar guardadas" solo toca esta rareza o menos
+	KeepAtLeast = 40, -- la liberación en bloque nunca baja de aquí (lo que pide la Nueva generación)
+}
+
+-- Decoración del nido: sumidero de Monedas y de Polvo. Solo estética (+ "Belleza" en el
+-- cartel). El aspecto de cada pieza está en Decorations.luau.
+Config.Decorations = {
+	{ Id = "lanterns", Name = "Farolillos", Currency = "Coins", Cost = 25_000, Beauty = 1 },
+	{ Id = "flowers", Name = "Macetas de flores", Currency = "Coins", Cost = 120_000, Beauty = 2 },
+	{ Id = "rug", Name = "Alfombra mullida", Currency = "Coins", Cost = 600_000, Beauty = 3 },
+	{ Id = "fountain", Name = "Fuente de piedra", Currency = "Coins", Cost = 3_000_000, Beauty = 5 },
+	{ Id = "crystals", Name = "Cristales de luz", Currency = "Coins", Cost = 12_000_000, Beauty = 8 },
+	{ Id = "banner", Name = "Estandarte", Currency = "Coins", Cost = 40_000_000, Beauty = 12 },
+	{ Id = "statue", Name = "Estatua del huevo", Currency = "Coins", Cost = 150_000_000, Beauty = 20 },
+	{ Id = "aurora", Name = "Aurora del nido", Currency = "Coins", Cost = 500_000_000, Beauty = 35 },
+	{ Id = "shells", Name = "Guirnalda de cáscaras", Currency = "Dust", Cost = 400, Beauty = 2 },
+	{ Id = "dustlamp", Name = "Lámpara de polvo", Currency = "Dust", Cost = 1_500, Beauty = 4 },
+	{ Id = "gemtree", Name = "Árbol de gemas", Currency = "Dust", Cost = 5_000, Beauty = 8 },
+	{ Id = "throne", Name = "Trono de cáscara", Currency = "Dust", Cost = 15_000, Beauty = 15 },
+}
+
+-- Bandada (GDD 9): grupos de hasta 4 que duran entre rondas. Comparten una parte del Calor
+-- depositado (Afinidad), se ven a través de las paredes y, si hay un amigo de Roblox en el
+-- grupo, ganan más Polvo de cáscara. No son aliados automáticos en la persecución: para
+-- eso están los tratos.
+Config.Party = {
+	MaxSize = 4,
+	HeatShare = 0.10, -- parte de cada depósito que se reparte entre el resto del grupo
+	FriendDustBonus = 0.10,
+	InviteTimeout = 30,
+}
+
+-- Intercambio de criaturas (ver Trade.luau).
+Config.Trade = {
+	MaxItems = 4, -- criaturas por lado
+	ConfirmDelay = 3, -- segundos entre "Listo" de los dos y poder confirmar
+	RequestTimeout = 30,
+	HistorySize = 20,
+}
+
+-- Ranking semanal de robos y salón de la fama (nidos con más "me gusta" de la semana).
+Config.Leaderboard = {
+	Size = 10, -- puestos que se muestran en el cartel
+	FlushSeconds = 60, -- cada cuánto se envían los totales y se lee el top
+	LikesPerWeek = 20, -- "me gusta" que puede dar cada jugador por semana (1 por nido)
+}
+
 Config.Quests = {
 	PerDay = 3,
 	RewardDust = 50,
@@ -166,6 +222,31 @@ Config.Quests = {
 Config.Events = {
 	-- Luna de Sangre: sábados de 20:00 a 21:00 UTC.
 	BloodMoon = { WeekDay = 7, StartHour = 20, Hours = 1, MinRarity = "Epic" },
+	-- Noche de Saqueo: sábados y domingos de 21:00 a 23:00 UTC. Durante la Incubación se
+	-- puede saquear una criatura expuesta en un nido ajeno si su dueño no está dentro.
+	-- Con OwnerLoses = false (versión prudente) el dueño no pierde nada: el ladrón se lleva
+	-- una copia común. Con true, la criatura cambia de dueño (las Secretas nunca).
+	LootNight = {
+		Enabled = true,
+		WeekDays = { 7, 1 },
+		StartHour = 21,
+		Hours = 2,
+		HoldSeconds = 4,
+		MaxDistance = 12,
+		PerRound = 1, -- saqueos por jugador y ronda
+		NestCooldown = 90, -- segundos que un nido queda protegido tras un saqueo
+		OwnerLoses = false,
+	},
+	-- Huevo Comunitario: todos los servidores llenan una barra global cada mes. Al llenarse,
+	-- quien haya aportado al menos MinContribution recibe la criatura conmemorativa del mes
+	-- (la misma para todo el mundo).
+	Community = {
+		Enabled = true,
+		Goal = 25_000_000,
+		MinContribution = 500,
+		Rarity = "Epic",
+		FlushSeconds = 30, -- cada cuánto se envía lo aportado a la barra global
+	},
 }
 
 -- IDs reales de Roblox: sustituir los 0 tras crear los pases y productos en el Creator Hub.
@@ -196,10 +277,21 @@ Config.EggRanges = {
 	Personal = { Min = "Common", Max = "Epic" },
 	Streak = { Min = "Rare", Max = "Legendary" },
 	Season = { Min = "Rare", Max = "Legendary" },
+	Chosen = { Min = "Rare", Max = "Epic" }, -- premio al elegido que pierde
 }
 
 Config.ServerLuck = { Seconds = 15 * 60, Luck = 2 }
 Config.CoinPacks = { CoinsSmall = 5_000, CoinsLarge = 120_000 } :: { [string]: number }
+
+-- Pruebas en Roblox Studio (docs/PRUEBAS.md). Solo tienen efecto dentro de Studio: en un
+-- servidor publicado se ignoran siempre.
+Config.Testing = {
+	Autopilot = true, -- las ventanas de prueba juegan solas; F8 activa/desactiva en cada ventana
+	AutopilotOnFirstPlayer = false, -- Player1 (tú) empieza controlando su personaje
+	DebugTools = true, -- panel de depuración (F7): saltar fase, dar Monedas, llenar la barra...
+	TimeScale = 0.35, -- duración de las fases en Studio (0,35 = rondas de unos 4 min; 1 = normal)
+	ForceLootNight = false, -- en Studio, todas las rondas son Noche de Saqueo
+}
 
 Config.Data = {
 	StoreName = "PlayerData_v1",

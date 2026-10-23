@@ -239,6 +239,9 @@ const METRICS = {
   BagLevel: { label: "Nivel de la bolsa (máx. 9)", format: (v) => dec(v, 0) },
   Generation: { label: "Generación (Nueva generación)", format: (v) => dec(v, 1) },
   Creatures: { label: "Criaturas por jugador", format: (v) => dec(v, 0) },
+  Released: { label: "Criaturas liberadas (acumulado)", format: (v) => dec(v, 0) },
+  Dust: { label: "Polvo de cáscara guardado", format: (v) => dec(v, 0) },
+  Decorations: { label: "Decoraciones del nido (de 12)", format: (v) => dec(v, 1) },
   WinnersShare: { label: "Han ganado al menos una persecución", format: (v) => pct(v) },
   ChosenShare: { label: "Han sido elegidos al menos una vez", format: (v) => pct(v) },
 };

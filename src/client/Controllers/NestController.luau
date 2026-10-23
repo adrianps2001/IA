@@ -17,7 +17,7 @@ local player = Players.LocalPlayer
 
 local NestController = {}
 
-local TABS = { "Criaturas", "Incubadora", "Mejoras", "Misiones", "Tienda" }
+local TABS = { "Criaturas", "Incubadora", "Mejoras", "Decorar", "Misiones", "Tienda" }
 
 local panel: Frame
 local content: ScrollingFrame
@@ -26,6 +26,7 @@ local tabButtons: { [string]: TextButton } = {}
 local currentTab = "Criaturas"
 local profile: any = nil
 local selected: { string } = {}
+local confirmRelease = "" -- qué liberación espera la segunda pulsación
 local timeLabels: { [TextLabel]: number } = {}
 
 local function rarityColor(name: any): Color3
@@ -90,6 +91,7 @@ local function renderCreatures()
 					table.remove(selected, 1)
 				end
 			end
+			confirmRelease = ""
 			render()
 		end)
 	end
@@ -114,12 +116,92 @@ local function renderCreatures()
 		end
 		breedText = string.format("Criar (%s 🪙 · %s)", UI.formatNumber(Economy.breedCost(best)), UI.formatTime(Economy.breedSeconds(best)))
 	end
-	UI.button({ Size = UDim2.new(1, 0, 1, 0), Text = breedText, BackgroundColor3 = if #selected == 2 then UI.Colors.Good else UI.Colors.PanelLight }, footer, function()
+	UI.button({ Size = UDim2.new(0.6, -4, 1, 0), Text = breedText, BackgroundColor3 = if #selected == 2 then UI.Colors.Good else UI.Colors.PanelLight }, footer, function()
 		if #selected == 2 then
 			Remotes.event("RequestBreed"):FireServer(selected[1], selected[2])
 			table.clear(selected)
 		end
 	end)
+
+	-- Liberar: las seleccionadas, o si no hay ninguna, las guardadas de rareza baja.
+	-- Siempre pide una segunda pulsación para confirmar.
+	local releaseKey: string, releaseText: string, canRelease: boolean
+	if #selected > 0 then
+		local dust = 0
+		canRelease = true
+		for _, creature in profile.Creatures do
+			if table.find(selected, creature.Id) then
+				if creature.ReleaseDust then
+					dust += creature.ReleaseDust
+				else
+					canRelease = false
+				end
+			end
+		end
+		releaseKey = "sel:" .. table.concat(selected, ",")
+		releaseText = if canRelease then string.format("🕊️ Liberar (+%d ✨)", dust) else "🔒 No se puede liberar"
+	else
+		local stored = profile.StoredRelease or { Count = 0, Dust = 0 }
+		canRelease = stored.Count > 0
+		releaseKey = "stored"
+		releaseText = if canRelease then string.format("🕊️ Liberar %d guardadas (+%d ✨)", stored.Count, stored.Dust) else "🕊️ Nada que liberar"
+	end
+	local confirming = canRelease and confirmRelease == releaseKey
+	UI.button({
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.fromScale(1, 0),
+		Size = UDim2.new(0.4, -4, 1, 0),
+		Text = if confirming then "¿Seguro? Pulsa otra vez" else releaseText,
+		BackgroundColor3 = if confirming then UI.Colors.Bad elseif canRelease then UI.Colors.PanelLight else UI.Colors.Panel,
+	}, footer, function()
+		if not canRelease then
+			return
+		end
+		if confirmRelease ~= releaseKey then
+			confirmRelease = releaseKey
+			render()
+			return
+		end
+		confirmRelease = ""
+		if #selected > 0 then
+			Remotes.event("RequestRelease"):FireServer(table.clone(selected))
+			table.clear(selected)
+		else
+			Remotes.event("RequestReleaseStored"):FireServer()
+		end
+		render()
+	end)
+end
+
+local function renderDecorations()
+	local info = row(44, 0)
+	UI.label({
+		Position = UDim2.fromOffset(12, 6),
+		Size = UDim2.new(1, -24, 1, -12),
+		Text = string.format("Belleza del nido: ✨ %d · Solo estética: no cambia la producción ni la persecución.", profile.Beauty or 0),
+		TextWrapped = true,
+	}, info)
+	for index, def in profile.Decorations or {} do
+		local r = row(50, index)
+		local symbol = if def.Currency == "Coins" then "🪙" else "✨ polvo"
+		UI.label({
+			Position = UDim2.fromOffset(12, 6),
+			Size = UDim2.new(0.6, -12, 1, -12),
+			Text = string.format("%s · belleza +%d", def.Name, def.Beauty),
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, r)
+		local balance = if def.Currency == "Coins" then profile.Coins else profile.Dust
+		UI.button({
+			Position = UDim2.new(0.6, 0, 0, 6),
+			Size = UDim2.new(0.4, -10, 1, -12),
+			Text = if def.Owned then "Colocada ✔" else string.format("%s %s", UI.formatNumber(def.Cost), symbol),
+			BackgroundColor3 = if def.Owned then UI.Colors.PanelLight elseif balance >= def.Cost then UI.Colors.Good else UI.Colors.Panel,
+		}, r, function()
+			if not def.Owned then
+				Remotes.event("RequestBuyDecoration"):FireServer(def.Id)
+			end
+		end)
+	end
 end
 
 local function renderIncubator()
@@ -131,7 +213,7 @@ local function renderIncubator()
 	local offset = serverNowOffset()
 	for index, egg in profile.Incubator do
 		local r = row(44, index)
-		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada" }
+		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada", Chosen = "Huevo del Elegido" }
 		UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(0.6, -12, 1, -12), Text = "🥚 " .. (names[egg.Kind] or egg.Kind), TextXAlignment = Enum.TextXAlignment.Left }, r)
 		local t = UI.label({ Position = UDim2.new(0.6, 0, 0, 6), Size = UDim2.new(0.4, -12, 1, -12), TextXAlignment = Enum.TextXAlignment.Right }, r)
 		timeLabels[t] = egg.ReadyAt - offset
@@ -290,6 +372,8 @@ render = function()
 		renderIncubator()
 	elseif currentTab == "Mejoras" then
 		renderUpgrades()
+	elseif currentTab == "Decorar" then
+		renderDecorations()
 	elseif currentTab == "Misiones" then
 		renderQuests()
 	else
@@ -329,10 +413,14 @@ function NestController.start()
 
 	local tabs = UI.frame({ Position = UDim2.fromOffset(8, 8), Size = UDim2.new(1, -64, 0, 40), BackgroundTransparency = 1 }, panel)
 	UI.list(tabs, 4, true)
+	if not Config.Sinks.Decorations then
+		table.remove(TABS, table.find(TABS, "Decorar") :: number)
+	end
 	for index, name in TABS do
 		tabButtons[name] = UI.button({ Size = UDim2.new(1 / #TABS, -4, 1, 0), Text = name, LayoutOrder = index }, tabs, function()
 			currentTab = name
 			table.clear(selected)
+			confirmRelease = ""
 			render()
 		end)
 	end
