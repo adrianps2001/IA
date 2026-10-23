@@ -359,8 +359,10 @@ Config.Lobby = {
 	OriginX = 0,
 	OriginZ = 1000,
 	NestCount = 24, -- parcelas de nido en el lobby (el lobby admite más jugadores)
-	NestRadius = 120, -- distancia de cada nido al centro de la plaza
+	NestRadius = 120, -- distancia mínima de cada nido al centro de la plaza (MapLayout.lobbyNestRadius
+	-- la aumenta lo necesario para que los nidos no se toquen)
 	NestSize = 34,
+	NestGap = 6, -- hueco mínimo entre dos nidos vecinos (por la parte de dentro, la más estrecha)
 	DisplaySlots = 12, -- criaturas que se lucen en los pedestales del nido
 }
 

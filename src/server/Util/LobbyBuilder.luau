@@ -5,6 +5,7 @@
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
+local MapLayout = require(Shared.MapLayout)
 
 local NestBuilder = require(script.Parent.NestBuilder)
 
@@ -72,7 +73,8 @@ function LobbyBuilder.build(parent: Instance): Lobby
 	folder.Name = "Lobby"
 	folder.Parent = parent
 
-	local radius = Config.Lobby.NestRadius + Config.Lobby.NestSize
+	local nestRadius = MapLayout.lobbyNestRadius()
+	local radius = nestRadius + Config.Lobby.NestSize
 	disc(origin + Vector3.new(0, -2, 0), 4, radius * 2 + 30, { Name = "Ground", Color = Color3.fromRGB(96, 150, 72), Material = Enum.Material.Grass }, folder)
 	-- Muro invisible alrededor.
 	local segments = 40
@@ -169,7 +171,7 @@ function LobbyBuilder.build(parent: Instance): Lobby
 	local count = Config.Lobby.NestCount
 	for index = 1, count do
 		local angle = (index / count) * math.pi * 2
-		local center = origin + Vector3.new(math.cos(angle) * Config.Lobby.NestRadius, 0, math.sin(angle) * Config.Lobby.NestRadius)
+		local center = origin + Vector3.new(math.cos(angle) * nestRadius, 0, math.sin(angle) * nestRadius)
 		local nestOrigin = CFrame.lookAt(center, origin)
 		table.insert(nests, NestBuilder.lobby(index, nestOrigin, nestsFolder))
 		-- Camino de la plaza a la entrada.
@@ -186,7 +188,7 @@ function LobbyBuilder.build(parent: Instance): Lobby
 		}, folder)
 		-- Un arbolito entre cada dos nidos.
 		local between = angle + math.pi / count
-		local treePos = origin + Vector3.new(math.cos(between) * (Config.Lobby.NestRadius + 4), 0, math.sin(between) * (Config.Lobby.NestRadius + 4))
+		local treePos = origin + Vector3.new(math.cos(between) * (nestRadius + 4), 0, math.sin(between) * (nestRadius + 4))
 		block({ Name = "Trunk", Size = Vector3.new(1.6, 9, 1.6), CFrame = CFrame.new(treePos + Vector3.new(0, 4.5, 0)), Color = Color3.fromRGB(95, 65, 45), Material = Enum.Material.Wood }, folder)
 		block({
 			Name = "Leaves",

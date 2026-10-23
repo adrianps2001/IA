@@ -662,7 +662,7 @@
     var c = C.Chase, box = $("#chase-rules");
     if (box) [
       ["⏱️", "Ventaja", "El elegido es inmune " + c.StartImmunitySeconds + " s y los demás esperan " + c.HeadStartSeconds + " s antes de moverse."],
-      ["💨", "Esprint", "Shift: ×" + String(c.SprintMultiplier).replace(".", ",") + " de velocidad " + c.SprintDuration + " s, cada " + c.SprintCooldown + " s."],
+      ["💨", "Esprint", "Solo el portador. Shift o botón ⚡: ×" + String(c.SprintMultiplier).replace(".", ",") + " de velocidad " + c.SprintDuration + " s, cada " + c.SprintCooldown + " s."],
       ["🔁", "Relevo", "Q: el portador pasa la criatura a un aliado (Bandada o trato) que esté a menos de " + c.PassRange + " studs."],
       ["😵", "Aturdido", "A quien le roban se queda " + c.StunSeconds + " s sin moverse; el nuevo portador es inmune " + c.ImmunityAfterSteal + " s."],
       ["🏃", "Misma velocidad", "El portador corre igual que los demás: para escapar hay que usar el parkour, no las piernas."],
