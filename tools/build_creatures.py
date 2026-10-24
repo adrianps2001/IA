@@ -32,6 +32,7 @@ PRELUDE = 'local __M = require("./RobloxMock")\nlocal ' + ", ".join(MOCK_NAMES) 
 DRIVER = r'''
 local Mock = require("./RobloxMock")
 local Style = require("./STYLE")
+local Parts = require("./Parts")
 local Genes = require("./Genes")
 local Creature = require("./Creature")
 local Rarity = require("./Rarity")
@@ -54,6 +55,7 @@ for _, slot in { "Body", "Head", "Pattern", "Aura", "Mutation" } do
 end
 
 local samples = {}
+local group = "Body"
 local function add(body, head, pattern, aura, mutation)
 	local genes = { Body = body.Id, Head = head.Id, Pattern = pattern.Id, Aura = aura.Id, Mutation = mutation.Id }
 	local creature = Creature.new("demo", genes, "Demo", 0)
@@ -62,8 +64,12 @@ local function add(body, head, pattern, aura, mutation)
 	if genes.Mutation == "mut_golden" then
 		color = Mock.Color3.fromRGB(255, 200, 40)
 	end
-	Style.build(model, genes, 1, color)
+	local body = Style.build(model, genes, 1, color)
+	if aura.Id == "aura_blackhole" then
+		Parts.blackHole(model, body)
+	end
 	table.insert(samples, {
+		Group = group,
 		Name = Creature.name(creature),
 		Rarity = creature.Rarity,
 		RarityName = Rarity.Info[creature.Rarity].DisplayName,
@@ -76,9 +82,19 @@ local normal = Genes.get("mut_none")
 for i, body in bodies do
 	add(body, heads[(i - 1) % #heads + 1], patterns[(i + 2) % #patterns + 1], auras[1], normal)
 end
+group = "Head"
 for i, head in heads do
 	add(bodies[(i * 5) % #bodies + 1], head, patterns[(i * 3) % #patterns + 1], auras[1], normal)
 end
+-- Las Secretas (v3.1): un gen Secreto en cada ranura, solos y juntos.
+group = "Secret"
+local g = Genes.get
+add(g("body_phoenix"), g("head_unicorn"), g("pattern_aurora"), g("aura_blackhole"), g("mut_rainbow"))
+add(g("body_phoenix"), g("head_beak"), g("pattern_plain"), g("aura_none"), normal)
+add(g("body_round"), g("head_unicorn"), g("pattern_spots"), g("aura_none"), normal)
+add(g("body_chubby"), g("head_ears"), g("pattern_aurora"), g("aura_none"), normal)
+add(g("body_cloud"), g("head_halo"), g("pattern_galaxy"), g("aura_blackhole"), normal)
+add(g("body_phoenix"), g("head_crown"), g("pattern_aurora"), g("aura_none"), normal)
 print(Json.encode(samples))
 '''
 

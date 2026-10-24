@@ -1,6 +1,7 @@
 --!strict
 -- Pruebas de la lógica pura (sin Roblox). Ejecutar con: luau tests/run.luau
 
+local AdminCommands = require("../src/shared/AdminCommands")
 local ArenaLayout = require("../src/shared/ArenaLayout")
 local ChaseRules = require("../src/shared/ChaseRules")
 local Config = require("../src/shared/Config")
@@ -12,6 +13,8 @@ local Events = require("../src/shared/Events")
 local Genes = require("../src/shared/Genes")
 local Leaderboard = require("../src/shared/Leaderboard")
 local MapLayout = require("../src/shared/MapLayout")
+local MovementRules = require("../src/shared/MovementRules")
+local RateLimiter = require("../src/shared/RateLimiter")
 local PlayerData = require("../src/shared/PlayerData")
 local Quests = require("../src/shared/Quests")
 local Sounds = require("../src/shared/Sounds")
@@ -50,13 +53,20 @@ local function seeded(seed: number): () -> number
 	end
 end
 
-test("el catálogo tiene 60 genes, 12 por ranura", function()
+test("el catálogo tiene 64 genes: 12 normales por ranura y un Secreto en cada una", function()
 	local total = 0
 	for _, slot in Genes.Slots do
-		expect(#Genes.BySlot[slot] == 12, slot)
+		local secrets = 0
+		for _, gene in Genes.BySlot[slot] do
+			if gene.Rarity == "Secret" then
+				secrets += 1
+			end
+		end
+		expect(secrets == 1, slot .. " debe tener un gen Secreto")
+		expect(#Genes.BySlot[slot] - secrets == (if slot == "Mutation" then 11 else 12), slot)
 		total += #Genes.BySlot[slot]
 	end
-	expect(total == 60)
+	expect(total == 64)
 end)
 
 test("los pesos de rareza suman 1.000.000", function()
@@ -118,9 +128,22 @@ test("Genes.rollSet produce exactamente la rareza pedida", function()
 	end
 end)
 
-test("las Secretas llevan el gen Arcoíris en Mutación", function()
-	local set = Genes.rollSet(seeded(9), "Secret")
-	expect(set.Mutation == "mut_rainbow")
+test("las Secretas llevan un gen Secreto, y salen de todas las ranuras", function()
+	local rng = seeded(9)
+	local seen = {}
+	for _ = 1, 400 do
+		local set = Genes.rollSet(rng, "Secret")
+		expect(Genes.rarityOf(set) == "Secret")
+		for _, slot in Genes.Slots do
+			local gene = Genes.get((set :: any)[slot])
+			if gene and gene.Rarity == "Secret" then
+				seen[slot] = true
+			end
+		end
+	end
+	for _, slot in Genes.Slots do
+		expect(seen[slot] == true, "nunca salió el Secreto de " .. slot)
+	end
 end)
 
 test("una ofrenda sesga su gen", function()
@@ -846,6 +869,109 @@ test("los nidos del lobby no se solapan con sus vecinos", function()
 	end
 	local step = 2 * math.pi / lobby.NestCount
 	expect(gap(corners(step), corners(2 * step)) >= lobby.NestGap - 0.01, "los nidos vecinos se tocan")
+end)
+
+test("los precios de la tienda son redondos en todos los niveles", function()
+	local function isRound(n: number): boolean
+		if n < 100 then
+			return n % 5 == 0
+		end
+		local step = 10 ^ (math.floor(math.log10(n)) - 1)
+		return n % step == 0
+	end
+	expect(Economy.roundPrice(1312) == 1300 and Economy.roundPrice(56273) == 56000 and Economy.roundPrice(375) == 380)
+	for _, name in Economy.UpgradeNames do
+		local last = 0
+		for level = 0, 30 do
+			local cost = Economy.upgradeCost(name, level)
+			if not cost then
+				break
+			end
+			expect(isRound(cost), name .. " nivel " .. level .. ": " .. cost)
+			expect(cost > last, name .. " no sube de precio en el nivel " .. level)
+			last = cost
+		end
+	end
+	for _, rarity in Rarity.Order do
+		expect(isRound(Economy.breedCost(rarity)), "cría " .. rarity)
+	end
+	for generation = 0, 10 do
+		expect(isRound(Economy.rebirthCoins(generation)))
+	end
+	for _, def in Config.Decorations do
+		expect(isRound(Economy.decorationCost(def)), def.Name)
+	end
+end)
+
+test("anti-trampas: lo legal pasa y lo imposible no", function()
+	local dt = Config.AntiCheat.CheckEvery
+	-- Andar, esprintar con la criatura, tirolina, tobogán, seta trampolín y caer: legal.
+	expect(MovementRules.check(16 * dt, 0, 0, dt) == "ok")
+	expect(MovementRules.check(16 * 1.1 * Config.Chase.SprintMultiplier * dt, 0, 0, dt) == "ok")
+	expect(MovementRules.check(Config.Arena.ZiplineSpeed * dt, -20 * dt, 0, dt) == "ok")
+	expect(MovementRules.check(0, Config.Arena.TrampolinePower * dt, 0, dt) == "ok")
+	expect(MovementRules.check(0, -200 * dt, 0, dt) == "ok")
+	-- Un tirón por lag (2 s de tirolina de golpe) tampoco debería castigarse.
+	expect(MovementRules.check(Config.Arena.ZiplineSpeed * 2, 0, 0, 2) == "ok")
+	-- Teletransportarse 200 studs o subir 150 de golpe: no.
+	expect(MovementRules.check(200, 0, 0, dt) == "tooFast")
+	expect(MovementRules.check(0, 150, 0, dt) == "tooHigh")
+	expect(#MovementRules.recentStrikes({ 0, 50, 100 }, 120) == 1, "solo cuentan los del último minuto")
+end)
+
+test("límite de remotos: cubo de fichas", function()
+	local limiter = RateLimiter.new(3, 2)
+	for _ = 1, 3 do
+		expect(limiter:allow("a", 0))
+	end
+	expect(not limiter:allow("a", 0), "la cuarta llamada seguida se ignora")
+	expect(limiter:allow("b", 0), "cada clave tiene su cubo")
+	expect(limiter:allow("a", 0.5), "medio segundo después hay una ficha más")
+	expect(not limiter:allow("a", 0.5))
+	limiter:forget("a")
+	expect(limiter:allow("a", 0.5), "al olvidar, se empieza de cero")
+	-- Pulsar un botón a mano (5 veces por segundo) nunca llega al límite real.
+	local real = RateLimiter.new(Config.AntiCheat.RemoteCapacity, Config.AntiCheat.RemoteRefillPerSecond)
+	local ok = true
+	for i = 0, 50 do
+		ok = ok and real:allow("p", i * 0.2)
+	end
+	expect(ok)
+end)
+
+test("límites de intercambio: tope diario y Secretas bloqueadas unos días", function()
+	local now = 1_800_000_000
+	local day = 86400
+	local secret = Creature.new("s1", Genes.rollSet(seeded(5), "Secret"), "Hatch", now - day)
+	local epic = Creature.new("e1", Genes.rollSet(seeded(6), "Epic"), "Hatch", now)
+	expect(Trade.isLocked(secret, now), "Secreta de hace 1 día: bloqueada")
+	expect(not Trade.isLocked(secret, now + Config.Trade.SecretLockDays * day), "a los días, libre")
+	expect(not Trade.isLocked(epic, now), "las demás rarezas no se bloquean")
+	-- Al llegar por intercambio, vuelve a contar desde ese momento.
+	local state = Trade.new("a", "b")
+	state.Offers.A = { "s1" }
+	local later = now + Config.Trade.SecretLockDays * day + 1
+	local ok, _, newB = Trade.apply(state, { secret }, {}, later)
+	expect(ok and newB[1].Received == later and Trade.isLocked(newB[1], later + 1))
+	local records = {}
+	for i = 1, Config.Trade.MaxPerDay do
+		table.insert(records, { At = now - i * 60 })
+	end
+	table.insert(records, { At = now - 2 * day })
+	expect(Trade.tradesToday(records, now) == Config.Trade.MaxPerDay, "los de hace 2 días no cuentan")
+end)
+
+test("comandos de administrador: se leen bien y solo para administradores", function()
+	local c = AdminCommands.parse("  !dar monedas Ana 5000 ")
+	expect(c ~= nil and c.Name == "dar" and c.Args[1] == "monedas" and c.Args[3] == "5000")
+	local b = AdminCommands.parse("/ban Leo 24 dice palabrotas")
+	expect(b ~= nil and b.Name == "ban" and AdminCommands.rest(b.Args, 3) == "dice palabrotas")
+	expect(AdminCommands.parse("hola a todos") == nil, "el chat normal no es un comando")
+	expect(AdminCommands.parse("/e dance") == nil, "los comandos de Roblox no son nuestros")
+	expect(AdminCommands.parse("!") == nil)
+	expect(AdminCommands.isAdmin(123, 123), "el dueño siempre")
+	expect(not AdminCommands.isAdmin(456, 123), "los demás, solo si están en Config.Admins")
+	expect(not AdminCommands.isAdmin(0, 0), "un grupo como dueño no hace admin a nadie")
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

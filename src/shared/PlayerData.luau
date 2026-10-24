@@ -36,7 +36,12 @@ export type Profile = {
 	Favorites: { string }, -- ids de criaturas marcadas con ⭐ (Config.Favorites.Max)
 	Shoulder: string?, -- id de la criatura que llevas al hombro (nil = ninguna)
 	Likes: { Week: string, Given: { number } }, -- "me gusta" dados esta semana
+	Settings: Settings, -- ajustes del jugador (v3.1, botón ⚙️)
 }
+
+-- Ajustes (v3.1): volumen de efectos y de pasos (0 a 1), tamaño de la interfaz y si se ven
+-- las criaturas al hombro de los demás (en móviles flojos conviene quitarlas).
+export type Settings = { Effects: number, Steps: number, UIScale: number, ShowPets: boolean }
 
 export type CommunityState = { Month: string, Heat: number, Claimed: boolean }
 
@@ -71,7 +76,7 @@ function PlayerData.default(now: number): Profile
 		Version = PlayerData.Version,
 		Coins = 0,
 		Dust = 0,
-		Upgrades = { Bag = 0, Boots = 0, Sniffer = 0, Nest = 0, Incubator = 0 },
+		Upgrades = { Bag = 0, Boots = 0, Nest = 0, Incubator = 0 }, -- (v3.1: se quitó el Olfato, que no hacía nada)
 		Creatures = {},
 		Incubator = {},
 		Generation = 0,
@@ -86,6 +91,7 @@ function PlayerData.default(now: number): Profile
 		Trades = {},
 		Favorites = {},
 		Likes = { Week = "", Given = {} },
+		Settings = PlayerData.cleanSettings(nil),
 	}
 end
 
@@ -94,6 +100,21 @@ local function number(value: any, fallback: number): number
 		return value
 	end
 	return fallback
+end
+
+PlayerData.SettingsLimits = { UIScale = { Min = 0.8, Max = 1.3 } }
+
+-- Ajustes válidos a partir de lo que llegue (del DataStore o del cliente): números acotados y
+-- valores por defecto para lo que falte o no tenga sentido.
+function PlayerData.cleanSettings(raw: any): Settings
+	local t = if type(raw) == "table" then raw else {}
+	local limits = PlayerData.SettingsLimits.UIScale
+	return {
+		Effects = math.clamp(number(t.Effects, 1), 0, 1),
+		Steps = math.clamp(number(t.Steps, 1), 0, 1),
+		UIScale = math.clamp(number(t.UIScale, 1), limits.Min, limits.Max),
+		ShowPets = if type(t.ShowPets) == "boolean" then t.ShowPets else true,
+	}
 end
 
 local function strings(list: { any }): { string }
@@ -227,6 +248,8 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 			end
 		end
 	end
+
+	profile.Settings = PlayerData.cleanSettings(raw.Settings)
 
 	-- Al hombro: solo si la criatura existe.
 	if type(raw.Shoulder) == "string" and PlayerData.findCreature(profile, raw.Shoulder) then

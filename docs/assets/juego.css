@@ -146,7 +146,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .genes-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin: 8px 0; }
 .gene-chip { display: flex; align-items: center; gap: 6px; font-size: .84rem; background: var(--surface-2); border-radius: 10px; padding: 5px 8px; border-left: 4px solid; }
 .gene-chip small { color: var(--muted); display: block; font-size: .72rem; }
-.gene-grid { display: grid; grid-template-columns: 90px repeat(12, 1fr); gap: 3px; font-size: .7rem; overflow-x: auto; }
+.gene-grid { display: grid; grid-template-columns: 90px repeat(13, 1fr); gap: 3px; font-size: .7rem; overflow-x: auto; }
 .gene-grid .h { font-weight: 700; display: flex; align-items: center; font-size: .78rem; }
 .gene-grid .g { aspect-ratio: 1; border-radius: 6px; cursor: pointer; border: 2px solid transparent; transition: transform .15s; position: relative; }
 .gene-grid .g:hover { transform: scale(1.15); z-index: 2; }
@@ -227,7 +227,7 @@ footer.g-foot { text-align: center; color: var(--muted); font-size: .86rem; padd
   .grid-3 { grid-template-columns: 1fr; }
   .topbar .logo span { display: none; }
   .bars .b { grid-template-columns: 74px 1fr 52px; }
-  .gene-grid { grid-template-columns: 64px repeat(12, minmax(18px, 1fr)); }
+  .gene-grid { grid-template-columns: 64px repeat(13, minmax(18px, 1fr)); }
 }
 
 /* Que nada empuje la página hacia los lados en el móvil */

@@ -28,6 +28,7 @@ local SHAPES: { [string]: Vector3 } = {
 	body_cloud = Vector3.new(3.4, 2.6, 3),
 	body_star = Vector3.new(3, 2.9, 2.8),
 	body_void = Vector3.new(3, 2.9, 2.8),
+	body_phoenix = Vector3.new(3, 3, 2.8),
 }
 
 local BLUSH = Color3.fromRGB(255, 140, 165)
@@ -112,6 +113,8 @@ function Chibi.build(model: Model, genes: Genes.GeneSet, s: number, bodyColor: C
 		body.Material = Enum.Material.Slate
 	elseif id == "body_void" then
 		body.Color = Color3.fromRGB(45, 30, 70)
+	elseif id == "body_phoenix" then
+		body.Color = Color3.fromRGB(255, 140, 60) -- sin pastel: es fuego
 	end
 
 	-- Barriguita clara (abajo, para que no tape la cara).
@@ -223,6 +226,19 @@ function Chibi.build(model: Model, genes: Genes.GeneSet, s: number, bodyColor: C
 		local halo = part("Halo", Enum.PartType.Cylinder, Vector3.new(0.06 * Y, 0.7 * X, 0.7 * X), hc, model)
 		halo.CFrame = body.CFrame * CFrame.new(0, 0.74 * Y, 0) * CFrame.Angles(0, 0, math.rad(90))
 		halo.Material = Enum.Material.Neon
+	elseif h == "head_unicorn" then
+		-- Cuerno en espiral (piezas cada vez más finas y de colores pastel brillantes) y crin.
+		local spiral = { Color3.fromRGB(255, 190, 240), Color3.fromRGB(200, 180, 255), Color3.fromRGB(170, 230, 255), Color3.fromRGB(255, 255, 255) }
+		for k = 0, 3 do
+			local seg = blob("UnicornHorn", Vector3.new(0.16 - k * 0.03, 0.14, 0.16 - k * 0.03) * X, spiral[k + 1], model)
+			seg.CFrame = body.CFrame * CFrame.new(0, 0.5 * Y + k * 0.11 * X, -0.1 * Z - k * 0.04 * X) * CFrame.Angles(math.rad(-20), math.rad(k * 35), 0)
+			seg.Material = Enum.Material.Neon
+		end
+		local mane = { Color3.fromRGB(255, 160, 220), Color3.fromRGB(190, 160, 255), Color3.fromRGB(150, 220, 255), Color3.fromRGB(255, 230, 160) }
+		for k = 1, 4 do
+			local puff = blob("Mane", Vector3.one * 0.22 * X, mane[k], model)
+			puff.CFrame = body.CFrame * CFrame.new(onSurface(size, math.rad(70 - k * 14), 0) * 0.98)
+		end
 	elseif h == "head_comet" then
 		local stalk = part("Antenna", Enum.PartType.Block, Vector3.new(0.05 * X, 0.36 * Y, 0.05 * X), Parts.shade(soft, 0.3), model)
 		stalk.CFrame = body.CFrame * CFrame.new(0, 0.62 * Y, 0)
@@ -235,7 +251,16 @@ function Chibi.build(model: Model, genes: Genes.GeneSet, s: number, bodyColor: C
 	if patternGene and patternGene.Id ~= "pattern_plain" then
 		local pc = rgb(patternGene.Color)
 		local neon = Rarity.tier(patternGene.Rarity) >= 4
-		if patternGene.Id == "pattern_stripes" or patternGene.Id == "pattern_zigzag" then
+		if patternGene.Id == "pattern_aurora" then
+			-- Aurora: bandas de luz verde, turquesa y violeta por la espalda.
+			local bands = { Color3.fromRGB(90, 255, 170), Color3.fromRGB(80, 220, 255), Color3.fromRGB(190, 120, 255), Color3.fromRGB(120, 255, 220) }
+			for k = 0, 3 do
+				local lat = math.rad(-12 + k * 16)
+				local p = stick("Pattern", body, onSurface(size, lat, math.rad((k % 2) * 14 - 7)) * 0.97, Vector3.new(0.78 * X * math.cos(lat), 0.07 * Y, 0.05 * Z), bands[k + 1], model)
+				p.Material = Enum.Material.Neon
+				p.Transparency = 0.1
+			end
+		elseif patternGene.Id == "pattern_stripes" or patternGene.Id == "pattern_zigzag" then
 			for k = 0, 2 do
 				local lat = math.rad(-5 + k * 22)
 				local p = stick("Pattern", body, onSurface(size, lat, 0) * 0.97, Vector3.new(0.7 * X * math.cos(lat), 0.08 * Y, 0.06 * Z), pc, model)
@@ -291,6 +316,33 @@ function Chibi.build(model: Model, genes: Genes.GeneSet, s: number, bodyColor: C
 	elseif id == "body_long" then
 		local segment = blob("Segment", Vector3.new(0.72 * X, 0.7 * Y, 0.5 * Z), soft, model)
 		segment.CFrame = body.CFrame * CFrame.new(0, -0.14 * Y, 0.5 * Z)
+	elseif id == "body_phoenix" then
+		-- Cresta y alas de llamas, cola de fuego y chispas que suben.
+		local flames = { Color3.fromRGB(255, 220, 90), Color3.fromRGB(255, 150, 40), Color3.fromRGB(255, 90, 40) }
+		for k = -1, 1 do
+			local flame = blob("Flame", Vector3.new(0.14 * X, 0.42 * Y, 0.14 * X), flames[k + 2], model)
+			flame.CFrame = body.CFrame * CFrame.new(k * 0.13 * X, 0.55 * Y, 0.08 * Z) * CFrame.Angles(math.rad(-15), 0, math.rad(k * -20))
+			flame.Material = Enum.Material.Neon
+		end
+		for _, side in { -1, 1 } do
+			for k = 0, 2 do
+				local feather = blob("FlameWing", Vector3.new(0.06 * X, (0.42 - k * 0.08) * Y, 0.3 * Z), flames[k + 1], model)
+				feather.CFrame = body.CFrame * CFrame.new(side * (0.46 + k * 0.05) * X, (0.18 - k * 0.1) * Y, (0.2 + k * 0.06) * Z) * CFrame.Angles(0, math.rad(side * 25), math.rad(side * (-40 + k * 15)))
+				feather.Material = Enum.Material.Neon
+			end
+		end
+		local tailFlame = blob("FlameTail", Vector3.new(0.2 * X, 0.2 * X, 0.5 * Z), flames[2], model)
+		tailFlame.CFrame = body.CFrame * CFrame.new(0, -0.1 * Y, 0.62 * Z) * CFrame.Angles(math.rad(-25), 0, 0)
+		tailFlame.Material = Enum.Material.Neon
+		local sparks = Instance.new("ParticleEmitter")
+		sparks.Color = ColorSequence.new(Color3.fromRGB(255, 220, 90), Color3.fromRGB(255, 80, 30))
+		sparks.LightEmission = 1
+		sparks.Rate = 14
+		sparks.Lifetime = NumberRange.new(0.5, 1)
+		sparks.Speed = NumberRange.new(1.5, 3)
+		sparks.SpreadAngle = Vector2.new(25, 25)
+		sparks.Size = NumberSequence.new(0.18 * s, 0)
+		sparks.Parent = body
 	elseif id == "body_void" then
 		local stars = Instance.new("ParticleEmitter")
 		stars.Color = ColorSequence.new(WHITE)

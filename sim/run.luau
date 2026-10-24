@@ -59,7 +59,7 @@ local function makeBots(count: number, rng: Rng.Rng): { Round.Bot }
 			Id = i,
 			Name = string.format("%s %d", arch.Label, i),
 			Arch = arch,
-			Upgrades = { Bag = Rng.int(rng, 0, 4), Boots = Rng.int(rng, 0, 4), Sniffer = 0, Nest = 0, Incubator = 0 },
+			Upgrades = { Bag = Rng.int(rng, 0, 4), Boots = Rng.int(rng, 0, 4), Nest = 0, Incubator = 0 },
 			Payer = arch.Payer,
 		})
 	end

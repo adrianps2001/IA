@@ -73,6 +73,12 @@ Panel de depuración (F7):
 Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con los zorros.
 
 ### Lobby
+- [ ] **Tutorial** (con un perfil nuevo, o ⚙️ → Ver el tutorial otra vez): el cartel de arriba va diciendo qué hacer y la flecha de luz señala la brasa, el huevo, la rampa y al portador. "Saltar ✕" lo quita.
+- [ ] **⚙️ Ajustes:** cambiar el volumen de efectos y de pasos se nota; el tamaño de la interfaz cambia todos los paneles; "Al hombro de otros: No" oculta las criaturas de los demás (la tuya no). Al volver a entrar se mantienen.
+- [ ] **👀 Mi nido** lleva la cámara a tus gradas y "↩ Volver" la devuelve. **🏡 Visitar** muestra los jugadores del lobby y te lleva a la entrada de su nido (sin que el anti-trampas te devuelva).
+- [ ] **Móvil** (Studio: Prueba → Dispositivo → un teléfono): junto a una brasa, el huevo o el poste de una tirolina sale el botón grande naranja con su texto, y pulsarlo hace la acción.
+- [ ] **Comandos de soporte** (en Studio funcionan para todos): escribe `!ayuda` en el chat; prueba `!ver Player1`, `!dar monedas Player1 500` y `!dar criatura Player1 Secret`.
+- [ ] Galería de criaturas: abre un Huevo de Temporada o usa F7 hasta ver una Secreta (o mira `docs/criaturas.html`): Fénix, Unicornio, Aurora y Agujero Negro se ven bien.
 - [ ] Apareces en **tu nido del lobby**, en la entrada, mirando a tus criaturas. El cartel del arco dice "Nido de …".
 - [ ] Los nidos no se tocan entre sí: entre las vallas de dos nidos vecinos queda un hueco (antes se solapaban por los laterales).
 - [ ] Los podios y la valla no parpadean al moverte (antes había piezas solapadas). Tus criaturas están en los **pedestales**, con su placa (nombre, rareza, producción) y el aro del color de la rareza (dorado si es favorita). Dan saltitos.
@@ -83,6 +89,9 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 - [ ] En la entrada de un nido ajeno aparece "Me gusta ❤" (G); en el tuyo, no.
 - [ ] **Criatura al hombro:** en el panel del nido, 🦜 en una criatura la pone en tu hombro derecho (el botón se pone verde). Otra vez 🦜 la quita; 🦜 en otra la cambia. La ven los demás, va pegada al hombro al correr y saltar, y sigue ahí en la partida.
 - [ ] Si compras la **🍀 Suerte del Lobby**, arriba sale la cuenta atrás y los huevos del nido que abra cualquiera salen mejores (sin IDs reales no se puede comprar en Studio: compruébalo al publicar).
+- [ ] **Lobby decorado:** colinas y estanque fuera del muro, bosque detrás de los nidos, flores y farolillos en los caminos, bancos y rocas entre camino y camino. Nada tapa la entrada de un nido ni se mete dentro de su valla, y va fluido.
+- [ ] Los precios de la tienda y de las mejoras son redondos (1.300, 4.600…) y ya no aparece la mejora Olfato.
+- [ ] **Intercambio:** una Secreta recién conseguida no se puede ofrecer (sale el aviso de los 3 días). Tras 10 intercambios en un día, el siguiente se rechaza.
 - [ ] 🐦 Bandada e intercambio funcionan en el lobby (el botón 🐦 desaparece en la partida).
 - [ ] La ventana Output del servidor no muestra errores (si no activaste *API Services*, es normal un aviso de DataStore).
 
@@ -103,6 +112,7 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 - [ ] Al pisar la entrada de un **tobogán** bajas deslizándote hasta el suelo.
 - [ ] Hay **cabañas**, copas de hojas, arbustos y troncos huecos donde esconderse.
 - [ ] Caer de lo alto no hace daño.
+- [ ] **Anti-trampas:** usar tirolinas, toboganes y setas (también con un poco de lag) **no** te devuelve hacia atrás. La ventana Output del servidor no muestra avisos `[AntiCheat]` jugando normal.
 
 ### Incubación
 - [ ] Las brasas, luciérnagas y **cajas sorpresa** se pueden recoger y **desaparecen del todo** al cogerlas (también los "?"). Reaparecen después.
@@ -123,6 +133,7 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 - [ ] Con 7 o más jugadores salen **2 criaturas** (3 con 12 o más).
 
 ### Persecución
+- [ ] **Pistas:** si eres el portador y un ladrón (o un zorro) se acerca a menos de 22 studs, sale "⚠️ ¡Un ladrón cerca!" y suena un latido que se acelera. Si eres ladrón, ves huellas doradas del portador cuando estás cerca; se borran en unos segundos.
 - [ ] Cada elegido tiene 10 s de inmunidad y los demás 4 s de espera.
 - [ ] **Ya no hay que ir al nido:** el portador no tiene flecha y el aviso dice "Escondido · te verán en X s".
 - [ ] **Señal:** cada 8 s, durante 2 s, el aura dorada del portador se ve **a través de los árboles** y suena un aviso. Queda una marca 📍 donde estaba y la flecha de los ladrones apunta allí.

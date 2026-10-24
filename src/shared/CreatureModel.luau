@@ -108,6 +108,11 @@ function CreatureModel.build(creature: Creature.Creature, scale: number?, option
 		emitter.Parent = body
 	end
 
+	-- Agujero Negro (aura Secreta, v3.1): un anillo oscuro con borde violeta alrededor.
+	if aura and aura.Id == "aura_blackhole" then
+		Parts.blackHole(model, body)
+	end
+
 	-- Mutaciones visibles.
 	if mutation == "mut_ghost" then
 		for _, p in model:GetDescendants() do

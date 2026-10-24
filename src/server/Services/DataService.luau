@@ -15,6 +15,8 @@ local Quests = require(Shared.Quests)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 
+local Analytics = require(script.Parent.Parent.Util.Analytics)
+
 type Profile = PlayerData.Profile
 
 local DataService = {}
@@ -154,6 +156,8 @@ local function updateAttributes(player: Player, profile: Profile)
 	player:SetAttribute("Coins", math.floor(profile.Coins))
 	player:SetAttribute("Dust", math.floor(profile.Dust))
 	player:SetAttribute("Generation", profile.Generation)
+	-- El tutorial de la primera partida (TutorialController) se ve mientras esto sea 0.
+	player:SetAttribute("RoundsPlayed", profile.Stats.RoundsPlayed or 0)
 	local kept, broken = profile.Stats.PactsKept, profile.Stats.PactsBroken
 	local title = if broken > kept and broken >= 3 then "Traidor" elseif kept >= 3 then "Leal" else ""
 	player:SetAttribute("Title", title)
@@ -253,19 +257,22 @@ function DataService.markChanged(player: Player)
 	dirty[player] = true
 end
 
-function DataService.addCoins(player: Player, amount: number)
+-- reason (opcional) es el motivo para la analítica: "Tipo:Artículo" (Analytics.economy).
+function DataService.addCoins(player: Player, amount: number, reason: string?)
 	local profile = profiles[player]
 	if profile then
 		profile.Coins = math.max(0, profile.Coins + amount)
 		DataService.markChanged(player)
+		Analytics.economy(player, "Coins", amount, reason)
 	end
 end
 
-function DataService.addDust(player: Player, amount: number)
+function DataService.addDust(player: Player, amount: number, reason: string?)
 	local profile = profiles[player]
 	if profile then
 		profile.Dust = math.max(0, profile.Dust + amount)
 		DataService.markChanged(player)
+		Analytics.economy(player, "Dust", amount, reason)
 	end
 end
 
@@ -390,6 +397,7 @@ function DataService.view(player: Player): any
 		Decorations = decorations,
 		Beauty = Economy.beauty(profile.Decorations),
 		Trades = table.move(profile.Trades, math.max(#profile.Trades - 4, 1), #profile.Trades, 1, {}),
+		Settings = profile.Settings,
 		Now = now(),
 	}
 end
@@ -417,9 +425,26 @@ function DataService.init()
 end
 
 function DataService.start()
-	Remotes.func("GetProfile").OnServerInvoke = function(player: Player)
+	Analytics.setBalanceReader(function(player: Player, currency: string): number
+		local profile = profiles[player]
+		if not profile then
+			return 0
+		end
+		return if currency == "Coins" then profile.Coins else profile.Dust
+	end)
+	Analytics.start()
+
+	Remotes.onInvoke("GetProfile", function(player: Player)
 		return DataService.view(player)
-	end
+	end)
+	-- Ajustes del botón ⚙️: se limpian igual que al cargar (nada fuera de rango).
+	Remotes.onServer("SetSettings", function(player: Player, raw: any)
+		local profile = profiles[player]
+		if profile then
+			profile.Settings = PlayerData.cleanSettings(raw)
+			DataService.markChanged(player)
+		end
+	end)
 
 	Players.PlayerAdded:Connect(load)
 	for _, player in Players:GetPlayers() do

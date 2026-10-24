@@ -4,6 +4,7 @@
 local services = {
 	require(script.Services.DataService),
 	require(script.Services.AnnouncementService),
+	require(script.Services.AntiCheatService),
 	require(script.Services.MonetizationService),
 	require(script.Services.MapService),
 	require(script.Services.QuestService),
@@ -20,6 +21,7 @@ local services = {
 	require(script.Services.ForestService),
 	require(script.Services.RoundService),
 	require(script.Services.MatchmakingService),
+	require(script.Services.AdminService), -- comandos de soporte (solo administradores)
 	require(script.Services.DebugService), -- solo responde en Studio
 }
 

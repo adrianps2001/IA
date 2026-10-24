@@ -29,6 +29,8 @@ local LeaderboardService = require(script.Parent.LeaderboardService)
 local MatchService = require(script.Parent.MatchService)
 local QuestService = require(script.Parent.QuestService)
 
+local Analytics = require(script.Parent.Parent.Util.Analytics)
+
 -- Lo que pasó con una criatura (RoundService reparte los premios con esto).
 export type Outcome = {
 	Winner: Player?,
@@ -243,6 +245,7 @@ local function completeSteal(chase: Chase, thief: Player)
 	local thiefRoot = rootOf(thief)
 	AnnouncementService.matchSound("Steal", if thiefRoot then thiefRoot.Position else nil)
 	DataService.addStat(thief, "Steals", 1)
+	Analytics.event(thief, "Steal", 1)
 	LeaderboardService.addSteal(thief)
 	QuestService.progress(thief, "Steal", 1)
 	if Config.Chase.StunSeconds > 0 then
@@ -804,9 +807,9 @@ end
 function ChaseService.init() end
 
 function ChaseService.start()
-	Remotes.event("RespondDeal").OnServerEvent:Connect(respondDeal)
+	Remotes.onServer("RespondDeal", respondDeal)
 
-	Remotes.event("RequestSprint").OnServerEvent:Connect(function(player)
+	Remotes.onServer("RequestSprint", function(player)
 		if not active or not carrying[player] then
 			return
 		end
@@ -821,7 +824,7 @@ function ChaseService.start()
 	end)
 
 	-- Pase de relevo al aliado más cercano que no lleve ya otra criatura.
-	Remotes.event("RequestPass").OnServerEvent:Connect(function(player)
+	Remotes.onServer("RequestPass", function(player)
 		local chase = carrying[player]
 		if not active or not chase then
 			return

@@ -26,6 +26,10 @@ local MatchService = require(script.Parent.MatchService)
 local MonetizationService = require(script.Parent.MonetizationService)
 local QuestService = require(script.Parent.QuestService)
 
+local AntiCheatService = require(script.Parent.AntiCheatService)
+
+local Analytics = require(script.Parent.Parent.Util.Analytics)
+
 type Profile = PlayerData.Profile
 type Display = { Signature: string, Folder: Folder }
 
@@ -353,7 +357,28 @@ local function assignLobbyNest(player: Player)
 			return
 		end
 	end
+	-- Lobby lleno (no debería pasar: el servidor del lobby se limita a Config.Lobby.NestCount
+	-- jugadores en el Creator Hub). Por si acaso, se le lleva a otro lobby; si ya ha rebotado
+	-- dos veces, se le pide que vuelva a entrar en vez de dar vueltas.
 	warn("[NestService] No quedan nidos libres en el lobby para " .. player.Name)
+	if Place.kind() ~= "Lobby" then
+		return
+	end
+	local ok, join = pcall(function()
+		return player:GetJoinData()
+	end)
+	local data: any = if ok and type(join) == "table" then (join :: any).TeleportData else nil
+	local bounces = if type(data) == "table" and type(data.LobbyFull) == "number" then data.LobbyFull else 0
+	if bounces >= 2 then
+		player:Kick("Todos los lobbies están llenos. Vuelve a entrar en un momento.")
+		return
+	end
+	AnnouncementService.player(player, "🏡 Este lobby está lleno: te llevamos a otro con nidos libres…", "info")
+	task.spawn(function()
+		if not MatchService.teleport({ player }, game.PlaceId, { LobbyFull = bounces + 1 }, false) then
+			player:Kick("Este lobby está lleno. Vuelve a entrar en un momento.")
+		end
+	end)
 end
 
 local function releaseLobbyNest(player: Player)
@@ -496,7 +521,7 @@ local function buyPersonalEgg(player: Player)
 		AnnouncementService.player(player, "Te falta Polvo de cáscara.")
 		return
 	end
-	DataService.addDust(player, -cost)
+	DataService.addDust(player, -cost, "Shop:PersonalEgg")
 	local range = Config.EggRanges.Personal
 	addEgg(player, "Personal", Config.Incubator.PersonalEggSeconds, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName)
 end
@@ -560,7 +585,7 @@ local function startBreed(player: Player, idA: string, idB: string, free: boolea
 		AnnouncementService.player(player, string.format("La cría cuesta %d Monedas.", cost))
 		return false
 	end
-	DataService.addCoins(player, -cost)
+	DataService.addCoins(player, -cost, "Shop:Breed")
 	local child = Genes.inherit(a.Genes, b.Genes, rng, Config.Breeding.MutationChance)
 	local childRarity = Genes.rarityOf(child)
 	addEgg(player, "Breed", Economy.breedSeconds(parentRarity), childRarity, childRarity, child)
@@ -587,7 +612,7 @@ local function releaseIds(player: Player, ids: { string }): (number, number)
 		end
 	end
 	if released > 0 then
-		DataService.addDust(player, dust)
+		DataService.addDust(player, dust, "Gameplay:Release")
 		DataService.addStat(player, "Released", released)
 		DataService.markChanged(player)
 		NestService.refreshDisplay(player)
@@ -611,6 +636,25 @@ local function release(player: Player, ids: any)
 	local released = releaseIds(player, clean)
 	if released == 0 then
 		AnnouncementService.player(player, "Esa criatura no se puede liberar (las Secretas y las favoritas ⭐ no se liberan).")
+	end
+end
+
+-- Visitar nidos (v3.1): te lleva a la entrada del nido de otro jugador del lobby (o al tuyo).
+-- Lo hace el servidor para que el anti-trampas no lo tome por un teletransporte.
+local function visitNest(player: Player, userId: any)
+	local target = if type(userId) == "number" then Players:GetPlayerByUserId(userId) else nil
+	if not target then
+		return
+	end
+	local nest = NestService.lobbyNestOf(target)
+	local character = player.Character
+	if not nest or not character or not character.PrimaryPart then
+		return
+	end
+	AntiCheatService.allowMove(player, 2)
+	character:PivotTo(nest.Spawn.CFrame * CFrame.new(0, 3, 0))
+	if target ~= player then
+		AnnouncementService.player(player, string.format("🏡 Estás en el nido de %s. Si te gusta, pulsa \"Me gusta ❤\" en la entrada.", target.DisplayName))
 	end
 end
 
@@ -676,9 +720,9 @@ local function buyDecoration(player: Player, id: any)
 		return
 	end
 	if def.Currency == "Coins" then
-		DataService.addCoins(player, -cost)
+		DataService.addCoins(player, -cost, "Shop:Decoration_" .. def.Id)
 	else
-		DataService.addDust(player, -cost)
+		DataService.addDust(player, -cost, "Shop:Decoration_" .. def.Id)
 	end
 	table.insert(profile.Decorations, def.Id)
 	AnnouncementService.sound(player, "Purchase")
@@ -704,7 +748,7 @@ local function upgrade(player: Player, name: any)
 		AnnouncementService.player(player, "No tienes Monedas suficientes.")
 		return
 	end
-	DataService.addCoins(player, -cost)
+	DataService.addCoins(player, -cost, "Shop:Upgrade_" .. name)
 	AnnouncementService.sound(player, "Purchase")
 	profile.Upgrades[name] = level + 1
 	player:SetAttribute("Upgrade_" .. name, level + 1)
@@ -731,6 +775,7 @@ local function rebirth(player: Player)
 	profile.Generation += 1
 	-- GDD v2: las favoritas sobreviven a la Nueva generación.
 	profile.Creatures = Economy.keptOnRebirth(profile.Creatures, profile.Favorites)
+	Analytics.economy(player, "Coins", -profile.Coins, "Shop:Rebirth")
 	profile.Coins = 0
 	profile.Upgrades.Nest = 0
 	player:SetAttribute("Upgrade_Nest", 0)
@@ -761,7 +806,7 @@ local function onLoaded(player: Player, profile: Profile)
 	local away = os.time() - profile.LastSeen
 	local earned = Economy.offlineEarnings(DataService.incomePerSecond(player), away)
 	if earned > 0 then
-		DataService.addCoins(player, earned)
+		DataService.addCoins(player, earned, "TimedReward:Offline")
 		AnnouncementService.player(player, string.format("Tu nido produjo %d Monedas mientras no estabas.", earned), "rare")
 	end
 
@@ -844,16 +889,17 @@ function NestService.start()
 			handler(player, ...)
 		end
 	end
-	Remotes.event("RequestBuyEgg").OnServerEvent:Connect(managed(buyPersonalEgg))
-	Remotes.event("RequestCollectEggs").OnServerEvent:Connect(managed(collectEggs))
-	Remotes.event("RequestUpgrade").OnServerEvent:Connect(managed(upgrade))
-	Remotes.event("RequestRebirth").OnServerEvent:Connect(managed(rebirth))
-	Remotes.event("RequestRelease").OnServerEvent:Connect(managed(release))
-	Remotes.event("ToggleFavorite").OnServerEvent:Connect(managed(toggleFavorite))
-	Remotes.event("SetShoulder").OnServerEvent:Connect(managed(setShoulder))
-	Remotes.event("RequestReleaseStored").OnServerEvent:Connect(managed(releaseStored))
-	Remotes.event("RequestBuyDecoration").OnServerEvent:Connect(managed(buyDecoration))
-	Remotes.event("RequestBreed").OnServerEvent:Connect(managed(function(player, idA, idB)
+	Remotes.onServer("RequestBuyEgg", managed(buyPersonalEgg))
+	Remotes.onServer("RequestCollectEggs", managed(collectEggs))
+	Remotes.onServer("RequestUpgrade", managed(upgrade))
+	Remotes.onServer("RequestRebirth", managed(rebirth))
+	Remotes.onServer("RequestRelease", managed(release))
+	Remotes.onServer("ToggleFavorite", managed(toggleFavorite))
+	Remotes.onServer("SetShoulder", managed(setShoulder))
+	Remotes.onServer("VisitNest", managed(visitNest))
+	Remotes.onServer("RequestReleaseStored", managed(releaseStored))
+	Remotes.onServer("RequestBuyDecoration", managed(buyDecoration))
+	Remotes.onServer("RequestBreed", managed(function(player, idA, idB)
 		if type(idA) == "string" and type(idB) == "string" then
 			startBreed(player, idA, idB, false)
 		end
@@ -869,7 +915,9 @@ function NestService.start()
 			for _, player in Players:GetPlayers() do
 				local profile = DataService.get(player)
 				if profile then
-					profile.Coins += DataService.incomePerSecond(player)
+					local income = DataService.incomePerSecond(player)
+					profile.Coins += income
+					Analytics.economy(player, "Coins", income, "Gameplay:Nest")
 					player:SetAttribute("Coins", math.floor(profile.Coins))
 					if tick % 10 == 0 then
 						NestService.refreshDisplay(player)

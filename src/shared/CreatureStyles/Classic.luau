@@ -24,6 +24,7 @@ local BODY_SHAPES: { [string]: Vector3 } = {
 	body_cloud = Vector3.new(4, 2.6, 3.4),
 	body_star = Vector3.new(3.2, 3.2, 3.2),
 	body_void = Vector3.new(3.2, 3.2, 3.2),
+	body_phoenix = Vector3.new(3.2, 3.2, 3.2),
 }
 
 local BODY_MATERIALS: { [string]: Enum.Material } = {
@@ -33,6 +34,7 @@ local BODY_MATERIALS: { [string]: Enum.Material } = {
 	body_stone = Enum.Material.Slate,
 	body_star = Enum.Material.Neon,
 	body_void = Enum.Material.Neon,
+	body_phoenix = Enum.Material.Neon,
 }
 
 -- Construye las piezas dentro de model y devuelve el cuerpo (la PrimaryPart).
@@ -68,6 +70,9 @@ function Classic.build(model: Model, genes: Genes.GeneSet, s: number, bodyColor:
 		local crest = part("Crest", Enum.PartType.Block, Vector3.new(0.6, 0.6, 0.9) * s, rgb(head.Color), model)
 		if genes.Head == "head_beak" then
 			crest.CFrame = headPart.CFrame * CFrame.new(0, -0.1 * s, -headSize * 0.6)
+		elseif genes.Head == "head_unicorn" then
+			crest.Size = Vector3.new(0.35, 1.6, 0.35) * s
+			crest.CFrame = headPart.CFrame * CFrame.new(0, headSize * 0.65, -headSize * 0.2) * CFrame.Angles(math.rad(-25), 0, 0)
 		elseif genes.Head == "head_halo" then
 			crest.Shape = Enum.PartType.Cylinder
 			crest.Size = Vector3.new(0.15, 2.2, 2.2) * s

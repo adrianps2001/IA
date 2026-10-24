@@ -669,6 +669,8 @@
       ["🦊", "Zorros", "Con menos de " + get("ForestThieves.FillTo") + " jugadores salen zorros que tiran la criatura al suelo; cualquiera la puede recoger."],
       ["📍", "Marca", "Tras cada señal, los ladrones ven dónde estaba el portador y una flecha les apunta allí."],
       ["⌛", "Final", "Si la criatura está en el suelo al acabar, se escapa: nadie gana."],
+      ["👣", "Huellas", "El portador deja huellas brillantes que los demás ven de cerca y se borran en " + c.FootprintSeconds + " s: algo que seguir entre señales."],
+      ["💓", "¡Ladrón cerca!", "El portador ve un aviso y oye un latido cada vez más rápido si alguien (o un zorro) está a menos de " + c.DangerRange + " studs."],
     ].forEach(function (r) { box.appendChild(el("div", { class: "mini-card" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + "</b><p>" + r[2] + "</p>")); });
   }
 
@@ -826,7 +828,6 @@
     var what = {
       Bag: function (l) { return "Bolsa: caben " + bagCapacity(l) + " de Calor (" + bagCapacity(l + 1) + " en el siguiente nivel)."; },
       Boots: function (l) { return "Botas: +" + Math.round(l * C.Movement.BootsPerLevel * 100) + " % de velocidad (máximo +" + Math.round(C.Movement.BootsMaxLevel * C.Movement.BootsPerLevel * 100) + " %)."; },
-      Sniffer: function () { return "Olfato: en el diseño marca las fuentes de Calor más ricas. Todavía no hace nada en el juego."; },
       Nest: function (l) { return "Nido: " + Math.min(C.Nest.BaseSlots + l * C.Nest.SlotsPerLevel, C.Nest.MaxSlots) + " huecos que producen (+" + C.Nest.SlotsPerLevel + " por nivel). Se reinicia con la Nueva generación."; },
       Incubator: function (l) { return "Incubadora: huevos y crías un " + Math.round(l * C.Incubator.SpeedPerLevel * 100) + " % más rápidos."; },
     };
@@ -906,10 +907,8 @@
     ].forEach(function (r) { shop.appendChild(el("div", { class: "mini-card" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + ' <span class="pill ' + (r[3] ? "ok" : "no") + '">' + (r[3] ? "en el juego" : "diseñado") + "</span></b><p>" + r[2] + "</p>")); });
     var todo = $("#todo");
     if (todo) [
-      ["👃", "Olfato", "La mejora se puede comprar pero todavía no hace nada."],
       ["🛍️", "Tienda de la Plaza y cosméticos", "Temas de nido, pedestales, accesorios del hombro, renombrar criaturas, fuegos artificiales y regalos."],
-      ["🎓", "Tutorial", "Una primera partida guiada (rampas, tirolina, robar)."],
-      ["⚖️", "Emparejamiento por nivel", "Novatos con novatos: con la persecución actual, los que persiguen poco ganan bastante menos."],
+      ["🌍", "Inglés y otros idiomas", "Todos los textos están en español; la traducción está decidida para más adelante."],
       ["🎨", "Arte definitivo", "Mapas hechos a mano, modelos de criatura de un artista, sonidos definitivos y música."],
       ["📺", "Huevo del Admin y pase de temporada", "Evento en directo y pase con recompensas estéticas."],
     ].forEach(function (r) { todo.appendChild(el("div", { class: "mini-card todo" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + "</b><p>" + r[2] + "</p>")); });

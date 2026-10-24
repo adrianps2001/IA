@@ -3,9 +3,12 @@
 -- en la cola), el cartel del ranking, la estatua del Huevo Comunitario y los nidos alrededor,
 -- unidos a la plaza por caminos. Origin es el centro de la plaza.
 
+local Lighting = game:GetService("Lighting")
+
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
 local MapLayout = require(Shared.MapLayout)
+local Place = require(Shared.Place)
 
 local NestBuilder = require(script.Parent.NestBuilder)
 
@@ -65,6 +68,250 @@ local function billboard(parent: BasePart, size: UDim2, offset: Vector3, color: 
 	label.Text = ""
 	label.Parent = gui
 	return label
+end
+
+-- ------------------------------------------------------------------ decoración (v3.1)
+-- Todo por código, sin construir a mano: colinas y un estanque con el Terrain de Roblox fuera
+-- del muro, árboles variados, flores y farolillos en los caminos y un ambiente cálido. Nada de
+-- esto colisiona dentro de la zona jugable salvo los troncos. Siempre sale igual (semilla fija).
+
+local LEAVES = {
+	{ Color3.fromRGB(86, 160, 70), Color3.fromRGB(110, 180, 80), Color3.fromRGB(70, 140, 60) }, -- verde
+	{ Color3.fromRGB(235, 150, 60), Color3.fromRGB(245, 185, 85), Color3.fromRGB(215, 110, 50) }, -- otoño
+	{ Color3.fromRGB(255, 180, 205), Color3.fromRGB(255, 205, 225), Color3.fromRGB(240, 150, 185) }, -- cerezo
+}
+local FLOWERS = {
+	Color3.fromRGB(255, 120, 170),
+	Color3.fromRGB(255, 220, 90),
+	Color3.fromRGB(160, 120, 255),
+	Color3.fromRGB(255, 255, 255),
+	Color3.fromRGB(255, 140, 80),
+}
+
+local function tree(position: Vector3, scale: number, palette: number, rng: Random, parent: Instance)
+	local height = (8 + rng:NextNumber() * 4) * scale
+	local trunk = block({
+		Name = "TreeTrunk",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(height, 1.6 * scale, 1.6 * scale),
+		CFrame = CFrame.new(position + Vector3.new(0, height / 2, 0)) * CFrame.Angles(0, rng:NextNumber() * math.pi, math.rad(90 + rng:NextNumber(-4, 4))),
+		Color = Color3.fromRGB(110, 75, 50),
+		Material = Enum.Material.Wood,
+	}, parent)
+	trunk.CanQuery = false
+	local colors = LEAVES[palette]
+	for k = 1, 4 do
+		local size = (5 + rng:NextNumber() * 3) * scale
+		local offset = if k == 1 then Vector3.zero else Vector3.new(rng:NextNumber(-2.5, 2.5), rng:NextNumber(-1.5, 1), rng:NextNumber(-2.5, 2.5)) * scale
+		block({
+			Name = "TreeLeaves",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(size, size * 0.85, size),
+			CFrame = CFrame.new(position + Vector3.new(0, height + 1 * scale, 0) + offset),
+			Color = colors[(k - 1) % #colors + 1],
+			Material = Enum.Material.Grass,
+			CanCollide = false,
+			CanQuery = false,
+		}, parent)
+	end
+end
+
+local function pine(position: Vector3, scale: number, rng: Random, parent: Instance)
+	block({ Name = "PineTrunk", Size = Vector3.new(1.2, 4, 1.2) * scale, CFrame = CFrame.new(position + Vector3.new(0, 2 * scale, 0)), Color = Color3.fromRGB(95, 65, 45), Material = Enum.Material.Wood, CanQuery = false }, parent)
+	local green = Color3.fromRGB(50 + rng:NextInteger(0, 20), 110 + rng:NextInteger(0, 25), 65)
+	for k = 0, 3 do
+		local w = (7 - k * 1.6) * scale
+		block({
+			Name = "PineLeaves",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(w, 3.4 * scale, w),
+			CFrame = CFrame.new(position + Vector3.new(0, (4 + k * 2.6) * scale, 0)),
+			Color = green,
+			Material = Enum.Material.Grass,
+			CanCollide = false,
+			CanQuery = false,
+		}, parent)
+	end
+end
+
+local function flower(position: Vector3, rng: Random, parent: Instance)
+	block({ Name = "FlowerStem", Size = Vector3.new(0.2, 0.9, 0.2), CFrame = CFrame.new(position + Vector3.new(0, 0.45, 0)), Color = Color3.fromRGB(70, 140, 60), CanCollide = false, CanQuery = false }, parent)
+	block({
+		Name = "Flower",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(0.8, 0.6, 0.8),
+		CFrame = CFrame.new(position + Vector3.new(0, 1, 0)),
+		Color = FLOWERS[rng:NextInteger(1, #FLOWERS)],
+		Material = Enum.Material.SmoothPlastic,
+		CanCollide = false,
+		CanQuery = false,
+	}, parent)
+end
+
+local function bush(position: Vector3, rng: Random, parent: Instance)
+	local size = 2.4 + rng:NextNumber() * 1.4
+	block({
+		Name = "Bush",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(size * 1.3, size, size * 1.3),
+		CFrame = CFrame.new(position + Vector3.new(0, size * 0.35, 0)),
+		Color = Color3.fromRGB(70 + rng:NextInteger(0, 25), 135 + rng:NextInteger(0, 25), 60),
+		Material = Enum.Material.Grass,
+		CanCollide = false,
+		CanQuery = false,
+	}, parent)
+end
+
+local function lantern(position: Vector3, parent: Instance)
+	block({ Name = "LanternPost", Size = Vector3.new(0.4, 4, 0.4), CFrame = CFrame.new(position + Vector3.new(0, 2, 0)), Color = Color3.fromRGB(80, 60, 45), Material = Enum.Material.Wood, CanQuery = false }, parent)
+	local lamp = block({ Name = "Lantern", Size = Vector3.new(1, 1.2, 1), CFrame = CFrame.new(position + Vector3.new(0, 4.4, 0)), Color = Color3.fromRGB(255, 200, 120), Material = Enum.Material.Neon, CanCollide = false, CanQuery = false }, parent)
+	local light = Instance.new("PointLight")
+	light.Range = 12
+	light.Brightness = 0.8
+	light.Color = lamp.Color
+	light.Parent = lamp
+end
+
+-- Colinas y estanque fuera del muro: el lobby queda en un valle en vez de flotar en la nada.
+local function terrain(origin: Vector3, radius: number)
+	local t = workspace.Terrain
+	local rng = Random.new(Config.Arena.Seed + 11)
+	t:FillCylinder(CFrame.new(origin + Vector3.new(0, -6, 0)), 8, radius + 80, Enum.Material.Grass)
+	local hills = 36
+	for k = 1, hills do
+		local angle = (k / hills) * math.pi * 2 + rng:NextNumber(-0.05, 0.05)
+		local r = radius + 40 + rng:NextNumber(0, 30)
+		local size = 26 + rng:NextNumber() * 26
+		local center = origin + Vector3.new(math.cos(angle) * r, -size * 0.45, math.sin(angle) * r)
+		t:FillBall(center, size, if k % 7 == 0 then Enum.Material.Rock else Enum.Material.Grass)
+	end
+	-- Un estanque detrás de los nidos, que se ve desde las gradas.
+	local pond = origin + Vector3.new(radius + 26, 0, 0)
+	t:FillCylinder(CFrame.new(pond + Vector3.new(0, -2, 0)), 4, 16, Enum.Material.Water)
+	t:FillCylinder(CFrame.new(pond + Vector3.new(0, -1, 0)), 2, 19, Enum.Material.Sand)
+	t:FillCylinder(CFrame.new(pond + Vector3.new(0, -1, 0)), 2.2, 16, Enum.Material.Water)
+end
+
+-- Ambiente del lobby (solo en el lugar del lobby: en el modo combinado la luz la lleva la ronda).
+local function atmosphere()
+	Lighting.ClockTime = 14.5
+	Lighting.Brightness = 2.2
+	Lighting.OutdoorAmbient = Color3.fromRGB(150, 140, 130)
+	local atmo = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
+	atmo.Density = 0.28
+	atmo.Offset = 0.15
+	atmo.Color = Color3.fromRGB(230, 215, 190)
+	atmo.Decay = Color3.fromRGB(150, 170, 200)
+	atmo.Glare = 0.2
+	atmo.Haze = 1.4
+	atmo.Parent = Lighting
+	local bloom = Lighting:FindFirstChildOfClass("BloomEffect") or Instance.new("BloomEffect")
+	bloom.Intensity = 0.4
+	bloom.Size = 20
+	bloom.Threshold = 1.6
+	bloom.Parent = Lighting
+end
+
+local function decorate(origin: Vector3, nestRadius: number, radius: number, parent: Instance)
+	local folder = Instance.new("Folder")
+	folder.Name = "Decoration"
+	folder.Parent = parent
+	local rng = Random.new(Config.Arena.Seed + 7)
+	local count = Config.Lobby.NestCount
+	local nestOuter = nestRadius + Config.Lobby.NestSize / 2 + 3
+	-- Bosque entre los nidos y el muro: árboles de hoja y pinos alternados.
+	local forest = math.floor(2 * math.pi * (nestOuter + 12) / 9)
+	for k = 1, forest do
+		local angle = (k / forest) * math.pi * 2 + rng:NextNumber(-0.03, 0.03)
+		local r = nestOuter + 9 + rng:NextNumber(0, math.max(radius + 8 - nestOuter - 9, 1))
+		local pos = origin + Vector3.new(math.cos(angle) * r, 0, math.sin(angle) * r)
+		if k % 3 == 0 then
+			pine(pos, 1 + rng:NextNumber() * 0.5, rng, folder)
+		else
+			tree(pos, 1 + rng:NextNumber() * 0.4, if k % 5 == 0 then 3 elseif k % 2 == 0 then 2 else 1, rng, folder)
+		end
+		if k % 2 == 0 then
+			bush(pos + Vector3.new(rng:NextNumber(-4, 4), 0, rng:NextNumber(-4, 4)), rng, folder)
+		end
+	end
+	for index = 1, count do
+		local angle = (index / count) * math.pi * 2
+		local dir = Vector3.new(math.cos(angle), 0, math.sin(angle))
+		local side = Vector3.new(-dir.Z, 0, dir.X)
+		-- Flores y farolillos a los lados del camino.
+		local from, to = PLAZA_RADIUS + 3, nestRadius - Config.Lobby.NestSize / 2 - 4
+		local d = from
+		local step = 0
+		while d < to do
+			for _, s in { -1, 1 } do
+				local p = origin + dir * d + side * s * (4.2 + rng:NextNumber() * 0.8)
+				if step % 6 == 3 then
+					lantern(p, folder)
+				elseif rng:NextNumber() < 0.6 then
+					flower(p, rng, folder)
+				end
+			end
+			if step % 4 == 1 then
+				bush(origin + dir * d + side * (if step % 8 == 1 then 7 else -7), rng, folder)
+			end
+			d += 4.5
+			step += 1
+		end
+	end
+	-- Entre camino y camino: un pequeño rincón en cada cuña del césped (árboles, prado de flores,
+	-- rocas o un banco con farolillo), para que el paseo de la plaza a los nidos no esté vacío.
+	local inner = PLAZA_RADIUS + 10
+	local outer = nestRadius - Config.Lobby.NestSize / 2 - 12
+	for index = 1, count do
+		local angle = (index + 0.5) / count * math.pi * 2
+		for k, f in { 0.3, 0.72 } do
+			local r = inner + (outer - inner) * f
+			local c = origin + Vector3.new(math.cos(angle) * r, 0, math.sin(angle) * r)
+			local kind = (index + k) % 4
+			if kind == 0 then
+				tree(c, 1.1, if index % 3 == 0 then 3 else 1, rng, folder)
+				bush(c + Vector3.new(3, 0, 2), rng, folder)
+			elseif kind == 1 then
+				for _ = 1, 9 do
+					local a2, d2 = rng:NextNumber() * math.pi * 2, rng:NextNumber() * 4.5
+					flower(c + Vector3.new(math.cos(a2) * d2, 0, math.sin(a2) * d2), rng, folder)
+				end
+			elseif kind == 2 then
+				for j = 1, 3 do
+					local size = 1.5 + rng:NextNumber() * 2
+					block({
+						Name = "Rock",
+						Size = Vector3.new(size * 1.3, size, size),
+						CFrame = CFrame.new(c + Vector3.new(j * 1.8 - 3.6, size / 2 - 0.3, rng:NextNumber(-1.5, 1.5))) * CFrame.Angles(0, rng:NextNumber() * math.pi, 0),
+						Color = Color3.fromRGB(140, 135, 128),
+						Material = Enum.Material.Slate,
+						CanQuery = false,
+					}, folder)
+				end
+				bush(c + Vector3.new(0, 0, 3), rng, folder)
+			else
+				local facing = CFrame.lookAt(c, origin)
+				block({ Name = "BenchSeat", Size = Vector3.new(5, 0.4, 1.4), CFrame = facing * CFrame.new(0, 1.2, 0), Color = Color3.fromRGB(150, 105, 70), Material = Enum.Material.WoodPlanks }, folder)
+				block({ Name = "BenchBack", Size = Vector3.new(5, 1.2, 0.3), CFrame = facing * CFrame.new(0, 2, 0.6), Color = Color3.fromRGB(150, 105, 70), Material = Enum.Material.WoodPlanks }, folder)
+				for _, x in { -2, 2 } do
+					block({ Name = "BenchLeg", Size = Vector3.new(0.3, 1.1, 1.2), CFrame = facing * CFrame.new(x, 0.55, 0), Color = Color3.fromRGB(70, 60, 55), Material = Enum.Material.Metal }, folder)
+				end
+				lantern(c + (facing.RightVector * 3.6), folder)
+			end
+		end
+	end
+	-- Parterres de flores alrededor de la plaza, entre camino y camino.
+	for index = 1, count do
+		local angle = (index + 0.5) / count * math.pi * 2
+		for k = 0, 2 do
+			local r = PLAZA_RADIUS + 2 + k * 1.4
+			flower(origin + Vector3.new(math.cos(angle) * r, 0, math.sin(angle) * r), rng, folder)
+		end
+	end
+	terrain(origin, radius)
+	if Place.kind() == "Lobby" then
+		atmosphere()
+	end
 end
 
 function LobbyBuilder.build(parent: Instance): Lobby
@@ -186,20 +433,9 @@ function LobbyBuilder.build(parent: Instance): Lobby
 			Material = Enum.Material.Pavement,
 			CanCollide = false,
 		}, folder)
-		-- Un arbolito entre cada dos nidos.
-		local between = angle + math.pi / count
-		local treePos = origin + Vector3.new(math.cos(between) * (nestRadius + 4), 0, math.sin(between) * (nestRadius + 4))
-		block({ Name = "Trunk", Size = Vector3.new(1.6, 9, 1.6), CFrame = CFrame.new(treePos + Vector3.new(0, 4.5, 0)), Color = Color3.fromRGB(95, 65, 45), Material = Enum.Material.Wood }, folder)
-		block({
-			Name = "Leaves",
-			Shape = Enum.PartType.Ball,
-			Size = Vector3.new(8, 7, 8),
-			CFrame = CFrame.new(treePos + Vector3.new(0, 10.5, 0)),
-			Color = if index % 2 == 0 then Color3.fromRGB(220, 120, 60) else Color3.fromRGB(240, 170, 80),
-			Material = Enum.Material.Grass,
-			CanCollide = false,
-		}, folder)
 	end
+
+	decorate(origin, nestRadius, radius, folder)
 
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "LobbySpawn"

@@ -21,6 +21,19 @@ local SoundController = {}
 
 local folder: Folder
 
+-- Grupo de sonido de los efectos: el volumen de los ajustes ⚙️ (SettingsController) lo mueve.
+function SoundController.group(name: string): SoundGroup
+	local existing = SoundService:FindFirstChild(name)
+	if existing and existing:IsA("SoundGroup") then
+		return existing
+	end
+	local g = Instance.new("SoundGroup")
+	g.Name = name
+	g.Volume = 1
+	g.Parent = SoundService
+	return g
+end
+
 -- Reproduce un sonido del catálogo. Con position (o una pieza) suena en 3D desde allí.
 function SoundController.play(name: string, at: (Vector3 | BasePart)?, pitchBoost: number?)
 	local def = Sounds.get(name)
@@ -31,6 +44,7 @@ function SoundController.play(name: string, at: (Vector3 | BasePart)?, pitchBoos
 	sound.Name = name
 	sound.SoundId = def.Id
 	sound.Volume = def.Volume
+	sound.SoundGroup = SoundController.group("Effects")
 	local vary = def.Vary or 0
 	sound.PlaybackSpeed = def.Pitch * (pitchBoost or 1) * (1 + (math.random() * 2 - 1) * vary)
 	local holder: Instance = folder
