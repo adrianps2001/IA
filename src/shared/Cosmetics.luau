@@ -10,7 +10,9 @@
 local Cosmetics = {}
 
 export type Kind = "Hat" | "Theme"
-export type Item = { Id: string, Kind: Kind, Name: string, Price: number, Icon: string }
+-- Exclusive: no sale en la rotación de la Plaza (se consigue de otra forma, como el pack de
+-- inicio). Price es lo que vale en polvo (lo que se devuelve si te llega repetido).
+export type Item = { Id: string, Kind: Kind, Name: string, Price: number, Icon: string, Exclusive: boolean? }
 
 Cosmetics.ShopSize = 6
 
@@ -23,6 +25,7 @@ Cosmetics.Catalog = {
 	{ Id = "hat_top", Kind = "Hat", Name = "Chistera", Price = 900, Icon = "🎩" },
 	{ Id = "hat_pirate", Kind = "Hat", Name = "Sombrero pirata", Price = 1200, Icon = "🏴‍☠️" },
 	{ Id = "hat_crown", Kind = "Hat", Name = "Coronita", Price = 1500, Icon = "👑" },
+	{ Id = "hat_rookie", Kind = "Hat", Name = "Gorro de novato", Price = 500, Icon = "🐣", Exclusive = true },
 	{ Id = "theme_snow", Kind = "Theme", Name = "Nido de invierno", Price = 2500, Icon = "❄️" },
 	{ Id = "theme_beach", Kind = "Theme", Name = "Nido de playa", Price = 2500, Icon = "🏖️" },
 	{ Id = "theme_candy", Kind = "Theme", Name = "Nido de caramelo", Price = 3500, Icon = "🍬" },
@@ -41,7 +44,12 @@ end
 
 -- Los artículos de hoy: una selección que cambia cada día pero es la misma para todo el mundo.
 function Cosmetics.shopToday(day: number): { Item }
-	local list = table.clone(Cosmetics.Catalog)
+	local list: { Item } = {}
+	for _, item in Cosmetics.Catalog do
+		if not item.Exclusive then
+			table.insert(list, item)
+		end
+	end
 	-- Barajado con una semilla del día (generador lineal sencillo, sin Random de Roblox). Se usan
 	-- los bits altos: los bajos de este generador se repiten y dejaban artículos sin salir nunca.
 	local seed = (day * 2654435761 + 97) % 4294967296
@@ -51,7 +59,7 @@ function Cosmetics.shopToday(day: number): { Item }
 		list[i], list[j] = list[j], list[i]
 	end
 	-- Siempre al menos un tema y un sombrero.
-	local out, hats, themes = {}, 0, 0
+	local out: { Item }, hats, themes = {}, 0, 0
 	for _, item in list do
 		if #out >= Cosmetics.ShopSize then
 			break

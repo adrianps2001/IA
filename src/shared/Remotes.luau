@@ -21,6 +21,7 @@ local EVENTS = {
 	"TradeRequested", -- alguien quiere intercambiar contigo
 	"TradeUpdated", -- estado de tu ventana de intercambio (nil = cerrada)
 	"PlaySound", -- sonido de una acción (nombre del catálogo Sounds y posición opcional)
+	"Fireworks", -- (v3.3) espectáculo de fuegos artificiales en la plaza del lobby
 	-- cliente -> servidor
 	"RequestSprint",
 	"RequestPass",

@@ -15,6 +15,7 @@ local PlayerData = require(Shared.PlayerData)
 local Quests = require(Shared.Quests)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
+local Store = require(Shared.Store)
 
 local Analytics = require(script.Parent.Parent.Util.Analytics)
 
@@ -413,6 +414,7 @@ function DataService.view(player: Player): any
 				return list
 			end)(),
 		},
+		Store = { StarterEndsAt = Store.starterEndsAt(profile.Store, now()), StarterBought = profile.Store.StarterBought }, -- tienda 🛒 (v3.3)
 		Now = now(),
 	}
 end

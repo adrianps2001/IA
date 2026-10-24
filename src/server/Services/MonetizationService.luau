@@ -135,6 +135,14 @@ function MonetizationService.start()
 		end
 	end)
 
+	-- Club del Nido: al suscribirse (o cancelar) se vuelve a mirar sin esperar a que vuelva a entrar.
+	MarketplaceService.PromptSubscriptionPurchaseFinished:Connect(function(player, _subscriptionId, purchased)
+		if purchased then
+			refreshPasses(player)
+			DataService.markChanged(player)
+		end
+	end)
+
 	MarketplaceService.ProcessReceipt = processReceipt
 end
 

@@ -80,7 +80,9 @@ src/client/                 StarterPlayerScripts.Client
   Controllers/HUDController     Bolsa, barra, temporizador, flecha de objetivo, avisos
   Controllers/HatchController   Espectáculo de eclosión y ruleta
   Controllers/ChaseController   Botones del portador y ventana de tratos
-  Controllers/NestController    Panel del nido: criaturas (cría, liberar, ⭐ favoritas), incubadora, mejoras, decorar, misiones, tienda
+  Controllers/NestController    Panel del nido: criaturas (cría, liberar, ⭐ favoritas), incubadora, mejoras, decorar, misiones, Plaza
+  Controllers/StoreController   Tienda 🛒: botón, ventana con secciones, precios de Roblox y avisos (Store.luau)
+  Controllers/FireworksController  Fuegos artificiales en la plaza del lobby
   Controllers/CosmeticsController  Criatura al hombro (eliges cuál con 🦜) y Estela de Brasas
   Controllers/EffectsController Latido del huevo, criaturas arcoíris y saltitos en los nidos
   Controllers/SoundController   Sonidos de las acciones
@@ -153,7 +155,7 @@ Los detalles, con gráficas que comparan la v2 y la v3, están en `docs/simulaci
 
 ## Antes de publicar
 
-- **Monetización:** crea los game passes y developer products en el Creator Hub y pon sus IDs en `Config.GamePasses` y `Config.DevProducts`. Mientras valgan `0`, la tienda los muestra como "Pronto". Para el Club del Nido, rellena `Config.ClubSubscriptionId`.
+- **Monetización:** crea los game passes y developer products en el Creator Hub y pon sus IDs en `Config.GamePasses` y `Config.DevProducts`. Mientras valgan `0`, la tienda los muestra como "Pronto". Para el Club del Nido, rellena `Config.ClubSubscriptionId`. Paso a paso, con precios recomendados, en `docs/PUBLICAR.md`.
 - **Jugadores mínimos:** `Config.Round.MinPlayers` vale 1 para poder probar solo. En producción conviene 4 o más.
 
 ## Estado respecto al GDD
@@ -176,6 +178,7 @@ Implementado:
 - La criatura sale del huevo en el centro del claro durante la eclosión (GDD v3.1).
 - Sonidos con volumen equilibrado por grupos y botón para probarlos todos (F7).
 - Anti-trampas: el servidor comprueba el movimiento (tirolinas, setas…) y limita cuántas veces por segundo se puede llamar a cada remoto (`Config.AntiCheat`).
+- Tienda 🛒 nueva (v3.3): botón grande a la derecha y ventana propia con secciones (Destacado, Pases, Monedas, Lobby y Club), pack de inicio, 4 packs de Monedas, fuegos artificiales en la plaza y avisos en momentos útiles.
 - Torre de la plaza (parkour en el lobby con cronómetro y récord), emotes con la criatura al hombro y Tienda de la Plaza también con Robux (`docs/PUBLICAR.md`).
 - Regalo diario (racha de 7 días), nombres para las criaturas (con filtro de texto) y Tienda de la Plaza (sombreros para la criatura al hombro y temas de nido, con polvo).
 - Botón de acción en móvil, analítica de economía y de partida, comandos de soporte y moderación (`!ayuda`, solo administradores) y 🏡 Visitar nidos.

@@ -351,10 +351,19 @@ Nada de pago cambia el huevo de la partida, la elección, la persecución ni lo 
 | **Suerte del Lobby (15 min)** | 199 | Los huevos del nido de todos los del lobby salen con el doble de suerte. Se anuncia el nombre del comprador y el HUD del lobby muestra la cuenta atrás. Es la compra estrella: agradecimiento público en un servidor lleno | Hecho |
 | Huevo de Temporada | 99 | Probabilidades públicas antes de comprar | Hecho |
 | Reintento de Cría | 25 | Repite una cría con los mismos padres | Hecho |
-| Packs de Monedas | 49 a 999 | Escalado clásico con bonus en packs grandes | Hecho |
-| **Fuegos artificiales** | 25 | Espectáculo en la plaza del lobby con tu nombre y tu criatura del hombro en grande | Propuesta |
+| Packs de Monedas | 49 / 199 / 499 / 999 | 5.000 / 25.000 / 75.000 / 180.000 Monedas (v3.3). La tienda calcula el "+X % extra" con los precios reales | Hecho |
+| **Pack de inicio** | 49 | (v3.3) Una sola vez y solo los 3 primeros días: 10.000 Monedas + Huevo de Temporada + Gorro de novato (exclusivo). Donde no se permite lo aleatorio de pago, el huevo pasa a ser 5.000 Monedas más. La cuenta atrás es real | Hecho |
+| **Fuegos artificiales** | 25 | Espectáculo en la plaza del lobby con tu nombre y tu criatura del hombro gigante; si se compran varios, van en cola | Hecho (v3.3) |
 | **Renombrar criatura** | Gratis (v3.1) | Nombre propio en la placa del pedestal, con el filtro de texto de Roblox. Se podría cobrar más adelante | Hecho |
 | **Regalar** | — | Cualquier pase o producto se puede comprar para un amigo del lobby | Propuesta |
+
+### 9.2.1 La ventana de la tienda 🛒 (v3.3)
+
+- **Botón grande a la derecha** (debajo de las Monedas), dorado, que se balancea un poco y lleva una burbuja roja hasta que abres la tienda en esa sesión. Solo en el lobby.
+- **Ventana propia** estilo cartoon brillante: degradado morado y azul, borde blanco grueso, título grande y saldo de Monedas. Secciones: **Destacado** (banner grande con el pack de inicio o la Suerte del Lobby y "Lo más comprado"), **Pases**, **Monedas**, **Lobby** (Suerte, fuegos, huevo, repetir cría) y **Club**.
+- **Tarjetas** de colores con icono que flota, cinta ("MÁS POPULAR", "MEJOR VALOR", "SOLO UNA VEZ", "PARA TODOS") y botón verde con brillo y el precio que dice Roblox. Lo que ya tienes sale como "✔ ¡TUYO!". Al comprar un pase o el pack de inicio, confeti y "¡GRACIAS!".
+- **Avisos en momentos útiles** (moderado): la Incubadora Rápida si un huevo tarda más de 2 min, el Nido VIP si tienes criaturas guardadas sin producir, un pack si te faltan Monedas para la siguiente mejora y el pack de inicio al minuto de entrar. Cada aviso sale una vez por sesión, como mucho 3, con 5 min entre uno y otro, con X para cerrar y nunca antes de tu primera partida. No hay cuentas atrás falsas ni ventanas que bloqueen.
+- Lo aleatorio (Huevo de Temporada, Repetir cría) enseña sus probabilidades y desaparece donde Roblox lo restringe.
 
 ### 9.3 Tienda de la Plaza (estética, rota cada día)
 

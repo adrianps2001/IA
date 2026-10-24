@@ -48,6 +48,20 @@ local function grant(player: Player, item: Cosmetics.Item)
 	AnnouncementService.player(player, string.format("%s ¡%s es tuyo!", item.Icon, item.Name), "quest")
 end
 
+-- Para otras entregas (pack de inicio): da el artículo o, si ya lo tenía, su valor en polvo.
+function ShopService.grantItem(player: Player, id: string)
+	local profile = DataService.get(player)
+	local item = Cosmetics.get(id)
+	if not profile or not item then
+		return
+	end
+	if table.find(profile.Cosmetics.Owned, item.Id) then
+		DataService.addDust(player, item.Price)
+	else
+		grant(player, item)
+	end
+end
+
 local function buy(player: Player, id: any)
 	local profile = DataService.get(player)
 	local item = Cosmetics.get(id)

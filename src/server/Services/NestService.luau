@@ -501,6 +501,15 @@ local function addEgg(
 	DataService.markChanged(player)
 end
 
+-- Un huevo de Config.EggRanges[range] (para otras entregas, como el pack de inicio).
+function NestService.grantEgg(player: Player, kind: string, range: string)
+	if not DataService.get(player) then
+		return
+	end
+	local r = (Config.EggRanges :: any)[range]
+	addEgg(player, kind, 60, r.Min :: Rarity.RarityName, r.Max :: Rarity.RarityName)
+end
+
 -- Premio al elegido que pierde la criatura (Rewards). Entra aunque la incubadora esté llena,
 -- como el huevo de racha.
 function NestService.giveChosenEgg(player: Player)

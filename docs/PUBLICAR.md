@@ -64,14 +64,51 @@ Los 13 identificadores son: `hat_party` (Gorro de fiesta), `hat_beanie` (Gorro d
 
 ---
 
-## 3. Los demás productos y pases
+## 3. La tienda 🛒 (pases, productos y Club)
 
-Mismo proceso (Creator Hub → Monetización), copiando cada número a su sitio en `src/shared/Config.luau`:
+### Qué es
 
-| Qué | Dónde se crea | Dónde va el número |
-|---|---|---|
-| Nido VIP, x2 Monedas, Incubadora Rápida, Ranura de cría extra, Estela de Brasas | **Pases** | `Config.GamePasses` |
-| Suerte del Lobby, Huevo de Temporada, Repetir cría, packs de Monedas | **Productos para desarrolladores** | `Config.DevProducts` |
-| Club del Nido | **Suscripciones** (empieza por `EXP-`) | `Config.ClubSubscriptionId` |
+El botón dorado **🛒 TIENDA** de la derecha (debajo de las Monedas) abre una ventana con cinco secciones:
+
+- **Destacado:** un banner grande (el pack de inicio si toca, o la Suerte del Lobby) y "Lo más comprado".
+- **Pases:** se pagan una vez.
+- **Monedas:** 4 packs.
+- **Lobby:** Suerte del Lobby, fuegos artificiales, Huevo de Temporada y Repetir cría.
+- **Club:** la suscripción.
+
+Cada tarjeta enseña el precio que tú pongas en el Creator Hub. Lo que no tenga número en `Config` sale como **"Pronto"**.
+
+### Paso a paso
+
+1. **Pases** (Creator Hub → tu experiencia → **Monetización** → **Pases** → *Crear un pase*): ponle nombre, imagen y precio y pulsa **"En venta"**. Copia el número en `Config.GamePasses`.
+2. **Productos** (**Monetización** → **Productos para desarrolladores**): igual. Copia el número en `Config.DevProducts`.
+3. **Club** (**Monetización** → **Suscripciones**): el número empieza por `EXP-` y va en `Config.ClubSubscriptionId`.
+
+| Clave en `Config` | Tipo | Qué es | Precio recomendado |
+|---|---|---|---|
+| `GamePasses.DoubleCoins` | Pase | x2 Monedas del nido | 299 R$ |
+| `GamePasses.VipNest` | Pase | Nido VIP (+10 ranuras) | 249 R$ |
+| `GamePasses.FastIncubator` | Pase | Incubadora Rápida (la mitad de tiempo) | 349 R$ |
+| `GamePasses.ExtraBreedSlot` | Pase | Ranura de cría extra | 149 R$ |
+| `GamePasses.EmberTrail` | Pase | Estela de Brasas (estética) | 99 R$ |
+| `DevProducts.StarterPack` | Producto | **Pack de inicio**: 10.000 Monedas + Huevo de Temporada + Gorro de novato | 49 R$ |
+| `DevProducts.CoinsSmall` | Producto | 5.000 Monedas | 49 R$ |
+| `DevProducts.CoinsMedium` | Producto | 25.000 Monedas | 199 R$ |
+| `DevProducts.CoinsLarge` | Producto | 75.000 Monedas ("MÁS POPULAR") | 499 R$ |
+| `DevProducts.CoinsHuge` | Producto | 180.000 Monedas ("MEJOR VALOR") | 999 R$ |
+| `DevProducts.ServerLuck` | Producto | Suerte del Lobby (15 min, para todos) | 199 R$ |
+| `DevProducts.Fireworks` | Producto | Fuegos artificiales en la plaza | 25 R$ |
+| `DevProducts.SeasonEgg` | Producto | Huevo de Temporada | 99 R$ |
+| `DevProducts.BreedReroll` | Producto | Repetir la última cría | 25 R$ |
+| `ClubSubscriptionId` | Suscripción | Club del Nido (+20 % de Monedas) | el más bajo que permita Roblox |
+
+### Cómo funciona por dentro
+
+- **Precios:** la tienda pregunta a Roblox el precio de cada cosa (`GetProductInfoAsync`), así que si lo cambias en el Creator Hub se ve al momento. El **"+X % extra"** de los packs de Monedas se calcula con esos precios reales, comparando cada pack con el pequeño. Si cambias los precios, el porcentaje cambia solo y nunca miente.
+- **Pases:** Roblox enseña su ventana. Cuando el jugador entra, y justo después de comprar, el servidor pregunta a Roblox qué pases tiene y lo marca en el jugador. No hace falta guardar nada.
+- **Productos:** el mismo sistema de recibos que la Plaza (sección 2): se entrega, se guarda y solo entonces se confirma. Así nunca se entrega dos veces ni se pierde una compra.
+- **Pack de inicio:** se ofrece durante los **3 primeros días** desde que el jugador entró por primera vez (la cuenta atrás es real) y desaparece al comprarlo. Donde Roblox no permite cosas aleatorias de pago, el huevo se cambia por 5.000 Monedas más.
+- **Fuegos artificiales:** solo en el lobby. Todos ven el espectáculo, y si se compran varios van en cola (14 s cada uno).
+- **Avisos:** abajo, en momentos útiles (huevo que tarda, nido lleno, te faltan Monedas, pack de inicio). Como mucho 3 por sesión, uno cada 5 min, cada uno una sola vez, con X, y nunca antes de la primera partida. Solo aparecen si lo que sugieren tiene número en `Config`. Se ajustan en `Config.Store`.
 
 Los precios recomendados están en el GDD (sección 9).

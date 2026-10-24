@@ -72,6 +72,9 @@ Nada de esto se puede hacer desde el código: necesita tu cuenta.
 - [x] **P1 🧑‍💻 Menú de ajustes.** Hecho (botón ⚙️): volumen de efectos y de pasos, tamaño de la interfaz (80-130 %), ver o no las criaturas al hombro de los demás y repetir el tutorial. Se guarda en el perfil. Falta el volumen de música (cuando haya música).
 - [x] **P1 🧑‍💻 Tienda de la Plaza** (hecha): pestaña **Plaza** del panel del nido con 6 artículos al día (8 sombreros y 5 temas de nido), con polvo de cáscara **y con Robux** si creas un producto por artículo (ver `docs/PUBLICAR.md`). Falta: pedestales y títulos.
 - [ ] **P1 🌐 Crear los productos de Robux de la Tienda de la Plaza** y poner sus números en `Config.CosmeticProducts` (paso a paso en `docs/PUBLICAR.md`).
+- [x] **P0 🧑‍💻 Tienda 🛒 nueva** (hecha, v3.3): ventana propia con secciones, tarjetas, precios reales, pack de inicio, 4 packs de Monedas, fuegos artificiales y avisos en momentos útiles.
+- [ ] **P0 🌐 Crear los pases y productos de la tienda 🛒** (5 pases, 9 productos y la suscripción) y poner sus números en `Config` (tabla completa en `docs/PUBLICAR.md`, sección 3). Sin eso la tienda enseña "Pronto".
+- [ ] **P1 🔍 Mirar la tienda 🛒 en un móvil**: que las tarjetas se lean, que las pestañas se puedan deslizar y que el botón 🛒 no tape nada.
 - [ ] **P1 🧑‍💻 Pase de temporada** (gratis + premium, solo estético) con misiones de jugar normal.
 - [ ] **P1 🧑‍💻 Filtrado de texto** (`TextService:FilterStringAsync`) si se añade cualquier texto escrito por jugadores (renombrar criaturas, nombre del nido). Hoy no hay ninguno, pero el GDD propone "Renombrar criatura": sin filtro, Roblox lo prohíbe.
 - [x] **P1 🧑‍💻 Límites en los intercambios.** Hecho: 10 intercambios al día como mucho y las Secretas no se pueden intercambiar hasta 3 días después de conseguirlas (también si llegaron por otro intercambio). En `Config.Trade`.

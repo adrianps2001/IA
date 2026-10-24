@@ -12,13 +12,14 @@ local Economy = require(Shared.Economy)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 
+local StoreController = require(script.Parent.StoreController)
 local UI = require(script.Parent.Parent.UI)
 
 local player = Players.LocalPlayer
 
 local NestController = {}
 
-local TABS = { "Criaturas", "Incubadora", "Mejoras", "Decorar", "Misiones", "Plaza", "Tienda" }
+local TABS: { string } = { "Criaturas", "Incubadora", "Mejoras", "Decorar", "Misiones", "Plaza", "🛒 Tienda" }
 
 local panel: Frame
 local content: ScrollingFrame
@@ -436,59 +437,6 @@ local function renderQuests()
 	}, stats)
 end
 
-local function oddsText(range: { Min: string, Max: string }): string
-	local parts = {}
-	local chances = Rarity.chances(1, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName)
-	for _, name in Rarity.Order do
-		local chance = chances[name]
-		if chance > 0 then
-			table.insert(parts, string.format("%s %.1f %%", Rarity.Info[name].DisplayName, chance * 100))
-		end
-	end
-	return table.concat(parts, ", ")
-end
-
--- Tienda opcional (GDD 9): nunca vende la victoria; todo lo aleatorio muestra probabilidades.
-local function renderShop()
-	local products = {
-		{ Key = "ServerLuck", Text = "🍀 Suerte del Lobby (15 min: huevos del nido de TODOS)", Product = true },
-		{ Key = "SeasonEgg", Text = "🥚 Huevo de Temporada: " .. oddsText(Config.EggRanges.Season), Product = true, Random = true },
-		{ Key = "BreedReroll", Text = "🔁 Repetir la última cría", Product = true, Random = true },
-		{ Key = "CoinsSmall", Text = "🪙 Pack pequeño de Monedas", Product = true },
-		{ Key = "EmberTrail", Text = "🔥 Estela de Brasas (estética)", Product = false },
-		{ Key = "DoubleCoins", Text = "🪙 x2 Monedas del nido", Product = false },
-		{ Key = "VipNest", Text = "👑 Nido VIP (+10 ranuras)", Product = false },
-		{ Key = "FastIncubator", Text = "⏩ Incubadora Rápida", Product = false },
-		{ Key = "ExtraBreedSlot", Text = "➕ Ranura de cría extra", Product = false },
-	}
-	-- Los objetos aleatorios de pago no se muestran donde la ley los restringe.
-	local randomRestricted = player:GetAttribute("PaidRandomRestricted") ~= false
-	for index, item in products do
-		if (item :: any).Random and randomRestricted then
-			continue
-		end
-		local id = if item.Product then Config.DevProducts[item.Key] else Config.GamePasses[item.Key]
-		local owned = not item.Product and player:GetAttribute("Pass_" .. item.Key) == true
-		local r = row(50, index)
-		UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(0.7, -12, 1, -12), Text = item.Text, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, r)
-		UI.button({
-			Position = UDim2.new(0.7, 0, 0, 6),
-			Size = UDim2.new(0.3, -10, 1, -12),
-			Text = if owned then "Tuyo" elseif id == 0 then "Pronto" else "Comprar",
-			BackgroundColor3 = if owned or id == 0 then UI.Colors.PanelLight else UI.Colors.Accent,
-		}, r, function()
-			if id == 0 or owned then
-				return
-			end
-			if item.Product then
-				MarketplaceService:PromptProductPurchase(player, id)
-			else
-				MarketplaceService:PromptGamePassPurchase(player, id)
-			end
-		end)
-	end
-end
-
 local renderedTab = ""
 
 render = function()
@@ -522,10 +470,8 @@ render = function()
 		renderDecorations()
 	elseif currentTab == "Misiones" then
 		renderQuests()
-	elseif currentTab == "Plaza" then
-		renderPlaza()
 	else
-		renderShop()
+		renderPlaza()
 	end
 end
 
@@ -576,6 +522,12 @@ function NestController.start()
 	end
 	for index, name in TABS do
 		tabButtons[name] = UI.button({ Size = UDim2.new(1 / #TABS, -4, 1, 0), Text = name, LayoutOrder = index }, tabs, function()
+			-- (v3.3) La tienda de Robux tiene su propia ventana (botón 🛒).
+			if name == "🛒 Tienda" then
+				panel.Visible = false
+				StoreController.open()
+				return
+			end
 			currentTab = name
 			table.clear(selected)
 			confirmRelease = ""

@@ -333,7 +333,11 @@ Config.DevProducts = {
 	BreedReroll = 0,
 	SeasonEgg = 0,
 	CoinsSmall = 0,
+	CoinsMedium = 0, -- (v3.3) escalera de 4 packs de Monedas
 	CoinsLarge = 0,
+	CoinsHuge = 0,
+	StarterPack = 0, -- (v3.3) oferta de bienvenida: una sola vez, los primeros días
+	Fireworks = 0, -- (v3.3) fuegos artificiales con tu nombre en la plaza del lobby
 } :: { [string]: number }
 
 -- Suscripción "Club del Nido" (id tipo "EXP-..." del Creator Hub; vacío = desactivada).
@@ -352,6 +356,7 @@ Config.CosmeticProducts = {
 	hat_top = 0,
 	hat_pirate = 0,
 	hat_crown = 0,
+	-- hat_rookie (Gorro de novato) no va aquí: es exclusivo del pack de inicio.
 	theme_snow = 0,
 	theme_beach = 0,
 	theme_candy = 0,
@@ -372,7 +377,22 @@ Config.EggRanges = {
 -- Suerte del Lobby: durante Seconds, los huevos del nido que abra cualquiera en ese lobby tiran
 -- con Luck veces más suerte. No afecta a la criatura de la partida (GDD 9, v3.1).
 Config.ServerLuck = { Seconds = 15 * 60, Luck = 2 }
-Config.CoinPacks = { CoinsSmall = 5_000, CoinsLarge = 120_000 } :: { [string]: number }
+-- Packs de Monedas (v3.3). Precios recomendados: 49, 199, 499 y 999 Robux. La tienda calcula
+-- el "+X % extra" de cada pack con los precios reales que pongas en el Creator Hub.
+Config.CoinPacks = { CoinsSmall = 5_000, CoinsMedium = 25_000, CoinsLarge = 75_000, CoinsHuge = 180_000 } :: { [string]: number }
+
+-- Tienda (v3.3, botón 🛒). Pack de inicio: se puede comprar una vez y se ofrece los primeros
+-- OfferDays días desde que entraste por primera vez. Donde Roblox no permite cosas aleatorias
+-- de pago, el huevo del pack se cambia por EggCoins Monedas.
+Config.Store = {
+	Starter = { Coins = 10_000, EggCoins = 5_000, Hat = "hat_rookie", OfferDays = 3 },
+	-- Avisos de la tienda en momentos útiles (incubadora esperando, nido lleno…): como mucho
+	-- uno cada NudgeGap segundos y MaxNudges por sesión, nunca en la partida.
+	NudgeGap = 300,
+	MaxNudges = 3,
+	-- Fuegos artificiales: cuánto dura cada espectáculo (si se compran varios, van en cola).
+	FireworksSeconds = 14,
+}
 
 -- Lugares (GDD v3): el lobby (nidos, tienda, intercambios, emparejamiento) y las partidas
 -- son dos lugares del mismo juego. Se publica el mismo archivo en los dos y cada servidor

@@ -901,16 +901,18 @@
       ["🍀", "Suerte del Lobby", "15 min de suerte ×" + get("ServerLuck.Luck") + " en los huevos del nido de todo el lobby, con tu nombre en el anuncio.", true],
       ["🎟️", "Huevo de Temporada", "Rara a Legendaria, con las probabilidades a la vista antes de comprar.", true],
       ["🔁", "Repetir cría", "Vuelve a tirar la última cría con los mismos padres.", true],
-      ["📅", "Club del Nido", "Suscripción: +20 % de Monedas y una decoración exclusiva al mes.", true],
+      ["📅", "Club del Nido", "Suscripción mensual: +20 % de Monedas del nido.", true],
       ["🛍️", "Tienda de la Plaza", "Sombreros para tu criatura al hombro y temas de nido, con polvo de cáscara. 6 artículos distintos cada día.", true],
       ["💎", "Plaza con Robux", "Cada sombrero y tema también se puede vender con Robux (un producto por artículo).", true],
       ["🎭", "Más estética", "Pedestales y títulos.", false],
-      ["🎆", "Fuegos artificiales", "Espectáculo en la plaza con tu nombre y tu criatura.", false],
+      ["🎆", "Fuegos artificiales", "Espectáculo en la plaza con tu nombre y tu criatura gigante en el cielo. Lo ve todo el lobby.", true],
+      ["🎁", "Pack de inicio", "Una sola vez y solo los primeros días: Monedas, un Huevo de Temporada y el Gorro de novato exclusivo.", true],
+      ["💰", "Packs de Monedas", "Cuatro packs; los grandes dan más por cada Robux y la tienda enseña cuánto extra con los precios reales.", true],
       ["🎁", "Regalos", "Comprar pases y productos para un amigo.", false],
     ].forEach(function (r) { shop.appendChild(el("div", { class: "mini-card" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + ' <span class="pill ' + (r[3] ? "ok" : "no") + '">' + (r[3] ? "en el juego" : "diseñado") + "</span></b><p>" + r[2] + "</p>")); });
     var todo = $("#todo");
     if (todo) [
-      ["🎆", "Más cosas de la tienda", "Comprar la estética con Robux, pedestales, emotes, fuegos artificiales y regalos a amigos."],
+      ["🎆", "Más cosas de la tienda", "Pedestales, títulos y regalos a amigos."],
       ["🌍", "Inglés y otros idiomas", "Todos los textos están en español; la traducción está decidida para más adelante."],
       ["🎨", "Arte definitivo", "Mapas hechos a mano, modelos de criatura de un artista, sonidos definitivos y música."],
       ["📺", "Huevo del Admin y pase de temporada", "Evento en directo y pase con recompensas estéticas."],

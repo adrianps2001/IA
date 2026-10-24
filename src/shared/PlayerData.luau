@@ -42,6 +42,7 @@ export type Profile = {
 	Daily: DailyReward.State, -- regalo diario (v3.1)
 	Cosmetics: CosmeticsState, -- Tienda de la Plaza: lo comprado y lo que llevas puesto (v3.1)
 	Parkour: { Best: number, LastRewardDay: number }, -- torre de la plaza: mejor tiempo (0 = ninguno) (v3.2)
+	Store: { FirstJoin: number, StarterBought: boolean }, -- tienda 🛒: pack de inicio (v3.3)
 }
 
 -- Ajustes (v3.1): volumen de efectos y de pasos (0 a 1), tamaño de la interfaz y si se ven
@@ -101,6 +102,7 @@ function PlayerData.default(now: number): Profile
 		Daily = DailyReward.newState(),
 		Cosmetics = { Owned = {} },
 		Parkour = { Best = 0, LastRewardDay = -1 },
+		Store = { FirstJoin = now, StarterBought = false },
 	}
 end
 
@@ -263,6 +265,10 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 	if type(raw.Parkour) == "table" then
 		profile.Parkour.Best = math.max(number(raw.Parkour.Best, 0), 0)
 		profile.Parkour.LastRewardDay = math.floor(number(raw.Parkour.LastRewardDay, -1))
+	end
+	if type(raw.Store) == "table" then
+		profile.Store.FirstJoin = number(raw.Store.FirstJoin, profile.Store.FirstJoin)
+		profile.Store.StarterBought = raw.Store.StarterBought == true
 	end
 	-- Estética: solo artículos que existen, sin repetir; lo puesto, solo si es tuyo y del tipo.
 	local cosmetics = raw.Cosmetics

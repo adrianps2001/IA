@@ -22,6 +22,7 @@ local RateLimiter = require("../src/shared/RateLimiter")
 local PlayerData = require("../src/shared/PlayerData")
 local Quests = require("../src/shared/Quests")
 local Sounds = require("../src/shared/Sounds")
+local Store = require("../src/shared/Store")
 local Rarity = require("../src/shared/Rarity")
 local Rewards = require("../src/shared/Rewards")
 local Trade = require("../src/shared/Trade")
@@ -1046,7 +1047,7 @@ test("Tienda de la Plaza: rotación diaria, siempre con sombrero y tema, y datos
 		expect(Cosmetics.shopToday(day)[1].Id == shop[1].Id, "el mismo día, la misma tienda")
 	end
 	for _, item in Cosmetics.Catalog do
-		expect(seen[item.Id] == true, item.Id .. " nunca sale en la tienda")
+		expect((seen[item.Id] == true) == (item.Exclusive ~= true), item.Id .. (if item.Exclusive then " es exclusivo y sale en la tienda" else " nunca sale en la tienda"))
 		expect(item.Price > 0 and item.Price % 50 == 0, item.Id .. ": precio redondo")
 	end
 	local profile = PlayerData.reconcile({ Cosmetics = { Owned = { "hat_top", "no-existe", "hat_top", "theme_snow" }, Hat = "hat_crown", Theme = "theme_snow" } }, 0)
@@ -1057,7 +1058,7 @@ end)
 
 test("Tienda de la Plaza con Robux: cada artículo tiene su hueco de producto", function()
 	for _, item in Cosmetics.Catalog do
-		expect(Config.CosmeticProducts[item.Id] ~= nil, item.Id .. " no está en Config.CosmeticProducts")
+		expect((Config.CosmeticProducts[item.Id] ~= nil) == (item.Exclusive ~= true), item.Id .. ": hueco de producto (los exclusivos no se venden sueltos)")
 	end
 	for id in Config.CosmeticProducts do
 		expect(Cosmetics.get(id) ~= nil, id .. " no existe en el catálogo")
@@ -1097,6 +1098,89 @@ test("torre de la plaza: todos los saltos se pueden hacer y no choca con la plaz
 		expect(r > 14 and r + math.max(b.Size.X, b.Size.Z) / 2 < 32, "plataforma " .. b.Index .. " choca con algo de la plaza")
 	end
 	expect(LobbyParkour.minSeconds() > 3)
+end)
+
+test("tienda 🛒: cada oferta tiene su hueco en Config y lo que se enseña es honesto", function()
+	local keys: { [string]: boolean } = {}
+	for _, section in Store.Sections do
+		expect(#section.Offers > 0, section.Id .. " vacía")
+		for _, offer in section.Offers do
+			expect(not keys[offer.Key], offer.Key .. " repetida")
+			keys[offer.Key] = true
+			if offer.Kind == "Pass" then
+				expect(Config.GamePasses[offer.Key] ~= nil, offer.Key .. " no está en Config.GamePasses")
+			elseif offer.Kind == "Product" then
+				expect((Config.DevProducts :: any)[offer.Key] ~= nil, offer.Key .. " no está en Config.DevProducts")
+			end
+			expect(Store.find(offer.Key) == offer)
+		end
+	end
+	-- Todo lo que se puede comprar sale en la tienda.
+	for key in Config.GamePasses do
+		expect(keys[key], key .. " no sale en la tienda")
+	end
+	for key in Config.DevProducts do
+		expect(keys[key] or key == "StarterPack", key .. " no sale en la tienda")
+	end
+	expect((Store.find("SeasonEgg") :: any).Random == true and (Store.find("BreedReroll") :: any).Random == true, "lo aleatorio va marcado")
+	expect(Cosmetics.get(Config.Store.Starter.Hat) ~= nil and (Cosmetics.get(Config.Store.Starter.Hat) :: any).Exclusive)
+	-- Cada pack grande da más por Robux que el anterior (con los precios recomendados).
+	local recommended = { CoinsSmall = 49, CoinsMedium = 199, CoinsLarge = 499, CoinsHuge = 999 }
+	local last = 0
+	for _, key in { "CoinsMedium", "CoinsLarge", "CoinsHuge" } do
+		local bonus = Store.coinBonus(Config.CoinPacks[key], recommended[key], Config.CoinPacks.CoinsSmall, recommended.CoinsSmall) :: number
+		expect(bonus ~= nil and bonus > last, key .. ": el bonus no crece")
+		last = bonus
+	end
+	expect(Store.coinBonus(5000, 49, 5000, 49) == nil, "sin bonus no se enseña +0 %")
+	expect(Store.coinBonus(10000, 0, 5000, 49) == nil)
+	expect(Store.formatThousands(180000) == "180.000" and Store.formatThousands(999) == "999" and Store.formatThousands(1000000) == "1.000.000")
+end)
+
+test("tienda 🛒: el pack de inicio se ofrece de verdad unos días y una sola vez", function()
+	local days = Config.Store.Starter.OfferDays
+	expect(Store.starterEndsAt({ FirstJoin = 1000, StarterBought = false }, 1000) == 1000 + days * 86400)
+	expect(Store.starterEndsAt({ FirstJoin = 1000, StarterBought = false }, 1000 + days * 86400) == nil, "acaba cuando dice")
+	expect(Store.starterEndsAt({ FirstJoin = 1000, StarterBought = true }, 1001) == nil, "una sola vez")
+	local profile = PlayerData.reconcile({ Store = { FirstJoin = 50, StarterBought = true } }, 999)
+	expect(profile.Store.FirstJoin == 50 and profile.Store.StarterBought == true)
+	expect(PlayerData.reconcile({}, 999).Store.FirstJoin == 999)
+	expect(#Store.starterContents(true) == 2 and #Store.starterContents(false) == 3, "sin huevo donde no se permite lo aleatorio")
+end)
+
+test("tienda 🛒: avisos pocos, una vez cada uno y solo si hay algo que comprar", function()
+	local saved = table.clone(Config.GamePasses)
+	local savedProducts = table.clone(Config.DevProducts)
+	local function ctx(over: { [string]: any }): Store.NudgeContext
+		local c: any = { Now = 1000, Passes = {}, Slots = 20, TotalCreatures = 5, LongestWait = 0, Coins = 1e9, CheapestUpgrade = nil, StarterEndsAt = nil, Shown = {}, LastShownAt = 0, SessionSeconds = 600 }
+		for k, v in over do
+			c[k] = v
+		end
+		return c
+	end
+	-- Sin productos creados no hay avisos.
+	expect(Store.pickNudge(ctx({ LongestWait = 999, TotalCreatures = 99 })) == nil)
+	Config.GamePasses.FastIncubator = 1
+	Config.GamePasses.VipNest = 2
+	Config.DevProducts.StarterPack = 3
+	expect((Store.pickNudge(ctx({ LongestWait = 999 })) :: any).Id == "incubator")
+	expect(Store.pickNudge(ctx({ LongestWait = 999, Passes = { FastIncubator = true } })) == nil, "no se sugiere lo que ya tienes")
+	expect((Store.pickNudge(ctx({ TotalCreatures = 30 })) :: any).Id == "nestfull")
+	expect((Store.pickNudge(ctx({ StarterEndsAt = 5000 })) :: any).Id == "starter")
+	expect(Store.pickNudge(ctx({ StarterEndsAt = 5000, SessionSeconds = 10 })) == nil, "el de bienvenida espera un minuto")
+	expect(Store.pickNudge(ctx({ LongestWait = 999, Shown = { incubator = true } })) == nil, "cada uno una vez")
+	expect(Store.pickNudge(ctx({ LongestWait = 999, LastShownAt = 900 })) == nil, "hueco entre avisos")
+	local many = {}
+	for i = 1, Config.Store.MaxNudges do
+		many["x" .. i] = true
+	end
+	expect(Store.pickNudge(ctx({ LongestWait = 999, Shown = many })) == nil, "tope por sesión")
+	for k, v in saved do
+		Config.GamePasses[k] = v
+	end
+	for k, v in savedProducts do
+		Config.DevProducts[k] = v
+	end
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

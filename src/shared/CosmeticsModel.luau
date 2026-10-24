@@ -152,6 +152,19 @@ function CosmeticsModel.buildHat(id: string, top: CFrame, w: number, parent: Ins
 		front.CFrame = top * CFrame.new(0, 0.2 * w, -0.12 * w)
 		local skull = part("Skull", Enum.PartType.Ball, Vector3.one * 0.1 * w, Color3.fromRGB(245, 245, 235), hat)
 		skull.CFrame = top * CFrame.new(0, 0.22 * w, -0.19 * w)
+	elseif id == "hat_rookie" then
+		-- Media cáscara de huevo con el borde en zigzag (pack de inicio).
+		local shell = blob("Eggshell", Vector3.new(0.6, 0.34, 0.6) * w, Color3.fromRGB(250, 245, 230), hat)
+		shell.CFrame = top * CFrame.new(0, 0.1 * w, 0)
+		for k = 0, 7 do
+			local a = k * math.pi * 2 / 8
+			local tooth = part("ShellTooth", Enum.PartType.Block, Vector3.new(0.12, 0.12, 0.04) * w, Color3.fromRGB(250, 245, 230), hat)
+			tooth.CFrame = top * CFrame.new(math.cos(a) * 0.27 * w, 0.02 * w, math.sin(a) * 0.27 * w) * CFrame.Angles(0, -a + math.pi / 2, math.rad(45))
+		end
+		for _, spot in { Vector3.new(-0.12, 0.2, -0.2), Vector3.new(0.14, 0.24, -0.12), Vector3.new(0.02, 0.27, 0.16) } do
+			local dot = part("ShellSpot", Enum.PartType.Ball, Vector3.one * 0.08 * w, Color3.fromRGB(255, 190, 90), hat)
+			dot.CFrame = top * CFrame.new((spot :: Vector3) * w)
+		end
 	elseif id == "hat_crown" then
 		local band = part("Crown", Enum.PartType.Cylinder, Vector3.new(0.14 * w, 0.42 * w, 0.42 * w), Color3.fromRGB(255, 205, 60), hat)
 		band.CFrame = top * CFrame.new(0, 0.07 * w, 0) * CFrame.Angles(0, 0, math.rad(90))
