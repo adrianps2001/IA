@@ -10,6 +10,7 @@ export type Creature = {
 	Rarity: Rarity.RarityName,
 	Origin: string, -- "Hatch" | "Breed" | "PersonalEgg" | "Copy" | "Season"
 	Born: number,
+	Received: number?, -- cuándo llegó por intercambio (v3.1: las Secretas no se reintercambian enseguida)
 }
 
 local Creature = {}

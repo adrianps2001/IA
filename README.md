@@ -175,13 +175,15 @@ Implementado:
 - Brasas por niveles en el parkour: azules (×2) desde la mitad de los árboles y moradas (×4) en la cima (GDD v3.1).
 - La criatura sale del huevo en el centro del claro durante la eclosión (GDD v3.1).
 - Sonidos con volumen equilibrado por grupos y botón para probarlos todos (F7).
+- Anti-trampas: el servidor comprueba el movimiento (tirolinas, setas…) y limita cuántas veces por segundo se puede llamar a cada remoto (`Config.AntiCheat`).
+- Intercambios con tope diario y Secretas bloqueadas sus 3 primeros días; precios redondos; lobby decorado por código (terreno, bosque, flores, farolillos, bancos).
 - Tratos y traiciones, con títulos Leal/Traidor.
 - Bandada (grupos de hasta 4: reparten el 10 % del Calor, se ven a través de las paredes y +10 % de polvo con un amigo) e intercambio de criaturas con doble confirmación, cambio atómico e historial.
 - Consuelo con Polvo de cáscara, y premio al elegido que pierde la criatura: polvo extra y un Huevo del Elegido (Rara a Épica).
 - Nido con producción, también sin conexión (tope de 8 h).
 - 60 genes, 6 rarezas y cría con mutación.
 - Incubadora y huevos personales.
-- Las 5 mejoras permanentes y la Nueva generación.
+- Las 4 mejoras permanentes (bolsa, botas, nido e incubadora) y la Nueva generación.
 - Misiones diarias y racha de 7 días.
 - Luna de Sangre (3 franjas los sábados), Noche de Saqueo (sábados y domingos, 21-23 UTC, en una fase propia tras los resultados; por defecto el ladrón se lleva una copia común y el dueño no pierde nada) y Huevo Comunitario (barra global mensual en MemoryStore con criatura conmemorativa).
 - Anuncios globales de Míticas y Secretas.

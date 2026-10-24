@@ -218,14 +218,14 @@ function MatchmakingService.start()
 		return
 	end
 	MatchService.onRequeue(MatchmakingService.join)
-	Remotes.event("RequestQueue").OnServerEvent:Connect(function(player, value)
+	Remotes.onServer("RequestQueue", function(player, value)
 		if value == true then
 			MatchmakingService.join(player)
 		else
 			MatchmakingService.leave(player)
 		end
 	end)
-	Remotes.event("SetAutoRequeue").OnServerEvent:Connect(function(player, value)
+	Remotes.onServer("SetAutoRequeue", function(player, value)
 		player:SetAttribute("AutoRequeue", value == true)
 	end)
 	local lobby = MapService.Lobby

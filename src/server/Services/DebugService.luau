@@ -79,7 +79,7 @@ local commands: { [string]: (Player, any) -> () } = {
 function DebugService.init() end
 
 function DebugService.start()
-	Remotes.event("DebugCommand").OnServerEvent:Connect(function(player, name, arg)
+	Remotes.onServer("DebugCommand", function(player, name, arg)
 		if not Testing.enabled("DebugTools") then
 			return
 		end

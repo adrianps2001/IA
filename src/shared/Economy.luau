@@ -5,19 +5,31 @@ local Config = require("./Config")
 local Creature = require("./Creature")
 local Rarity = require("./Rarity")
 
-export type UpgradeName = "Bag" | "Boots" | "Sniffer" | "Nest" | "Incubator"
+export type UpgradeName = "Bag" | "Boots" | "Nest" | "Incubator"
 
 local Economy = {}
 
-Economy.UpgradeNames = { "Bag", "Boots", "Sniffer", "Nest", "Incubator" } :: { UpgradeName }
+Economy.UpgradeNames = { "Bag", "Boots", "Nest", "Incubator" } :: { UpgradeName }
 
 Economy.UpgradeDisplay = {
 	Bag = "Bolsa",
 	Boots = "Botas",
-	Sniffer = "Olfato",
 	Nest = "Nido",
 	Incubator = "Incubadora",
 } :: { [UpgradeName]: string }
+
+-- Precio redondo (v3.1): dos cifras significativas (1.312 → 1.300; 56.273 → 56.000) y, por
+-- debajo de 100, de 5 en 5. Así la tienda no enseña precios como 4.593.
+function Economy.roundPrice(n: number): number
+	if n <= 0 then
+		return 0
+	end
+	if n < 100 then
+		return math.max(5, math.floor(n / 5 + 0.5) * 5)
+	end
+	local step = 10 ^ (math.floor(math.log10(n)) - 1)
+	return math.floor(n / step + 0.5) * step
+end
 
 -- Coste del siguiente nivel, o nil si ya está al máximo. El nivel 0 es el inicial.
 function Economy.upgradeCost(name: UpgradeName, currentLevel: number): number?
@@ -25,7 +37,7 @@ function Economy.upgradeCost(name: UpgradeName, currentLevel: number): number?
 	if not def or currentLevel >= def.MaxLevel then
 		return nil
 	end
-	return math.floor(def.BaseCost * def.Growth ^ currentLevel * Config.PriceScale)
+	return Economy.roundPrice(def.BaseCost * def.Growth ^ currentLevel * Config.PriceScale)
 end
 
 function Economy.bagCapacity(bagLevel: number, hasBigBagPass: boolean): number
@@ -96,7 +108,7 @@ end
 
 function Economy.breedCost(parentRarity: Rarity.RarityName): number
 	local tier = Rarity.tier(parentRarity)
-	return math.floor(Config.Breeding.CostPerTierSquared * tier * tier * Config.PriceScale)
+	return Economy.roundPrice(Config.Breeding.CostPerTierSquared * tier * tier * Config.PriceScale)
 end
 
 function Economy.incomeMultiplier(generation: number, hasDoubleCoins: boolean, isClubMember: boolean): number
@@ -117,7 +129,7 @@ function Economy.offlineEarnings(incomePerSecond: number, secondsAway: number): 
 end
 
 function Economy.rebirthCoins(generation: number): number
-	return math.floor(Config.Rebirth.BaseCoins * (generation + 1) * Config.PriceScale)
+	return Economy.roundPrice(Config.Rebirth.BaseCoins * (generation + 1) * Config.PriceScale)
 end
 
 function Economy.canRebirth(creatureCount: number, coins: number, generation: number): boolean
@@ -177,7 +189,7 @@ end
 
 -- Precio real (las de Monedas escalan con PriceScale; las de Polvo no).
 function Economy.decorationCost(def: Decoration): number
-	return if def.Currency == "Coins" then math.floor(def.Cost * Config.PriceScale) else def.Cost
+	return Economy.roundPrice(if def.Currency == "Coins" then def.Cost * Config.PriceScale else def.Cost)
 end
 
 function Economy.beauty(owned: { string }): number

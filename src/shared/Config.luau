@@ -205,7 +205,6 @@ Config.Upgrades = {
 	-- de semanas). Curvas ajustadas con el simulador: ver docs/simulacion.html.
 	Bag = { BaseCost = 150, Growth = 3.5, MaxLevel = 9 }, -- 100 a 1.000 de Calor en 10 niveles (0-9)
 	Boots = { BaseCost = 200, Growth = 3.1, MaxLevel = 10 },
-	Sniffer = { BaseCost = 100_000, Growth = 1, MaxLevel = 1 },
 	Nest = { BaseCost = 300, Growth = 2.05, MaxLevel = 17 }, -- 6 + 17*2 = 40 ranuras
 	Incubator = { BaseCost = 1000, Growth = 7, MaxLevel = 5 },
 }
@@ -260,6 +259,9 @@ Config.Trade = {
 	ConfirmDelay = 3, -- segundos entre "Listo" de los dos y poder confirmar
 	RequestTimeout = 30,
 	HistorySize = 20,
+	-- v3.1: contra la reventa y los robos de cuentas.
+	MaxPerDay = 10, -- intercambios completados por jugador en 24 h
+	SecretLockDays = 3, -- una Secreta no se puede intercambiar hasta 3 días después de conseguirla
 }
 
 -- Ranking semanal de robos y salón de la fama (nidos con más "me gusta" de la semana).
@@ -387,6 +389,25 @@ Config.Arena = {
 	ZiplineSpeed = 55, -- studs por segundo en la tirolina
 	EmbersOnTrees = 0.45, -- fracción de las brasas naranjas que salen en las plataformas bajas de los árboles
 	LuckyOnTrees = 0.25, -- fracción de las cajas sorpresa que aparecen en lo alto
+}
+
+-- Anti-trampas (v3.1). Los límites son generosos a propósito: es mejor dejar pasar un
+-- tramposo leve que castigar a alguien con mala conexión.
+Config.AntiCheat = {
+	-- Movimiento: el servidor mira cada CheckEvery s cuánto se ha movido cada personaje. Lo más
+	-- rápido legal es la tirolina (Arena.ZiplineSpeed) y lo que más sube, una seta trampolín.
+	CheckEvery = 0.5,
+	MaxHorizontalSpeed = 90, -- studs/s (tirolina 55, portador esprintando ~25)
+	MaxRiseSpeed = 130, -- studs/s hacia arriba (la seta lanza a 95 y frena)
+	Slack = 25, -- studs de margen en cada comprobación (con lag, las posiciones llegan a saltos)
+	GraceAfterSpawn = 3, -- segundos sin comprobar tras aparecer (reaparecer, viajar)
+	StrikeWindow = 60, -- segundos en los que se cuentan los avisos
+	KickAfterStrikes = 8, -- avisos en esa ventana para echar al jugador
+	-- Remotos: cubo de fichas por jugador y remoto. Capacity llamadas seguidas y luego
+	-- RefillPerSecond por segundo; lo que pase de ahí se ignora.
+	RemoteCapacity = 12,
+	RemoteRefillPerSecond = 6,
+	KickAfterDropped = 300, -- llamadas ignoradas en StrikeWindow para echar al jugador
 }
 
 -- Aspecto de las criaturas: "Chibi" (monas, por defecto) o "Classic" (las de la v1).

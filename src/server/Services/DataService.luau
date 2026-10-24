@@ -417,9 +417,9 @@ function DataService.init()
 end
 
 function DataService.start()
-	Remotes.func("GetProfile").OnServerInvoke = function(player: Player)
+	Remotes.onInvoke("GetProfile", function(player: Player)
 		return DataService.view(player)
-	end
+	end)
 
 	Players.PlayerAdded:Connect(load)
 	for _, player in Players:GetPlayers() do

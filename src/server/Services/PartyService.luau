@@ -256,9 +256,9 @@ end
 function PartyService.init() end
 
 function PartyService.start()
-	Remotes.event("PartyInvite").OnServerEvent:Connect(invite)
-	Remotes.event("PartyRespond").OnServerEvent:Connect(respond)
-	Remotes.event("PartyLeave").OnServerEvent:Connect(leave)
+	Remotes.onServer("PartyInvite", invite)
+	Remotes.onServer("PartyRespond", respond)
+	Remotes.onServer("PartyLeave", leave)
 	Players.PlayerRemoving:Connect(function(player)
 		leave(player)
 		invites[player] = nil

@@ -804,9 +804,9 @@ end
 function ChaseService.init() end
 
 function ChaseService.start()
-	Remotes.event("RespondDeal").OnServerEvent:Connect(respondDeal)
+	Remotes.onServer("RespondDeal", respondDeal)
 
-	Remotes.event("RequestSprint").OnServerEvent:Connect(function(player)
+	Remotes.onServer("RequestSprint", function(player)
 		if not active or not carrying[player] then
 			return
 		end
@@ -821,7 +821,7 @@ function ChaseService.start()
 	end)
 
 	-- Pase de relevo al aliado más cercano que no lleve ya otra criatura.
-	Remotes.event("RequestPass").OnServerEvent:Connect(function(player)
+	Remotes.onServer("RequestPass", function(player)
 		local chase = carrying[player]
 		if not active or not chase then
 			return

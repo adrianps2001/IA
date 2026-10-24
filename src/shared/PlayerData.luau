@@ -71,7 +71,7 @@ function PlayerData.default(now: number): Profile
 		Version = PlayerData.Version,
 		Coins = 0,
 		Dust = 0,
-		Upgrades = { Bag = 0, Boots = 0, Sniffer = 0, Nest = 0, Incubator = 0 },
+		Upgrades = { Bag = 0, Boots = 0, Nest = 0, Incubator = 0 }, -- (v3.1: se quitó el Olfato, que no hacía nada)
 		Creatures = {},
 		Incubator = {},
 		Generation = 0,

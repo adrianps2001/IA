@@ -83,6 +83,9 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 - [ ] En la entrada de un nido ajeno aparece "Me gusta ❤" (G); en el tuyo, no.
 - [ ] **Criatura al hombro:** en el panel del nido, 🦜 en una criatura la pone en tu hombro derecho (el botón se pone verde). Otra vez 🦜 la quita; 🦜 en otra la cambia. La ven los demás, va pegada al hombro al correr y saltar, y sigue ahí en la partida.
 - [ ] Si compras la **🍀 Suerte del Lobby**, arriba sale la cuenta atrás y los huevos del nido que abra cualquiera salen mejores (sin IDs reales no se puede comprar en Studio: compruébalo al publicar).
+- [ ] **Lobby decorado:** colinas y estanque fuera del muro, bosque detrás de los nidos, flores y farolillos en los caminos, bancos y rocas entre camino y camino. Nada tapa la entrada de un nido ni se mete dentro de su valla, y va fluido.
+- [ ] Los precios de la tienda y de las mejoras son redondos (1.300, 4.600…) y ya no aparece la mejora Olfato.
+- [ ] **Intercambio:** una Secreta recién conseguida no se puede ofrecer (sale el aviso de los 3 días). Tras 10 intercambios en un día, el siguiente se rechaza.
 - [ ] 🐦 Bandada e intercambio funcionan en el lobby (el botón 🐦 desaparece en la partida).
 - [ ] La ventana Output del servidor no muestra errores (si no activaste *API Services*, es normal un aviso de DataStore).
 
@@ -103,6 +106,7 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 - [ ] Al pisar la entrada de un **tobogán** bajas deslizándote hasta el suelo.
 - [ ] Hay **cabañas**, copas de hojas, arbustos y troncos huecos donde esconderse.
 - [ ] Caer de lo alto no hace daño.
+- [ ] **Anti-trampas:** usar tirolinas, toboganes y setas (también con un poco de lag) **no** te devuelve hacia atrás. La ventana Output del servidor no muestra avisos `[AntiCheat]` jugando normal.
 
 ### Incubación
 - [ ] Las brasas, luciérnagas y **cajas sorpresa** se pueden recoger y **desaparecen del todo** al cogerlas (también los "?"). Reaparecen después.

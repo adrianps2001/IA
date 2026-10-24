@@ -108,7 +108,29 @@ end
 
 -- Ejecuta el cambio sobre las dos listas de criaturas. Comprueba otra vez que cada lado
 -- sigue teniendo lo que ofrece; si algo falta, no cambia nada y devuelve false.
-function Trade.apply(state: State, creaturesA: { Creature.Creature }, creaturesB: { Creature.Creature }): (boolean, { Creature.Creature }, { Creature.Creature })
+-- ¿Está bloqueada para intercambiar? (v3.1) Las Secretas, los primeros SecretLockDays días
+-- desde que se consiguieron (al nacer o al llegar por otro intercambio).
+function Trade.isLocked(creature: Creature.Creature, now: number): boolean
+	if creature.Rarity ~= "Secret" then
+		return false
+	end
+	local since = creature.Received or creature.Born
+	return now < since + Config.Trade.SecretLockDays * 86400
+end
+
+-- Intercambios completados en las últimas 24 h (según el historial del jugador).
+function Trade.tradesToday(records: { any }, now: number): number -- registros con campo At
+	local count = 0
+	for _, record in records do
+		if now - record.At < 86400 then
+			count += 1
+		end
+	end
+	return count
+end
+
+-- `now` (opcional) marca las criaturas que cambian de dueño como recibidas en ese instante.
+function Trade.apply(state: State, creaturesA: { Creature.Creature }, creaturesB: { Creature.Creature }, now: number?): (boolean, { Creature.Creature }, { Creature.Creature })
 	local function take(list: { Creature.Creature }, ids: { string }): ({ Creature.Creature }?, { Creature.Creature })
 		local wanted = {}
 		for _, id in ids do
@@ -134,9 +156,11 @@ function Trade.apply(state: State, creaturesA: { Creature.Creature }, creaturesB
 		return false, creaturesA, creaturesB
 	end
 	for _, creature in fromB do
+		creature.Received = now or creature.Received
 		table.insert(keptA, creature)
 	end
 	for _, creature in fromA do
+		creature.Received = now or creature.Received
 		table.insert(keptB, creature)
 	end
 	return true, keptA, keptB

@@ -119,7 +119,7 @@ local function execute(session: Session)
 	local state = session.State
 	local gaveA = names(profileA.Creatures, state.Offers.A)
 	local gaveB = names(profileB.Creatures, state.Offers.B)
-	local ok, newA, newB = Trade.apply(state, profileA.Creatures, profileB.Creatures)
+	local ok, newA, newB = Trade.apply(state, profileA.Creatures, profileB.Creatures, os.time())
 	if not ok then
 		close(session, "El intercambio se ha cancelado: alguna criatura ya no está disponible.")
 		return
@@ -143,6 +143,21 @@ local function execute(session: Session)
 	task.spawn(DataService.saveNow, b)
 end
 
+-- Tope diario de intercambios (v3.1). Avisa a `notify` si `who` ya ha llegado al máximo.
+local function overLimit(notify: Player, who: Player): boolean
+	local profile = DataService.get(who)
+	if not profile or Trade.tradesToday(profile.Trades, os.time()) < Config.Trade.MaxPerDay then
+		return false
+	end
+	AnnouncementService.player(
+		notify,
+		if notify == who
+			then string.format("Ya has hecho %d intercambios hoy. Vuelve mañana.", Config.Trade.MaxPerDay)
+			else who.DisplayName .. " ya ha hecho todos sus intercambios de hoy."
+	)
+	return true
+end
+
 local function request(player: Player, userId: any)
 	local target = if type(userId) == "number" then Players:GetPlayerByUserId(userId) else nil
 	if not target or target == player or not DataService.get(player) or not DataService.get(target) then
@@ -155,6 +170,9 @@ local function request(player: Player, userId: any)
 	end
 	if sessions[player] or sessions[target] then
 		AnnouncementService.player(player, "Uno de los dos ya está intercambiando.")
+		return
+	end
+	if overLimit(player, player) or overLimit(player, target) then
 		return
 	end
 	requests[target] = { From = player, At = os.clock() }
@@ -202,9 +220,19 @@ local function setOffer(player: Player, ids: any)
 			table.insert(clean, id)
 		end
 	end
+	local now = os.time()
+	local locked = false
 	Trade.setOffer(session.State, side, clean, function(id)
-		return PlayerData.findCreature(profile, id) ~= nil
+		local creature = PlayerData.findCreature(profile, id)
+		if creature and Trade.isLocked(creature, now) then
+			locked = true
+			return false
+		end
+		return creature ~= nil
 	end)
+	if locked then
+		AnnouncementService.player(player, string.format("Las Secretas no se pueden intercambiar hasta %d días después de conseguirlas.", Config.Trade.SecretLockDays))
+	end
 	push(session)
 end
 
@@ -230,6 +258,11 @@ local function confirm(player: Player)
 		return
 	end
 	if Trade.confirm(session.State, side, os.clock()) then
+		-- Se vuelve a mirar el tope: entre pedir y confirmar pudieron hacer otros intercambios.
+		if overLimit(session.A, session.A) or overLimit(session.A, session.B) then
+			close(session, "El intercambio se ha cancelado: alguien ya ha llegado al máximo de hoy.")
+			return
+		end
 		execute(session)
 	else
 		push(session)
@@ -250,12 +283,12 @@ end
 function TradeService.init() end
 
 function TradeService.start()
-	Remotes.event("TradeRequest").OnServerEvent:Connect(request)
-	Remotes.event("TradeRespond").OnServerEvent:Connect(respond)
-	Remotes.event("TradeSetOffer").OnServerEvent:Connect(setOffer)
-	Remotes.event("TradeReady").OnServerEvent:Connect(ready)
-	Remotes.event("TradeConfirm").OnServerEvent:Connect(confirm)
-	Remotes.event("TradeCancel").OnServerEvent:Connect(cancel)
+	Remotes.onServer("TradeRequest", request)
+	Remotes.onServer("TradeRespond", respond)
+	Remotes.onServer("TradeSetOffer", setOffer)
+	Remotes.onServer("TradeReady", ready)
+	Remotes.onServer("TradeConfirm", confirm)
+	Remotes.onServer("TradeCancel", cancel)
 	Players.PlayerRemoving:Connect(function(player)
 		cancel(player)
 		requests[player] = nil

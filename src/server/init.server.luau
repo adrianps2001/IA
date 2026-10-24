@@ -4,6 +4,7 @@
 local services = {
 	require(script.Services.DataService),
 	require(script.Services.AnnouncementService),
+	require(script.Services.AntiCheatService),
 	require(script.Services.MonetizationService),
 	require(script.Services.MapService),
 	require(script.Services.QuestService),

@@ -826,7 +826,6 @@
     var what = {
       Bag: function (l) { return "Bolsa: caben " + bagCapacity(l) + " de Calor (" + bagCapacity(l + 1) + " en el siguiente nivel)."; },
       Boots: function (l) { return "Botas: +" + Math.round(l * C.Movement.BootsPerLevel * 100) + " % de velocidad (máximo +" + Math.round(C.Movement.BootsMaxLevel * C.Movement.BootsPerLevel * 100) + " %)."; },
-      Sniffer: function () { return "Olfato: en el diseño marca las fuentes de Calor más ricas. Todavía no hace nada en el juego."; },
       Nest: function (l) { return "Nido: " + Math.min(C.Nest.BaseSlots + l * C.Nest.SlotsPerLevel, C.Nest.MaxSlots) + " huecos que producen (+" + C.Nest.SlotsPerLevel + " por nivel). Se reinicia con la Nueva generación."; },
       Incubator: function (l) { return "Incubadora: huevos y crías un " + Math.round(l * C.Incubator.SpeedPerLevel * 100) + " % más rápidos."; },
     };
@@ -906,7 +905,6 @@
     ].forEach(function (r) { shop.appendChild(el("div", { class: "mini-card" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + ' <span class="pill ' + (r[3] ? "ok" : "no") + '">' + (r[3] ? "en el juego" : "diseñado") + "</span></b><p>" + r[2] + "</p>")); });
     var todo = $("#todo");
     if (todo) [
-      ["👃", "Olfato", "La mejora se puede comprar pero todavía no hace nada."],
       ["🛍️", "Tienda de la Plaza y cosméticos", "Temas de nido, pedestales, accesorios del hombro, renombrar criaturas, fuegos artificiales y regalos."],
       ["🎓", "Tutorial", "Una primera partida guiada (rampas, tirolina, robar)."],
       ["⚖️", "Emparejamiento por nivel", "Novatos con novatos: con la persecución actual, los que persiguen poco ganan bastante menos."],

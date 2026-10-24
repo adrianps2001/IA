@@ -353,7 +353,28 @@ local function assignLobbyNest(player: Player)
 			return
 		end
 	end
+	-- Lobby lleno (no debería pasar: el servidor del lobby se limita a Config.Lobby.NestCount
+	-- jugadores en el Creator Hub). Por si acaso, se le lleva a otro lobby; si ya ha rebotado
+	-- dos veces, se le pide que vuelva a entrar en vez de dar vueltas.
 	warn("[NestService] No quedan nidos libres en el lobby para " .. player.Name)
+	if Place.kind() ~= "Lobby" then
+		return
+	end
+	local ok, join = pcall(function()
+		return player:GetJoinData()
+	end)
+	local data: any = if ok and type(join) == "table" then (join :: any).TeleportData else nil
+	local bounces = if type(data) == "table" and type(data.LobbyFull) == "number" then data.LobbyFull else 0
+	if bounces >= 2 then
+		player:Kick("Todos los lobbies están llenos. Vuelve a entrar en un momento.")
+		return
+	end
+	AnnouncementService.player(player, "🏡 Este lobby está lleno: te llevamos a otro con nidos libres…", "info")
+	task.spawn(function()
+		if not MatchService.teleport({ player }, game.PlaceId, { LobbyFull = bounces + 1 }, false) then
+			player:Kick("Este lobby está lleno. Vuelve a entrar en un momento.")
+		end
+	end)
 end
 
 local function releaseLobbyNest(player: Player)
@@ -844,16 +865,16 @@ function NestService.start()
 			handler(player, ...)
 		end
 	end
-	Remotes.event("RequestBuyEgg").OnServerEvent:Connect(managed(buyPersonalEgg))
-	Remotes.event("RequestCollectEggs").OnServerEvent:Connect(managed(collectEggs))
-	Remotes.event("RequestUpgrade").OnServerEvent:Connect(managed(upgrade))
-	Remotes.event("RequestRebirth").OnServerEvent:Connect(managed(rebirth))
-	Remotes.event("RequestRelease").OnServerEvent:Connect(managed(release))
-	Remotes.event("ToggleFavorite").OnServerEvent:Connect(managed(toggleFavorite))
-	Remotes.event("SetShoulder").OnServerEvent:Connect(managed(setShoulder))
-	Remotes.event("RequestReleaseStored").OnServerEvent:Connect(managed(releaseStored))
-	Remotes.event("RequestBuyDecoration").OnServerEvent:Connect(managed(buyDecoration))
-	Remotes.event("RequestBreed").OnServerEvent:Connect(managed(function(player, idA, idB)
+	Remotes.onServer("RequestBuyEgg", managed(buyPersonalEgg))
+	Remotes.onServer("RequestCollectEggs", managed(collectEggs))
+	Remotes.onServer("RequestUpgrade", managed(upgrade))
+	Remotes.onServer("RequestRebirth", managed(rebirth))
+	Remotes.onServer("RequestRelease", managed(release))
+	Remotes.onServer("ToggleFavorite", managed(toggleFavorite))
+	Remotes.onServer("SetShoulder", managed(setShoulder))
+	Remotes.onServer("RequestReleaseStored", managed(releaseStored))
+	Remotes.onServer("RequestBuyDecoration", managed(buyDecoration))
+	Remotes.onServer("RequestBreed", managed(function(player, idA, idB)
 		if type(idA) == "string" and type(idB) == "string" then
 			startBreed(player, idA, idB, false)
 		end

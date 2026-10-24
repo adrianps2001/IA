@@ -217,7 +217,9 @@ La economía tiene tres monedas con funciones separadas, para que la ronda (habi
 
 1. **Bolsa:** capacidad de 100 a 1.000 Calor en 10 niveles.
 2. **Botas:** velocidad base +1 % por nivel (tope +10 %, para no romper la persecución).
-3. **Olfato:** marca en el mapa las fuentes de Calor más ricas.
+
+**(v3.1)** Todos los precios se redondean a dos cifras (1.300, 4.600, 56.000…).
+3. ~~**Olfato**~~ **(v3.1: quitado)**: no llegó a hacer nada y era una mejora más que explicar.
 4. **Nido:** más ranuras para criaturas (de 6 a 40) y multiplicador de producción.
 5. **Incubadora:** acorta los tiempos de cría.
 
@@ -583,6 +585,11 @@ Vienen de la segunda prueba en Studio.
 | Querer llevar una criatura encima | **Criatura al hombro:** botón 🦜 en el panel del nido. Se ve en el lobby y en la partida; no hace nada |
 | Al eclosionar salía "¡Corre a tu nido!" | Ahora: "¡Escóndete y aguanta hasta el final!" |
 | Durante la elección no se veía la criatura | Sale del huevo en el centro del claro, grande y girando, hasta que empieza la persecución |
+| La mejora Olfato no hacía nada | Quitada: quedan 4 mejoras (bolsa, botas, nido, incubadora) |
+| Precios como 4.593 o 56.273 | Todos los precios de Monedas se redondean a dos cifras en todos los niveles |
+| Intercambio sin límites (riesgo de reventa y de robo de cuentas) | 10 intercambios al día y las Secretas no se intercambian hasta 3 días después de conseguirlas |
+| El servidor se fiaba del movimiento del cliente en tirolinas y setas, y nadie limitaba los remotos | Anti-trampas de movimiento y límite de llamadas por jugador (`Config.AntiCheat`) |
+| El lobby se veía vacío y de prototipo | Colinas, estanque, bosque, flores, farolillos, bancos y ambiente, todo por código |
 | Monetizar sin tocar la partida | Sección 9: todo se gasta en el lobby. Se retiran el Auto-Depósito y la Ofrenda Dorada; la Suerte del Servidor pasa a Suerte del Lobby (y se descubre que, con lugares separados, la vieja no funcionaba) |
 
 **Por qué se ve el lobby desde la partida (en Studio).** Studio no puede viajar entre lugares, así que mientras `Config.Places` tenga los IDs a 0 el juego funciona en **modo combinado**: un solo servidor construye el lobby (a 1000 studs de la arena) y la arena, y "teletransportar" es reaparecer en el otro sitio. Al publicar con dos lugares y poner sus IDs en `Config.Places`, el servidor de partida solo construye la arena y el del lobby solo el lobby (`Place.hasLobby()` y `Place.hasArena()`).

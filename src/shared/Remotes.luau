@@ -1,9 +1,14 @@
 --!strict
 -- Lista única de remotos. El servidor los crea; el cliente espera a que existan.
 -- El cliente solo envía intenciones; el servidor valida todo (GDD 11.1).
+-- En el servidor, los remotos se escuchan con Remotes.onServer / Remotes.onInvoke, que limitan
+-- cuántas veces por segundo puede llamar cada jugador (v3.1, Config.AntiCheat).
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+
+local Config = require("./Config")
+local RateLimiter = require("./RateLimiter")
 
 local EVENTS = {
 	-- servidor -> cliente
@@ -86,6 +91,48 @@ end
 function Remotes.func(name: string): RemoteFunction
 	assert(table.find(FUNCTIONS, name), "Función remota desconocida: " .. name)
 	return folder:WaitForChild(name) :: RemoteFunction
+end
+
+-- Límite de llamadas (solo servidor): un cubo de fichas por jugador y remoto.
+local limiter = RateLimiter.new(Config.AntiCheat.RemoteCapacity, Config.AntiCheat.RemoteRefillPerSecond)
+local droppedHandler: ((Player, string) -> ())? = nil
+
+local function allowed(player: Player, name: string): boolean
+	if limiter:allow(player.UserId .. ":" .. name, os.clock()) then
+		return true
+	end
+	if droppedHandler then
+		droppedHandler(player, name)
+	end
+	return false
+end
+
+-- Escucha un RemoteEvent en el servidor ignorando a quien llame demasiado deprisa.
+function Remotes.onServer(name: string, handler: (Player, ...any) -> ()): RBXScriptConnection
+	return Remotes.event(name).OnServerEvent:Connect(function(player: Player, ...: any)
+		if allowed(player, name) then
+			handler(player, ...)
+		end
+	end)
+end
+
+-- Igual para un RemoteFunction (si llama demasiado, recibe nil).
+function Remotes.onInvoke(name: string, handler: (Player, ...any) -> any)
+	Remotes.func(name).OnServerInvoke = function(player: Player, ...: any): any
+		if allowed(player, name) then
+			return handler(player, ...)
+		end
+		return nil
+	end
+end
+
+-- Lo usa AntiCheatService para contar las llamadas ignoradas de cada jugador.
+function Remotes.onDropped(handler: (Player, string) -> ())
+	droppedHandler = handler
+end
+
+function Remotes.forget(player: Player)
+	limiter:forget(player.UserId .. ":")
 end
 
 return Remotes
