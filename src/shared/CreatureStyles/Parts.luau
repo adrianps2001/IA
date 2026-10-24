@@ -44,4 +44,15 @@ function Parts.shade(color: Color3, t: number): Color3
 	return color:Lerp(Color3.new(0, 0, 0), t)
 end
 
+-- Anillo del aura Secreta Agujero Negro (v3.1): disco oscuro con borde violeta brillante.
+function Parts.blackHole(model: Instance, body: BasePart)
+	local ring = Parts.part("BlackHole", Enum.PartType.Cylinder, Vector3.new(0.12, body.Size.X * 1.9, body.Size.X * 1.9), Color3.fromRGB(150, 60, 255), model)
+	ring.CFrame = body.CFrame * CFrame.Angles(math.rad(15), 0, math.rad(90))
+	ring.Material = Enum.Material.Neon
+	ring.Transparency = 0.2
+	local core = Parts.part("BlackHoleCore", Enum.PartType.Cylinder, Vector3.new(0.14, body.Size.X * 1.6, body.Size.X * 1.6), Color3.fromRGB(15, 5, 25), model)
+	core.CFrame = ring.CFrame
+	core.Transparency = 0.1
+end
+
 return Parts

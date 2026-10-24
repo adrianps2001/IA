@@ -58,6 +58,7 @@ local CATALOG: { [Slot]: { Row } } = {
 		row("body_cloud", "Nube", "Epic", { 230, 240, 255 }),
 		row("body_star", "Estelar", "Legendary", { 255, 240, 120 }),
 		row("body_void", "Vacío", "Mythic", { 40, 20, 60 }),
+		row("body_phoenix", "Fénix", "Secret", { 255, 120, 40 }), -- v3.1: un gen Secreto por ranura
 	},
 	Head = {
 		row("head_beak", "Pico", "Common", { 255, 200, 60 }),
@@ -72,6 +73,7 @@ local CATALOG: { [Slot]: { Row } } = {
 		row("head_mask", "Máscara", "Epic", { 60, 60, 70 }),
 		row("head_halo", "Halo", "Legendary", { 255, 255, 200 }),
 		row("head_comet", "Cometa", "Mythic", { 120, 220, 255 }),
+		row("head_unicorn", "Unicornio", "Secret", { 255, 190, 250 }),
 	},
 	Pattern = {
 		row("pattern_plain", "Liso", "Common", { 255, 255, 255 }),
@@ -86,6 +88,7 @@ local CATALOG: { [Slot]: { Row } } = {
 		row("pattern_galaxy", "Galaxia", "Epic", { 90, 40, 160 }),
 		row("pattern_gold", "Dorado", "Legendary", { 255, 200, 40 }),
 		row("pattern_prism", "Prisma", "Mythic", { 255, 120, 255 }),
+		row("pattern_aurora", "Aurora", "Secret", { 90, 255, 200 }),
 	},
 	Aura = {
 		row("aura_none", "Sin aura", "Common", { 255, 255, 255 }),
@@ -100,6 +103,7 @@ local CATALOG: { [Slot]: { Row } } = {
 		row("aura_shadow", "Sombra", "Epic", { 50, 30, 70 }),
 		row("aura_sun", "Solar", "Legendary", { 255, 190, 40 }),
 		row("aura_eclipse", "Eclipse", "Mythic", { 120, 0, 40 }),
+		row("aura_blackhole", "Agujero Negro", "Secret", { 150, 60, 255 }),
 	},
 	Mutation = {
 		row("mut_none", "Normal", "Common", { 255, 255, 255 }),

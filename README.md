@@ -40,7 +40,7 @@ En el **lobby** está tu nido: tus criaturas en pedestales, la tienda, la incuba
 default.project.json        Proyecto Rojo
 src/shared/                 ReplicatedStorage.Shared (servidor y cliente)
   Config.luau               Todos los valores ajustables (tiempos, economía, precios, IDs)
-  Rarity, Genes, Creature   Rarezas, catálogo de 60 genes, criaturas (lógica pura)
+  Rarity, Genes, Creature   Rarezas, catálogo de 64 genes, criaturas (lógica pura)
   Election, Economy,        La Elección, fórmulas de economía, misiones diarias,
   Quests, PlayerData        esquema de datos guardados (lógica pura, con tests)
   CreatureModel             Construye el modelo 3D de una criatura con el estilo elegido
@@ -181,7 +181,7 @@ Implementado:
 - Bandada (grupos de hasta 4: reparten el 10 % del Calor, se ven a través de las paredes y +10 % de polvo con un amigo) e intercambio de criaturas con doble confirmación, cambio atómico e historial.
 - Consuelo con Polvo de cáscara, y premio al elegido que pierde la criatura: polvo extra y un Huevo del Elegido (Rara a Épica).
 - Nido con producción, también sin conexión (tope de 8 h).
-- 60 genes, 6 rarezas y cría con mutación.
+- 64 genes (12 por ranura más un Secreto en cada una: Fénix, Unicornio, Aurora, Agujero Negro y Arcoíris Eterno), 6 rarezas y cría con mutación.
 - Incubadora y huevos personales.
 - Las 4 mejoras permanentes (bolsa, botas, nido e incubadora) y la Nueva generación.
 - Misiones diarias y racha de 7 días.

@@ -52,13 +52,20 @@ local function seeded(seed: number): () -> number
 	end
 end
 
-test("el catálogo tiene 60 genes, 12 por ranura", function()
+test("el catálogo tiene 64 genes: 12 normales por ranura y un Secreto en cada una", function()
 	local total = 0
 	for _, slot in Genes.Slots do
-		expect(#Genes.BySlot[slot] == 12, slot)
+		local secrets = 0
+		for _, gene in Genes.BySlot[slot] do
+			if gene.Rarity == "Secret" then
+				secrets += 1
+			end
+		end
+		expect(secrets == 1, slot .. " debe tener un gen Secreto")
+		expect(#Genes.BySlot[slot] - secrets == (if slot == "Mutation" then 11 else 12), slot)
 		total += #Genes.BySlot[slot]
 	end
-	expect(total == 60)
+	expect(total == 64)
 end)
 
 test("los pesos de rareza suman 1.000.000", function()
@@ -120,9 +127,22 @@ test("Genes.rollSet produce exactamente la rareza pedida", function()
 	end
 end)
 
-test("las Secretas llevan el gen Arcoíris en Mutación", function()
-	local set = Genes.rollSet(seeded(9), "Secret")
-	expect(set.Mutation == "mut_rainbow")
+test("las Secretas llevan un gen Secreto, y salen de todas las ranuras", function()
+	local rng = seeded(9)
+	local seen = {}
+	for _ = 1, 400 do
+		local set = Genes.rollSet(rng, "Secret")
+		expect(Genes.rarityOf(set) == "Secret")
+		for _, slot in Genes.Slots do
+			local gene = Genes.get((set :: any)[slot])
+			if gene and gene.Rarity == "Secret" then
+				seen[slot] = true
+			end
+		end
+	end
+	for _, slot in Genes.Slots do
+		expect(seen[slot] == true, "nunca salió el Secreto de " .. slot)
+	end
 end)
 
 test("una ofrenda sesga su gen", function()
