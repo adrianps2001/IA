@@ -120,10 +120,11 @@ function creatureName(genes) {
   return parts.join(" ");
 }
 
+// Creature.baseIncome (v3.2): la suma de lo que da cada una de las 5 partes según su rareza.
 function baseIncome(genes) {
-  let bonus = 0;
-  for (const slot of DATA.Slots) bonus += tier(GENE[genes[slot]].Rarity) - 1;
-  return RI[rarityOf(genes)].Income * (1 + DATA.GeneBonusPerTier * bonus);
+  let total = 0;
+  for (const slot of DATA.Slots) total += RI[GENE[genes[slot]].Rarity].PartIncome;
+  return total;
 }
 
 function electionChances(entries, minChance) {

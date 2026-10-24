@@ -191,7 +191,7 @@ Cada mecánica sirve a una de las cuatro fases de la ronda; todas se aprenden en
 - **(v3) Tu nido está en el lobby**, una parcela propia cargada desde tus datos guardados, con más jugadores alrededor que pueden visitarla. Allí se hace todo lo del nido: tienda, mejoras, incubadora, cría, liberar, decorar, intercambiar y formar la Bandada. En la partida no se gestiona el nido.
 - **(v3) Hecho para lucirse:** tus 12 mejores criaturas (primero las favoritas) en pedestales en gradas, cada una con su placa (nombre, rareza y producción), un aro del color de su rareza (dorado si es favorita) y un foco las Legendarias o mejores. Valla, farolillos, un arco con tu cartel (criaturas, "me gusta" y Belleza) y un cuenco con el huevo de la incubadora, que brilla cuando hay huevos listos. Las criaturas dan saltitos en su pedestal.
 - **(v3) En la partida apareces con tu nido:** un campamento de salida con tus 3 favoritas a la vista (y saqueables en la Noche de Saqueo).
-- Las criaturas generan **Monedas por segundo** según su rareza y genes, también sin conexión (al 25 %, con tope de 8 horas).
+- Las criaturas generan **Monedas por segundo**, también sin conexión (al 25 %, con tope de 8 horas). **(v3.2)** Cada una de sus 5 partes da según su propia rareza (Común 0,2, Rara 1,75, Épica 11, Legendaria 60, Mítica 300, Secreta 2.700 por segundo) y se suman: una Épica normal da ~18/s, como antes, pero una con el resto de partes raras da más.
 - Se puede **decorar** (12 piezas de Monedas o polvo, solo estéticas) y visitar. Los nidos ajenos se pueden ver; solo se pueden saquear en la Noche de Saqueo (sección 7). Las criaturas sobrantes se pueden **liberar** a cambio de polvo.
 - **(v2) Favoritas:** hasta 3 criaturas con ⭐. No se liberan por error, sobreviven a la Nueva generación y la primera te acompaña flotando durante la ronda (solo estética). Así el nido también se ve en la ronda.
 - **(v2) Huevo de bienvenida:** la primera vez, además de una criatura de regalo, un huevo que nace en 2 minutos, para que el novato vea pronto el ciclo del nido.
@@ -601,6 +601,7 @@ Vienen de la segunda prueba en Studio.
 | El salón de la fama no se podía visitar | 🏡 Visitar: te lleva a la entrada del nido de cualquier jugador del lobby |
 | Pocos motivos para volver cada día y para gastar el polvo | Regalo diario (racha de 7 días) y Tienda de la Plaza con sombreros y temas de nido |
 | Todas las criaturas de la misma especie se llamaban igual | Ponerles nombre (filtrado por Roblox), que sale en la placa |
+| La producción solo dependía de la parte más rara | Cada parte produce según su rareza y se suman; de media, igual que antes |
 | Monetizar sin tocar la partida | Sección 9: todo se gasta en el lobby. Se retiran el Auto-Depósito y la Ofrenda Dorada; la Suerte del Servidor pasa a Suerte del Lobby (y se descubre que, con lugares separados, la vieja no funcionaba) |
 
 **Por qué se ve el lobby desde la partida (en Studio).** Studio no puede viajar entre lugares, así que mientras `Config.Places` tenga los IDs a 0 el juego funciona en **modo combinado**: un solo servidor construye el lobby (a 1000 studs de la arena) y la arena, y "teletransportar" es reaparecer en el otro sitio. Al publicar con dos lugares y poner sus IDs en `Config.Places`, el servidor de partida solo construye la arena y el del lobby solo el lobby (`Place.hasLobby()` y `Place.hasArena()`).

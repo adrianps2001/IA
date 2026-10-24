@@ -16,9 +16,6 @@ export type Creature = {
 
 local Creature = {}
 
--- Cada gen por encima de Común suma un 5 % por nivel a la producción.
-Creature.GeneBonusPerTier = 0.05
-
 function Creature.new(id: string, genes: Genes.GeneSet, origin: string, born: number): Creature
 	return {
 		Id = id,
@@ -78,16 +75,18 @@ function Creature.cleanNickname(text: any): string?
 	return clean
 end
 
--- Monedas por segundo sin multiplicadores del jugador.
+-- Monedas por segundo sin multiplicadores del jugador (v3.2): la suma de lo que da cada una de
+-- sus 5 partes según la rareza de esa parte (Rarity.Info[...].PartIncome). Antes salía solo de
+-- la rareza más alta; ahora una Épica con el resto de partes raras produce más que una Épica
+-- con todo lo demás común.
 function Creature.baseIncome(creature: Creature): number
-	local bonusTiers = 0
+	local total = 0
 	for _, slot in Genes.Slots do
 		local gene = Genes.get((creature.Genes :: any)[slot])
-		if gene then
-			bonusTiers += Rarity.tier(gene.Rarity) - 1
-		end
+		local rarity: Rarity.RarityName = if gene then gene.Rarity else "Common"
+		total += Rarity.Info[rarity].PartIncome
 	end
-	return Rarity.Info[creature.Rarity].Income * (1 + Creature.GeneBonusPerTier * bonusTiers)
+	return total
 end
 
 -- Ordena por producción descendente; las primeras `slots` son las que están en el nido.

@@ -130,6 +130,24 @@ test("Genes.rollSet produce exactamente la rareza pedida", function()
 	end
 end)
 
+test("producción por partes: de media, cada rareza produce casi lo mismo que antes", function()
+	-- Medias de la v3.1 (rareza más alta × 5 % por nivel de cada gen), medidas con el simulador.
+	local before = { Common = 1, Rare = 4.45, Epic = 17.9, Legendary = 75.3, Mythic = 327, Secret = 2714 }
+	local rng = seeded(21)
+	for _, rarity in Rarity.Order do
+		local total, n = 0, 3000
+		for i = 1, n do
+			total += Creature.baseIncome(Creature.new("m" .. i, Genes.rollSet(rng, rarity), "Hatch", 0))
+		end
+		local mean = total / n
+		expect(math.abs(mean / before[rarity] - 1) < 0.12, string.format("%s: %.2f frente a %.2f", rarity, mean, before[rarity]))
+	end
+	-- Mejores partes, más producción: una Épica con todo Raro supera a una Épica con todo Común.
+	local plain = { Body = "body_stone", Head = "head_beak", Pattern = "pattern_plain", Aura = "aura_none", Mutation = "mut_none" }
+	local rich = { Body = "body_stone", Head = "head_crown", Pattern = "pattern_bone", Aura = "aura_fire", Mutation = "mut_twin" }
+	expect(Creature.baseIncome(Creature.new("p", plain :: any, "Hatch", 0)) < Creature.baseIncome(Creature.new("r", rich :: any, "Hatch", 0)))
+end)
+
 test("las Secretas llevan un gen Secreto, y salen de todas las ranuras", function()
 	local rng = seeded(9)
 	local seen = {}
@@ -188,8 +206,8 @@ test("Creature calcula rareza, nombre e ingresos", function()
 	local c = Creature.new("a", genes, "Hatch", 0)
 	expect(c.Rarity == "Rare")
 	expect(Creature.name(c) == "Cristalino Moteado", Creature.name(c))
-	-- Rara = 4/s, un gen de nivel 2 suma 5 %
-	expect(near(Creature.baseIncome(c), 4 * 1.05))
+	-- v3.2: cada parte da según su rareza: una Rara (1,75) y cuatro Comunes (0,2).
+	expect(near(Creature.baseIncome(c), 1.75 + 4 * 0.2))
 	expect(Creature.isValid(c))
 end)
 

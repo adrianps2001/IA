@@ -105,10 +105,11 @@
     SLOTS.forEach(function (s) { var g = GBY[genes[s]]; if (g) best = Math.max(best, tier(g.Rarity)); });
     return fromTier(best);
   }
+  // Creature.baseIncome (v3.2): la suma de lo que da cada parte según su rareza.
   function incomeOf(genes) {
-    var bonus = 0;
-    SLOTS.forEach(function (s) { var g = GBY[genes[s]]; if (g) bonus += tier(g.Rarity) - 1; });
-    return RBY[rarityOf(genes)].Income * (1 + (D.GeneBonusPerTier || 0.05) * bonus);
+    var total = 0;
+    SLOTS.forEach(function (s) { var g = GBY[genes[s]]; total += RBY[g ? g.Rarity : "Common"].PartIncome; });
+    return total;
   }
   function creatureName(genes) {
     var b = GBY[genes.Body], p = GBY[genes.Pattern], m = GBY[genes.Mutation];
@@ -724,7 +725,7 @@
       });
     });
     var leg = el("div", { class: "tally" });
-    RAR.forEach(function (r) { leg.appendChild(el("span", { style: "border-color:" + rgb(r.Color) + ";color:" + rgb(r.Color) }, r.DisplayName + " · ×" + r.Income + " Monedas/s · " + (r.Weight / 10000).toFixed(r.Weight < 1000 ? 3 : 1).replace(".", ",") + " %")); });
+    RAR.forEach(function (r) { leg.appendChild(el("span", { style: "border-color:" + rgb(r.Color) + ";color:" + rgb(r.Color) }, r.DisplayName + " · " + String(r.PartIncome).replace(".", ",") + " por parte · " + (r.Weight / 10000).toFixed(r.Weight < 1000 ? 3 : 1).replace(".", ",") + " %")); });
     info.parentNode.appendChild(leg);
   }
 
@@ -810,7 +811,7 @@
       lvl.show(); gen.show();
       var N = C.Nest, slots = Math.min(N.BaseSlots + lvl.value() * N.SlotsPerLevel, N.MaxSlots) + (vip.checked ? N.VipExtraSlots : 0);
       var list = [];
-      RAR.forEach(function (r) { for (var i = 0; i < Number(inputs[r.Name].value); i++) list.push(r.Income * (1 + (D.GeneBonusPerTier || .05) * (r.Tier - 1))); });
+      RAR.forEach(function (r) { for (var i = 0; i < Number(inputs[r.Name].value); i++) list.push((D.TypicalIncome || {})[r.Name] || r.PartIncome * 5); });
       list.sort(function (a, b) { return b - a; });
       var base = list.slice(0, slots).reduce(function (a, b) { return a + b; }, 0);
       var mult = (1 + gen.value() * C.Rebirth.MultiplierPerGeneration) * (x2.checked ? 2 : 1) * (club.checked ? 1.2 : 1);
