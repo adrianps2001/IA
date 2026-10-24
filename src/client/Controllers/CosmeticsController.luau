@@ -25,6 +25,7 @@ local SHOULDER_SCALE = 0.32
 local SHOULDER_OFFSET = Vector3.new(1.25, 1.55, 0.1)
 
 local companions: { [Player]: Companion } = {}
+local showOthers = true -- ajuste ⚙️ "Criaturas al hombro de los demás"
 local folder: Folder
 
 local function rootOf(player: Player): BasePart?
@@ -109,6 +110,11 @@ local function watch(player: Player)
 	refreshTrail(player)
 end
 
+-- Ajuste ⚙️: ver (o no) las criaturas al hombro de los demás jugadores.
+function CosmeticsController.setShowOthers(value: boolean)
+	showOthers = value
+end
+
 function CosmeticsController.start()
 	local f = Instance.new("Folder")
 	f.Name = "Companions"
@@ -132,7 +138,11 @@ function CosmeticsController.start()
 		local breathe = math.sin(os.clock() * 2.5) * 0.04
 		for player, companion in companions do
 			local root = rootOf(player)
-			if root then
+			local visible = showOthers or player == Players.LocalPlayer
+			if companion.Model.Parent ~= (if visible then folder else nil) then
+				companion.Model.Parent = if visible then folder else nil
+			end
+			if root and visible then
 				local seat = root.CFrame * CFrame.new(SHOULDER_OFFSET.X, SHOULDER_OFFSET.Y + breathe, SHOULDER_OFFSET.Z)
 				companion.Model:PivotTo(seat * CFrame.new(0, companion.Foot, 0))
 			end

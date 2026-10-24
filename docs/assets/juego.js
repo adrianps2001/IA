@@ -669,6 +669,8 @@
       ["🦊", "Zorros", "Con menos de " + get("ForestThieves.FillTo") + " jugadores salen zorros que tiran la criatura al suelo; cualquiera la puede recoger."],
       ["📍", "Marca", "Tras cada señal, los ladrones ven dónde estaba el portador y una flecha les apunta allí."],
       ["⌛", "Final", "Si la criatura está en el suelo al acabar, se escapa: nadie gana."],
+      ["👣", "Huellas", "El portador deja huellas brillantes que los demás ven de cerca y se borran en " + c.FootprintSeconds + " s: algo que seguir entre señales."],
+      ["💓", "¡Ladrón cerca!", "El portador ve un aviso y oye un latido cada vez más rápido si alguien (o un zorro) está a menos de " + c.DangerRange + " studs."],
     ].forEach(function (r) { box.appendChild(el("div", { class: "mini-card" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + "</b><p>" + r[2] + "</p>")); });
   }
 

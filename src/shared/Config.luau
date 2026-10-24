@@ -73,6 +73,13 @@ Config.Election = {
 }
 
 Config.Chase = {
+	-- Pistas (v3.1): el portador nota cuándo un ladrón (o un zorro) está a menos de
+	-- DangerRange studs, y deja huellas brillantes cada FootprintEvery s que duran
+	-- FootprintSeconds (solo las ven los demás y solo de cerca: no lo delatan del todo).
+	DangerRange = 22,
+	FootprintEvery = 1.2,
+	FootprintSeconds = 6,
+	FootprintSeeRange = 45,
 	StealHoldTime = 1.5,
 	StealRange = 9,
 	ImmunityAfterSteal = 3,

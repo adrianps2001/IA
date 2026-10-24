@@ -35,6 +35,7 @@ local EVENTS = {
 	"RequestBuyDecoration",
 	"ToggleFavorite", -- marcar o desmarcar una criatura con ⭐
 	"SetShoulder", -- elegir la criatura que llevas al hombro (o nil para quitarla)
+	"SetSettings", -- guardar los ajustes del botón ⚙️
 	"PartyInvite",
 	"PartyRespond",
 	"PartyLeave",

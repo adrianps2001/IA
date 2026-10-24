@@ -154,6 +154,8 @@ local function updateAttributes(player: Player, profile: Profile)
 	player:SetAttribute("Coins", math.floor(profile.Coins))
 	player:SetAttribute("Dust", math.floor(profile.Dust))
 	player:SetAttribute("Generation", profile.Generation)
+	-- El tutorial de la primera partida (TutorialController) se ve mientras esto sea 0.
+	player:SetAttribute("RoundsPlayed", profile.Stats.RoundsPlayed or 0)
 	local kept, broken = profile.Stats.PactsKept, profile.Stats.PactsBroken
 	local title = if broken > kept and broken >= 3 then "Traidor" elseif kept >= 3 then "Leal" else ""
 	player:SetAttribute("Title", title)
@@ -390,6 +392,7 @@ function DataService.view(player: Player): any
 		Decorations = decorations,
 		Beauty = Economy.beauty(profile.Decorations),
 		Trades = table.move(profile.Trades, math.max(#profile.Trades - 4, 1), #profile.Trades, 1, {}),
+		Settings = profile.Settings,
 		Now = now(),
 	}
 end
@@ -419,6 +422,14 @@ end
 function DataService.start()
 	Remotes.onInvoke("GetProfile", function(player: Player)
 		return DataService.view(player)
+	end)
+	-- Ajustes del botón ⚙️: se limpian igual que al cargar (nada fuera de rango).
+	Remotes.onServer("SetSettings", function(player: Player, raw: any)
+		local profile = profiles[player]
+		if profile then
+			profile.Settings = PlayerData.cleanSettings(raw)
+			DataService.markChanged(player)
+		end
 	end)
 
 	Players.PlayerAdded:Connect(load)

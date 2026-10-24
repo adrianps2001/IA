@@ -6,6 +6,7 @@
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local SoundService = game:GetService("SoundService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Sounds = require(Shared:WaitForChild("Sounds"))
@@ -35,6 +36,11 @@ local function play(name: string, root: BasePart)
 	local sound = Instance.new("Sound")
 	sound.SoundId = def.Id
 	sound.Volume = def.Volume
+	-- Volumen de pasos de los ajustes ⚙️ (lo crea SettingsController).
+	local group = SoundService:FindFirstChild("Steps")
+	if group and group:IsA("SoundGroup") then
+		sound.SoundGroup = group
+	end
 	local vary = def.Vary or 0
 	sound.PlaybackSpeed = def.Pitch * (1 + (math.random() * 2 - 1) * vary)
 	sound.RollOffMaxDistance = 60

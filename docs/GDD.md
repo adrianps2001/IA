@@ -590,6 +590,10 @@ Vienen de la segunda prueba en Studio.
 | Intercambio sin límites (riesgo de reventa y de robo de cuentas) | 10 intercambios al día y las Secretas no se intercambian hasta 3 días después de conseguirlas |
 | El servidor se fiaba del movimiento del cliente en tirolinas y setas, y nadie limitaba los remotos | Anti-trampas de movimiento y límite de llamadas por jugador (`Config.AntiCheat`) |
 | El lobby se veía vacío y de prototipo | Colinas, estanque, bosque, flores, farolillos, bancos y ambiente, todo por código |
+| Las Secretas eran todas iguales (solo había un gen Secreto) | Un gen Secreto por ranura: Fénix, Unicornio, Aurora, Agujero Negro y Arcoíris Eterno |
+| Un novato no sabía qué hacer | Tutorial de la primera partida con flecha de luz y pasos que se completan solos |
+| Entre señal y señal no había nada que seguir | El portador deja huellas brillantes (se ven de cerca) y nota cuándo un ladrón se acerca |
+| Sin ajustes | Botón ⚙️: volumen de efectos y pasos, tamaño de la interfaz, criaturas al hombro de otros, repetir el tutorial; y 👀 Mi nido en el lobby |
 | Monetizar sin tocar la partida | Sección 9: todo se gasta en el lobby. Se retiran el Auto-Depósito y la Ofrenda Dorada; la Suerte del Servidor pasa a Suerte del Lobby (y se descubre que, con lugares separados, la vieja no funcionaba) |
 
 **Por qué se ve el lobby desde la partida (en Studio).** Studio no puede viajar entre lugares, así que mientras `Config.Places` tenga los IDs a 0 el juego funciona en **modo combinado**: un solo servidor construye el lobby (a 1000 studs de la arena) y la arena, y "teletransportar" es reaparecer en el otro sitio. Al publicar con dos lugares y poner sus IDs en `Config.Places`, el servidor de partida solo construye la arena y el del lobby solo el lobby (`Place.hasLobby()` y `Place.hasArena()`).
