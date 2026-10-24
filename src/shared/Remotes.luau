@@ -37,6 +37,10 @@ local EVENTS = {
 	"SetShoulder", -- elegir la criatura que llevas al hombro (o nil para quitarla)
 	"SetSettings", -- guardar los ajustes del botón ⚙️
 	"VisitNest", -- ir a la entrada del nido de otro jugador del lobby (UserId)
+	"ClaimDaily", -- reclamar el regalo diario
+	"RenameCreature", -- ponerle nombre a una criatura (id, texto); el servidor lo filtra
+	"BuyCosmetic", -- Tienda de la Plaza: comprar un artículo de hoy (id)
+	"EquipCosmetic", -- ponerte o quitarte algo comprado (tipo, id o nil)
 	"PartyInvite",
 	"PartyRespond",
 	"PartyLeave",

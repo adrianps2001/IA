@@ -353,10 +353,12 @@ Nada de pago cambia el huevo de la partida, la elección, la persecución ni lo 
 | Reintento de Cría | 25 | Repite una cría con los mismos padres | Hecho |
 | Packs de Monedas | 49 a 999 | Escalado clásico con bonus en packs grandes | Hecho |
 | **Fuegos artificiales** | 25 | Espectáculo en la plaza del lobby con tu nombre y tu criatura del hombro en grande | Propuesta |
-| **Renombrar criatura** | 25 | Nombre propio en la placa del pedestal (con el filtro de texto de Roblox) | Propuesta |
+| **Renombrar criatura** | Gratis (v3.1) | Nombre propio en la placa del pedestal, con el filtro de texto de Roblox. Se podría cobrar más adelante | Hecho |
 | **Regalar** | — | Cualquier pase o producto se puede comprar para un amigo del lobby | Propuesta |
 
 ### 9.3 Tienda de la Plaza (estética, rota cada día)
+
+**(v3.1) Hecha la primera versión:** pestaña Plaza del panel del nido, 6 artículos al día, 8 sombreros para la criatura al hombro y 5 temas de nido, con polvo de cáscara. Falta venderlos también con Robux.
 
 Una tienda en la plaza del lobby con 6 artículos que cambian cada día (la rotación es real, sin temporizadores falsos). Se paga con Robux o con polvo de cáscara (los artículos de polvo dan un uso más al polvo de consolación).
 
@@ -597,6 +599,8 @@ Vienen de la segunda prueba en Studio.
 | En móvil los avisos de Roblox eran pequeños | Botón de acción grande que pulsa el aviso más cercano |
 | Sin datos para decidir ni forma de ayudar a un jugador | Analítica de economía y de partida; comandos de soporte y moderación para administradores (`!ayuda`) |
 | El salón de la fama no se podía visitar | 🏡 Visitar: te lleva a la entrada del nido de cualquier jugador del lobby |
+| Pocos motivos para volver cada día y para gastar el polvo | Regalo diario (racha de 7 días) y Tienda de la Plaza con sombreros y temas de nido |
+| Todas las criaturas de la misma especie se llamaban igual | Ponerles nombre (filtrado por Roblox), que sale en la placa |
 | Monetizar sin tocar la partida | Sección 9: todo se gasta en el lobby. Se retiran el Auto-Depósito y la Ofrenda Dorada; la Suerte del Servidor pasa a Suerte del Lobby (y se descubre que, con lugares separados, la vieja no funcionaba) |
 
 **Por qué se ve el lobby desde la partida (en Studio).** Studio no puede viajar entre lugares, así que mientras `Config.Places` tenga los IDs a 0 el juego funciona en **modo combinado**: un solo servidor construye el lobby (a 1000 studs de la arena) y la arena, y "teletransportar" es reaparecer en el otro sitio. Al publicar con dos lugares y poner sus IDs en `Config.Places`, el servidor de partida solo construye la arena y el del lobby solo el lobby (`Place.hasLobby()` y `Place.hasArena()`).

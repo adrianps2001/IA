@@ -75,6 +75,9 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 ### Lobby
 - [ ] **Tutorial** (con un perfil nuevo, o ⚙️ → Ver el tutorial otra vez): el cartel de arriba va diciendo qué hacer y la flecha de luz señala la brasa, el huevo, la rampa y al portador. "Saltar ✕" lo quita.
 - [ ] **⚙️ Ajustes:** cambiar el volumen de efectos y de pasos se nota; el tamaño de la interfaz cambia todos los paneles; "Al hombro de otros: No" oculta las criaturas de los demás (la tuya no). Al volver a entrar se mantienen.
+- [ ] **🎁 Regalo:** el botón brilla si hay regalo; al abrirlo da lo del día y se marca. Abrirlo otra vez el mismo día dice "Vuelve mañana".
+- [ ] **Nombre:** elige una sola criatura en el panel, escribe un nombre y Guardar: sale en la placa del pedestal (y en el panel, con la especie debajo). "Quitar" vuelve al nombre de la especie.
+- [ ] **Plaza** (pestaña del panel del nido; con F7 → +1000 polvo): comprar un sombrero se lo pone a tu criatura al hombro (y lo ven los demás); comprar un tema pinta tu nido; "Quitártelo" lo deshace. Al salir, el nido libre vuelve a su aspecto normal.
 - [ ] **👀 Mi nido** lleva la cámara a tus gradas y "↩ Volver" la devuelve. **🏡 Visitar** muestra los jugadores del lobby y te lleva a la entrada de su nido (sin que el anti-trampas te devuelva).
 - [ ] **Móvil** (Studio: Prueba → Dispositivo → un teléfono): junto a una brasa, el huevo o el poste de una tirolina sale el botón grande naranja con su texto, y pulsarlo hace la acción.
 - [ ] **Comandos de soporte** (en Studio funcionan para todos): escribe `!ayuda` en el chat; prueba `!ver Player1`, `!dar monedas Player1 500` y `!dar criatura Player1 Secret`.

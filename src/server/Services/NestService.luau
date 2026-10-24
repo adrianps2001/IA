@@ -5,10 +5,13 @@
 local CollectionService = game:GetService("CollectionService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local TextService = game:GetService("TextService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
+local CosmeticsModel = require(Shared.CosmeticsModel)
 local Creature = require(Shared.Creature)
+local DailyReward = require(Shared.DailyReward)
 local CreatureModel = require(Shared.CreatureModel)
 local DecorationModel = require(Shared.DecorationModel)
 local Economy = require(Shared.Economy)
@@ -226,7 +229,7 @@ local function fillPedestals(player: Player, profile: Profile, nest: MapService.
 			rim.Color = if favorite then Color3.fromRGB(255, 210, 60) else color
 		end
 		if plate then
-			plate.Text = string.format("%s%s\n%s · %s/s", if favorite then "⭐ " else "", Creature.name(creature), info.DisplayName, Economy.short(Creature.baseIncome(creature) * multiplier))
+			plate.Text = string.format("%s%s\n%s · %s/s", if favorite then "⭐ " else "", Creature.displayName(creature), info.DisplayName, Economy.short(Creature.baseIncome(creature) * multiplier))
 			plate.TextColor3 = color
 		end
 		-- En el lobby la placa ya dice el nombre: sin etiqueta flotante encima.
@@ -254,7 +257,7 @@ local function fillPedestals(player: Player, profile: Profile, nest: MapService.
 			local prompt = Instance.new("ProximityPrompt")
 			prompt.Name = "LootPrompt"
 			prompt.ActionText = "Saquear"
-			prompt.ObjectText = Creature.name(creature)
+			prompt.ObjectText = Creature.displayName(creature)
 			prompt.HoldDuration = Config.Events.LootNight.HoldSeconds
 			prompt.MaxActivationDistance = Config.Events.LootNight.MaxDistance - 2
 			prompt.RequiresLineOfSight = false
@@ -386,6 +389,7 @@ local function releaseLobbyNest(player: Player)
 	if nest then
 		lobbyOwners[nest.Index] = nil
 		nest.Sign.Text = "Nido libre"
+		CosmeticsModel.paintNest(nest.Model, nil) -- el siguiente dueño lo recibe con el aspecto de siempre
 		for i, rim in nest.Rims do
 			rim.Color = Color3.fromRGB(120, 120, 120)
 			if nest.Plates[i] then
@@ -639,6 +643,68 @@ local function release(player: Player, ids: any)
 	end
 end
 
+-- Ponerle nombre a una criatura (v3.1). El texto pasa por el filtro de Roblox (obligatorio para
+-- todo lo que escriben los jugadores y ven otros: aparece en la placa del pedestal).
+local function renameCreature(player: Player, id: any, text: any)
+	local profile = DataService.get(player)
+	local creature = if profile and type(id) == "string" then PlayerData.findCreature(profile, id) else nil
+	local clean = Creature.cleanNickname(text)
+	if not creature or clean == nil then
+		return
+	end
+	if clean == "" then
+		creature.Nickname = nil
+	else
+		local ok, filtered = pcall(function()
+			return TextService:FilterStringAsync(clean, player.UserId):GetNonChatStringForBroadcastAsync()
+		end)
+		if not ok then
+			AnnouncementService.player(player, "No se ha podido comprobar el nombre. Prueba otra vez.")
+			return
+		end
+		creature.Nickname = filtered
+	end
+	DataService.markChanged(player)
+	NestService.refreshDisplay(player)
+	AnnouncementService.player(player, if creature.Nickname then "✏️ Ahora se llama " .. creature.Nickname .. "." else "✏️ Nombre quitado.")
+end
+
+-- Regalo diario (v3.1, DailyReward). El cliente sabe si hay regalo con DailyLastDay/DailyStreak
+-- y la hora del servidor.
+local function publishDaily(player: Player, profile: Profile)
+	player:SetAttribute("DailyLastDay", profile.Daily.LastDay)
+	player:SetAttribute("DailyStreak", profile.Daily.Streak)
+end
+
+local function claimDaily(player: Player)
+	local profile = DataService.get(player)
+	if not profile then
+		return
+	end
+	local day, reward = DailyReward.claim(profile.Daily, DailyReward.dayNumber(os.time()))
+	if not day or not reward then
+		AnnouncementService.player(player, "🎁 Ya has abierto el regalo de hoy. ¡Vuelve mañana!")
+		return
+	end
+	local text
+	if reward.Dust then
+		DataService.addDust(player, reward.Dust, "TimedReward:Daily")
+		text = string.format("+%d polvo de cáscara", reward.Dust)
+	elseif reward.Coins then
+		local coins = reward.Coins * (profile.Generation + 1)
+		DataService.addCoins(player, coins, "TimedReward:Daily")
+		text = string.format("+%s Monedas", Economy.short(coins))
+	else
+		local range = Config.EggRanges.Daily
+		addEgg(player, "Daily", 60, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName)
+		text = "¡un huevo de regalo en tu incubadora!"
+	end
+	DataService.markChanged(player)
+	publishDaily(player, profile)
+	AnnouncementService.sound(player, "Fanfare")
+	AnnouncementService.player(player, string.format("🎁 Regalo del día %d: %s", day, text), "quest")
+end
+
 -- Visitar nidos (v3.1): te lleva a la entrada del nido de otro jugador del lobby (o al tuyo).
 -- Lo hace el servidor para que el anti-trampas no lo tome por un teletransporte.
 local function visitNest(player: Player, userId: any)
@@ -795,6 +861,7 @@ local function onLoaded(player: Player, profile: Profile)
 	end
 	publishNestPosition(player)
 	NestService.updateCompanion(player)
+	publishDaily(player, profile)
 	player:GetAttributeChangedSignal("InMatch"):Connect(function()
 		onMatchChanged(player)
 	end)
@@ -897,6 +964,8 @@ function NestService.start()
 	Remotes.onServer("ToggleFavorite", managed(toggleFavorite))
 	Remotes.onServer("SetShoulder", managed(setShoulder))
 	Remotes.onServer("VisitNest", managed(visitNest))
+	Remotes.onServer("ClaimDaily", managed(claimDaily))
+	Remotes.onServer("RenameCreature", managed(renameCreature))
 	Remotes.onServer("RequestReleaseStored", managed(releaseStored))
 	Remotes.onServer("RequestBuyDecoration", managed(buyDecoration))
 	Remotes.onServer("RequestBreed", managed(function(player, idA, idB)

@@ -70,7 +70,7 @@ Nada de esto se puede hacer desde el código: necesita tu cuenta.
 - [x] **P1 🧑‍💻 Botón de acción en móvil** (hecho, `ActionButtonController`): en pantallas táctiles sale un botón grande con el texto de lo que toca (recoger, depositar, robar, tirolina…) que pulsa el aviso más cercano. 👀 Comprueba en un móvil que no tapa el botón de saltar.
 - [ ] **P1 👀 Controles en móvil y mando.** El portador ya tiene botones en pantalla de ⚡ Esprint y 🤝 Relevo (y Shift/Q o L3/L1 en mando). Empujar es un aviso (prompt) sobre el otro jugador. Comprueba que en un móvil se pulsan bien en plena carrera; si no, los hago más grandes o los muevo.
 - [x] **P1 🧑‍💻 Menú de ajustes.** Hecho (botón ⚙️): volumen de efectos y de pasos, tamaño de la interfaz (80-130 %), ver o no las criaturas al hombro de los demás y repetir el tutorial. Se guarda en el perfil. Falta el volumen de música (cuando haya música).
-- [ ] **P1 🧑‍💻 Tienda de la Plaza** (GDD 9.3): temas de nido, pedestales, accesorios para la criatura del hombro, emotes y títulos, con rotación diaria. Es la fuente principal de ingresos sin tocar la partida, y hoy no existe.
+- [x] **P1 🧑‍💻 Tienda de la Plaza** (hecha, primera versión): pestaña **Plaza** del panel del nido con 6 artículos al día (8 sombreros para la criatura al hombro y 5 temas de nido), con polvo de cáscara. Falta: venderlos también con Robux (un producto por artículo), pedestales, emotes y títulos.
 - [ ] **P1 🧑‍💻 Pase de temporada** (gratis + premium, solo estético) con misiones de jugar normal.
 - [ ] **P1 🧑‍💻 Filtrado de texto** (`TextService:FilterStringAsync`) si se añade cualquier texto escrito por jugadores (renombrar criaturas, nombre del nido). Hoy no hay ninguno, pero el GDD propone "Renombrar criatura": sin filtro, Roblox lo prohíbe.
 - [x] **P1 🧑‍💻 Límites en los intercambios.** Hecho: 10 intercambios al día como mucho y las Secretas no se pueden intercambiar hasta 3 días después de conseguirlas (también si llegaron por otro intercambio). En `Config.Trade`.
@@ -86,7 +86,9 @@ Nada de esto se puede hacer desde el código: necesita tu cuenta.
 
 ### 2.3 Para después del lanzamiento (P2)
 
-- [ ] **P2 🧑‍💻 Renombrar criaturas, fuegos artificiales, regalos, Dos al Hombro, Vitrina Grande** (GDD 9, ideas de monetización).
+- [x] **P2 🧑‍💻 Renombrar criaturas** (hecho, gratis): elige una criatura en el panel y escribe su nombre; pasa por el filtro de texto de Roblox y sale en la placa.
+- [x] **P1 🧑‍💻 Regalo diario** (hecho): 🎁 en el lobby, racha de 7 días (polvo, Monedas y un huevo el día 7; `Config.DailyReward`).
+- [ ] **P2 🧑‍💻 Fuegos artificiales, regalos a amigos, Dos al Hombro, Vitrina Grande** (GDD 9, ideas de monetización).
 - [ ] **P2 🧑‍💻 Huevo del Admin:** evento en directo en todos los servidores (`MessagingService`).
 - [ ] **P2 🧑‍💻 Visitar nidos de otros servidores** y títulos semanales para el campeón del ranking.
 - [ ] **P2 🧑‍💻 Emotes de reacción** (con tu criatura al hombro).

@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
+local Cosmetics = require(Shared.Cosmetics)
 local Economy = require(Shared.Economy)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
@@ -17,7 +18,7 @@ local player = Players.LocalPlayer
 
 local NestController = {}
 
-local TABS = { "Criaturas", "Incubadora", "Mejoras", "Decorar", "Misiones", "Tienda" }
+local TABS = { "Criaturas", "Incubadora", "Mejoras", "Decorar", "Misiones", "Plaza", "Tienda" }
 
 local panel: Frame
 local content: ScrollingFrame
@@ -53,6 +54,32 @@ local function renderCreatures()
 	if #profile.Creatures == 0 then
 		UI.label({ Size = UDim2.new(1, 0, 0, 40), Text = "Aún no tienes criaturas. ¡Gana una persecución!" }, content)
 	end
+	-- Con una sola criatura elegida: ponerle nombre (v3.1). El servidor lo pasa por el filtro.
+	if #selected == 1 then
+		for _, creature in profile.Creatures do
+			if creature.Id == selected[1] then
+				local r = row(44, 0)
+				local box = Instance.new("TextBox")
+				box.Position = UDim2.fromOffset(8, 6)
+				box.Size = UDim2.new(1, -196, 1, -12)
+				box.BackgroundColor3 = UI.Colors.Panel
+				box.TextColor3 = UI.Colors.Text
+				box.PlaceholderText = "✏️ Nombre para " .. tostring(creature.Species or creature.Name)
+				box.Text = creature.Nickname or ""
+				box.ClearTextOnFocus = false
+				box.Font = Enum.Font.GothamMedium
+				box.TextScaled = true
+				box.Parent = r
+				UI.round(box, 8)
+				UI.button({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -96, 0, 6), Size = UDim2.fromOffset(84, 32), Text = "Guardar", BackgroundColor3 = UI.Colors.Good }, r, function()
+					Remotes.event("RenameCreature"):FireServer(creature.Id, box.Text)
+				end)
+				UI.button({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(84, 32), Text = "Quitar", BackgroundColor3 = UI.Colors.PanelLight }, r, function()
+					Remotes.event("RenameCreature"):FireServer(creature.Id, "")
+				end)
+			end
+		end
+	end
 	for index, creature in profile.Creatures do
 		local isSelected = table.find(selected, creature.Id) ~= nil
 		local r = row(48, index)
@@ -65,7 +92,7 @@ local function renderCreatures()
 		UI.label({
 			Position = UDim2.fromOffset(40, 26),
 			Size = UDim2.new(0.55, -40, 0, 18),
-			Text = creature.RarityName .. (if creature.InNest then " · en el nido" else " · guardada") .. (if creature.Favorite then " · ⭐ favorita" else ""),
+			Text = (if creature.Nickname then tostring(creature.Species) .. " · " else "") .. creature.RarityName .. (if creature.InNest then " · en el nido" else " · guardada") .. (if creature.Favorite then " · ⭐ favorita" else ""),
 			TextColor3 = rarityColor(creature.Rarity),
 			TextXAlignment = Enum.TextXAlignment.Left,
 		}, r)
@@ -195,6 +222,67 @@ local function renderCreatures()
 	end)
 end
 
+-- Tienda de la Plaza (v3.1): estética con polvo. Lo de hoy, y abajo lo que ya tienes.
+local function renderPlaza()
+	local cosmetics = profile.Cosmetics or { Owned = {}, Shop = {} }
+	local owned = cosmetics.Owned or {}
+	local function equipped(item: Cosmetics.Item): boolean
+		return cosmetics[item.Kind] == item.Id
+	end
+	local function equipButton(r: Frame, item: Cosmetics.Item)
+		local on = equipped(item)
+		UI.button({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -8, 0.5, 0),
+			Size = UDim2.fromOffset(120, 34),
+			Text = if on then "Quitártelo" else "Ponértelo",
+			BackgroundColor3 = if on then UI.Colors.PanelLight else UI.Colors.Good,
+		}, r, function()
+			Remotes.event("EquipCosmetic"):FireServer(item.Kind, if on then nil else item.Id)
+		end)
+	end
+	local info = row(40, 0)
+	UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 1, -12), Text = string.format("🛍️ Hoy en la Plaza (cambia cada día) · tienes %s ✨", UI.formatNumber(profile.Dust or 0)), TextXAlignment = Enum.TextXAlignment.Left }, info)
+	local order = 1
+	for _, id in cosmetics.Shop or {} do
+		local item = Cosmetics.get(id)
+		if item then
+			local r = row(48, order)
+			order += 1
+			UI.label({ Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -150, 0, 24), Text = item.Icon .. " " .. item.Name, TextXAlignment = Enum.TextXAlignment.Left }, r)
+			UI.label({ Position = UDim2.fromOffset(12, 26), Size = UDim2.new(1, -150, 0, 18), Text = (if item.Kind == "Hat" then "Para tu criatura al hombro" else "Tema para tu nido"), TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left }, r)
+			if table.find(owned, item.Id) then
+				equipButton(r, item)
+			else
+				local affordable = (profile.Dust or 0) >= item.Price
+				UI.button({
+					AnchorPoint = Vector2.new(1, 0.5),
+					Position = UDim2.new(1, -8, 0.5, 0),
+					Size = UDim2.fromOffset(120, 34),
+					Text = string.format("%s ✨", UI.formatNumber(item.Price)),
+					BackgroundColor3 = if affordable then UI.Colors.Accent else UI.Colors.Panel,
+				}, r, function()
+					Remotes.event("BuyCosmetic"):FireServer(item.Id)
+				end)
+			end
+		end
+	end
+	if #owned > 0 then
+		local title = row(32, order)
+		order += 1
+		UI.label({ Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -24, 1, -8), Text = "🎒 Lo tuyo", TextXAlignment = Enum.TextXAlignment.Left }, title)
+		for _, id in owned do
+			local item = Cosmetics.get(id)
+			if item then
+				local r = row(44, order)
+				order += 1
+				UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -150, 1, -12), Text = item.Icon .. " " .. item.Name .. (if equipped(item) then " · puesto" else ""), TextXAlignment = Enum.TextXAlignment.Left }, r)
+				equipButton(r, item)
+			end
+		end
+	end
+end
+
 local function renderDecorations()
 	local info = row(44, 0)
 	UI.label({
@@ -235,7 +323,7 @@ local function renderIncubator()
 	local offset = serverNowOffset()
 	for index, egg in profile.Incubator do
 		local r = row(44, index)
-		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada", Chosen = "Huevo del Elegido", Welcome = "Huevo de bienvenida" }
+		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada", Chosen = "Huevo del Elegido", Welcome = "Huevo de bienvenida", Daily = "Huevo del regalo" }
 		UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(0.6, -12, 1, -12), Text = "🥚 " .. (names[egg.Kind] or egg.Kind), TextXAlignment = Enum.TextXAlignment.Left }, r)
 		local t = UI.label({ Position = UDim2.new(0.6, 0, 0, 6), Size = UDim2.new(0.4, -12, 1, -12), TextXAlignment = Enum.TextXAlignment.Right }, r)
 		timeLabels[t] = egg.ReadyAt - offset
@@ -396,6 +484,8 @@ render = function()
 		renderDecorations()
 	elseif currentTab == "Misiones" then
 		renderQuests()
+	elseif currentTab == "Plaza" then
+		renderPlaza()
 	else
 		renderShop()
 	end

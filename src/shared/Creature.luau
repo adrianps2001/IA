@@ -11,6 +11,7 @@ export type Creature = {
 	Origin: string, -- "Hatch" | "Breed" | "PersonalEgg" | "Copy" | "Season"
 	Born: number,
 	Received: number?, -- cuándo llegó por intercambio (v3.1: las Secretas no se reintercambian enseguida)
+	Nickname: string?, -- nombre que le puso su dueño (v3.1, ya pasado por el filtro de texto de Roblox)
 }
 
 local Creature = {}
@@ -47,6 +48,34 @@ function Creature.name(creature: Creature): string
 		table.insert(parts, mutation.Name)
 	end
 	return table.concat(parts, " ")
+end
+
+-- Nombre que se enseña: el que le puso su dueño o, si no tiene, el de su especie.
+function Creature.displayName(creature: Creature): string
+	local nick = creature.Nickname
+	if nick and nick ~= "" then
+		return nick
+	end
+	return Creature.name(creature)
+end
+
+Creature.NicknameMax = 20
+
+-- Limpia un nombre escrito por el jugador: sin espacios de más ni saltos de línea, y como mucho
+-- NicknameMax letras. "" quita el nombre. nil si no es texto. (El filtro de Roblox va después,
+-- en el servidor: esto solo pone orden.)
+function Creature.cleanNickname(text: any): string?
+	if type(text) ~= "string" then
+		return nil
+	end
+	local clean = string.gsub(text, "[%c]", " ")
+	clean = string.gsub(clean, "%s+", " ")
+	clean = string.match(clean, "^%s*(.-)%s*$") or ""
+	if (utf8.len(clean) or 0) > Creature.NicknameMax then
+		local cut = utf8.offset(clean, Creature.NicknameMax + 1)
+		clean = if cut then string.sub(clean, 1, cut - 1) else clean
+	end
+	return clean
 end
 
 -- Monedas por segundo sin multiplicadores del jugador.

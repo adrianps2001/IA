@@ -11,13 +11,14 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
+local CosmeticsModel = require(Shared.CosmeticsModel)
 local Creature = require(Shared.Creature)
 local CreatureModel = require(Shared.CreatureModel)
 local Genes = require(Shared.Genes)
 
 local CosmeticsController = {}
 
-type Companion = { Model: Model, Source: string, Foot: number }
+type Companion = { Model: Model, Source: string, Foot: number, Hat: string? }
 
 -- Tamaño de la criatura en el hombro y dónde se sienta respecto al HumanoidRootPart
 -- (el hombro de un R15 está ~1.5 studs por encima del centro del torso).
@@ -34,10 +35,42 @@ local function rootOf(player: Player): BasePart?
 	return if root and root:IsA("BasePart") then root else nil
 end
 
+-- Sombrero de la Tienda de la Plaza (atributo PetHat) encima de la criatura al hombro.
+local function refreshHat(player: Player)
+	local companion = companions[player]
+	if not companion then
+		return
+	end
+	local hatId = player:GetAttribute("PetHat")
+	local wanted = if type(hatId) == "string" then hatId else nil
+	if companion.Hat == wanted then
+		return
+	end
+	local old = companion.Model:FindFirstChild("Hat")
+	if old then
+		old:Destroy()
+	end
+	companion.Hat = wanted
+	if wanted then
+		local body = companion.Model.PrimaryPart
+		local hat = if body then CosmeticsModel.buildHat(wanted, CosmeticsModel.hatSeat(body), body.Size.X, companion.Model) else nil
+		if hat then
+			for _, p in hat:GetDescendants() do
+				if p:IsA("BasePart") then
+					p.CanCollide = false
+					p.CanQuery = false
+					p.CanTouch = false
+				end
+			end
+		end
+	end
+end
+
 local function refreshCompanion(player: Player)
 	local source = player:GetAttribute("CompanionGenes")
 	local current = companions[player]
 	if current and current.Source == source then
+		refreshHat(player)
 		return
 	end
 	if current then
@@ -64,6 +97,7 @@ local function refreshCompanion(player: Player)
 	model.Name = "Companion_" .. player.UserId
 	model.Parent = folder
 	companions[player] = { Model = model, Source = source, Foot = CreatureModel.footOffset(model) }
+	refreshHat(player)
 end
 
 local function refreshTrail(player: Player)
@@ -99,6 +133,9 @@ end
 local function watch(player: Player)
 	player:GetAttributeChangedSignal("CompanionGenes"):Connect(function()
 		refreshCompanion(player)
+	end)
+	player:GetAttributeChangedSignal("PetHat"):Connect(function()
+		refreshHat(player)
 	end)
 	player:GetAttributeChangedSignal("Pass_EmberTrail"):Connect(function()
 		refreshTrail(player)

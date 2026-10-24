@@ -346,6 +346,7 @@ Config.EggRanges = {
 	Season = { Min = "Rare", Max = "Legendary" },
 	Chosen = { Min = "Rare", Max = "Epic" }, -- premio al elegido que pierde
 	Welcome = { Min = "Common", Max = "Rare" }, -- huevo de bienvenida
+	Daily = { Min = "Rare", Max = "Epic" }, -- regalo del 7.º día seguido (v3.1)
 }
 
 -- Suerte del Lobby: durante Seconds, los huevos del nido que abra cualquiera en ese lobby tiran
@@ -396,6 +397,22 @@ Config.Arena = {
 	ZiplineSpeed = 55, -- studs por segundo en la tirolina
 	EmbersOnTrees = 0.45, -- fracción de las brasas naranjas que salen en las plataformas bajas de los árboles
 	LuckyOnTrees = 0.25, -- fracción de las cajas sorpresa que aparecen en lo alto
+}
+
+-- Regalo diario (v3.1): uno al día (día UTC) desde el lobby. Si vuelves al día siguiente, la
+-- racha sube; si faltas un día, vuelve al 1. El día 7 da un huevo y la racha empieza de nuevo.
+-- Las Monedas se multiplican por (generación + 1) para que sigan valiendo algo.
+Config.DailyReward = {
+	Enabled = true,
+	Days = {
+		{ Dust = 40 },
+		{ Coins = 2_000 },
+		{ Dust = 80 },
+		{ Coins = 6_000 },
+		{ Dust = 120 },
+		{ Coins = 15_000 },
+		{ Egg = "Daily" },
+	},
 }
 
 -- Administradores (v3.1): pueden usar los comandos de soporte y moderación del chat (!ayuda).

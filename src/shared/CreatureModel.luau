@@ -78,7 +78,7 @@ function CreatureModel.build(creature: Creature.Creature, scale: number?, option
 	s *= sizeMultiplier
 
 	local model = Instance.new("Model")
-	model.Name = Creature.name(creature)
+	model.Name = Creature.displayName(creature)
 
 	local bodyColor = if bodyGene then Parts.rgb(bodyGene.Color) else Color3.new(1, 1, 1)
 	if mutation == "mut_golden" then

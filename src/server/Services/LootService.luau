@@ -93,7 +93,7 @@ local function onTriggered(prompt: ProximityPrompt, thief: Player)
 
 	lootsThisRound[thief] = (lootsThisRound[thief] or 0) + 1
 	nestCooldown[owner.UserId] = now + Config.Events.LootNight.NestCooldown
-	local name = Creature.name(creature)
+	local name = Creature.displayName(creature)
 	if Config.Events.LootNight.OwnerLoses then
 		table.remove(ownerProfile.Creatures, index)
 		DataService.markChanged(owner)

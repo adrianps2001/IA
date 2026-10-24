@@ -901,13 +901,14 @@
       ["🎟️", "Huevo de Temporada", "Rara a Legendaria, con las probabilidades a la vista antes de comprar.", true],
       ["🔁", "Repetir cría", "Vuelve a tirar la última cría con los mismos padres.", true],
       ["📅", "Club del Nido", "Suscripción: +20 % de Monedas y una decoración exclusiva al mes.", true],
-      ["🛍️", "Tienda de la Plaza", "Temas de nido, pedestales, accesorios para la criatura del hombro, emotes y títulos. Rota cada día.", false],
+      ["🛍️", "Tienda de la Plaza", "Sombreros para tu criatura al hombro y temas de nido, con polvo de cáscara. 6 artículos distintos cada día.", true],
+      ["🎭", "Más estética", "Pedestales, emotes, títulos y la Tienda de la Plaza con Robux.", false],
       ["🎆", "Fuegos artificiales", "Espectáculo en la plaza con tu nombre y tu criatura.", false],
       ["🎁", "Regalos", "Comprar pases y productos para un amigo.", false],
     ].forEach(function (r) { shop.appendChild(el("div", { class: "mini-card" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + ' <span class="pill ' + (r[3] ? "ok" : "no") + '">' + (r[3] ? "en el juego" : "diseñado") + "</span></b><p>" + r[2] + "</p>")); });
     var todo = $("#todo");
     if (todo) [
-      ["🛍️", "Tienda de la Plaza y cosméticos", "Temas de nido, pedestales, accesorios del hombro, renombrar criaturas, fuegos artificiales y regalos."],
+      ["🎆", "Más cosas de la tienda", "Comprar la estética con Robux, pedestales, emotes, fuegos artificiales y regalos a amigos."],
       ["🌍", "Inglés y otros idiomas", "Todos los textos están en español; la traducción está decidida para más adelante."],
       ["🎨", "Arte definitivo", "Mapas hechos a mano, modelos de criatura de un artista, sonidos definitivos y música."],
       ["📺", "Huevo del Admin y pase de temporada", "Evento en directo y pase con recompensas estéticas."],

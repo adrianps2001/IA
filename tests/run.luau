@@ -5,7 +5,9 @@ local AdminCommands = require("../src/shared/AdminCommands")
 local ArenaLayout = require("../src/shared/ArenaLayout")
 local ChaseRules = require("../src/shared/ChaseRules")
 local Config = require("../src/shared/Config")
+local Cosmetics = require("../src/shared/Cosmetics")
 local Creature = require("../src/shared/Creature")
+local DailyReward = require("../src/shared/DailyReward")
 local Decorations = require("../src/shared/Decorations")
 local Economy = require("../src/shared/Economy")
 local Election = require("../src/shared/Election")
@@ -972,6 +974,65 @@ test("comandos de administrador: se leen bien y solo para administradores", func
 	expect(AdminCommands.isAdmin(123, 123), "el dueño siempre")
 	expect(not AdminCommands.isAdmin(456, 123), "los demás, solo si están en Config.Admins")
 	expect(not AdminCommands.isAdmin(0, 0), "un grupo como dueño no hace admin a nadie")
+end)
+
+test("regalo diario: un regalo al día, racha de 7 y vuelta al 1 si faltas", function()
+	local s = DailyReward.newState()
+	expect(DailyReward.canClaim(s, 100))
+	local day, reward = DailyReward.claim(s, 100)
+	expect(day == 1 and reward ~= nil and reward.Dust == (Config.DailyReward.Days[1] :: any).Dust)
+	expect(DailyReward.claim(s, 100) == nil, "dos veces el mismo día, no")
+	for d = 2, #Config.DailyReward.Days do
+		expect(DailyReward.claim(s, 99 + d) == d)
+	end
+	local _, last = DailyReward.claim(s, 99 + #Config.DailyReward.Days)
+	expect(last == nil)
+	expect((Config.DailyReward.Days[#Config.DailyReward.Days] :: any).Egg ~= nil, "el último día trae huevo")
+	expect(DailyReward.claim(s, 100 + #Config.DailyReward.Days) == 1, "tras el día 7, se empieza de nuevo")
+	expect(DailyReward.claim(s, 103 + #Config.DailyReward.Days) == 1, "si faltas un día, vuelves al 1")
+	local clean = DailyReward.clean({ LastDay = 5, Streak = 99 })
+	expect(clean.Streak == #Config.DailyReward.Days and DailyReward.clean("basura").LastDay == -1)
+end)
+
+test("nombres de criatura: se limpian, se recortan y se enseñan", function()
+	expect(Creature.cleanNickname("  Bola   de\nNieve ") == "Bola de Nieve")
+	expect(Creature.cleanNickname(42) == nil)
+	expect(Creature.cleanNickname("   ") == "", "solo espacios = quitar el nombre")
+	local long = Creature.cleanNickname("ñandúñandúñandúñandúñandú") :: string
+	expect(utf8.len(long) == Creature.NicknameMax, "recorta por letras, no por bytes")
+	local c = Creature.new("n1", Genes.rollSet(seeded(3), "Rare"), "Hatch", 0)
+	expect(Creature.displayName(c) == Creature.name(c))
+	c.Nickname = "Pipo"
+	expect(Creature.displayName(c) == "Pipo")
+end)
+
+test("Tienda de la Plaza: rotación diaria, siempre con sombrero y tema, y datos limpios", function()
+	local seen: { [string]: boolean } = {}
+	for day = 20000, 20060 do
+		local shop = Cosmetics.shopToday(day)
+		expect(#shop == Cosmetics.ShopSize)
+		local hats, themes, ids = 0, 0, {}
+		for _, item in shop do
+			expect(not ids[item.Id], "sin repetidos")
+			ids[item.Id] = true
+			seen[item.Id] = true
+			if item.Kind == "Hat" then
+				hats += 1
+			else
+				themes += 1
+			end
+		end
+		expect(hats > 0 and themes > 0, "hay sombreros y temas cada día")
+		expect(Cosmetics.shopToday(day)[1].Id == shop[1].Id, "el mismo día, la misma tienda")
+	end
+	for _, item in Cosmetics.Catalog do
+		expect(seen[item.Id] == true, item.Id .. " nunca sale en la tienda")
+		expect(item.Price > 0 and item.Price % 50 == 0, item.Id .. ": precio redondo")
+	end
+	local profile = PlayerData.reconcile({ Cosmetics = { Owned = { "hat_top", "no-existe", "hat_top", "theme_snow" }, Hat = "hat_crown", Theme = "theme_snow" } }, 0)
+	expect(#profile.Cosmetics.Owned == 2, "solo artículos que existen, sin repetir")
+	expect(profile.Cosmetics.Hat == nil, "no te puedes poner lo que no tienes")
+	expect(profile.Cosmetics.Theme == "theme_snow")
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

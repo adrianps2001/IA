@@ -14,6 +14,7 @@ local controllers = {
 	require(script.Controllers.TutorialController),
 	require(script.Controllers.SettingsController),
 	require(script.Controllers.ActionButtonController),
+	require(script.Controllers.DailyController),
 	require(script.Controllers.DebugController),
 	require(script.Controllers.AutopilotController),
 }
