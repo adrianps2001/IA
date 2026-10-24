@@ -191,7 +191,7 @@ Cada mecánica sirve a una de las cuatro fases de la ronda; todas se aprenden en
 - **(v3) Tu nido está en el lobby**, una parcela propia cargada desde tus datos guardados, con más jugadores alrededor que pueden visitarla. Allí se hace todo lo del nido: tienda, mejoras, incubadora, cría, liberar, decorar, intercambiar y formar la Bandada. En la partida no se gestiona el nido.
 - **(v3) Hecho para lucirse:** tus 12 mejores criaturas (primero las favoritas) en pedestales en gradas, cada una con su placa (nombre, rareza y producción), un aro del color de su rareza (dorado si es favorita) y un foco las Legendarias o mejores. Valla, farolillos, un arco con tu cartel (criaturas, "me gusta" y Belleza) y un cuenco con el huevo de la incubadora, que brilla cuando hay huevos listos. Las criaturas dan saltitos en su pedestal.
 - **(v3) En la partida apareces con tu nido:** un campamento de salida con tus 3 favoritas a la vista (y saqueables en la Noche de Saqueo).
-- Las criaturas generan **Monedas por segundo** según su rareza y genes, también sin conexión (al 25 %, con tope de 8 horas).
+- Las criaturas generan **Monedas por segundo**, también sin conexión (al 25 %, con tope de 8 horas). **(v3.2)** Cada una de sus 5 partes da según su propia rareza (Común 0,2, Rara 1,75, Épica 11, Legendaria 60, Mítica 300, Secreta 2.700 por segundo) y se suman: una Épica normal da ~18/s, como antes, pero una con el resto de partes raras da más.
 - Se puede **decorar** (12 piezas de Monedas o polvo, solo estéticas) y visitar. Los nidos ajenos se pueden ver; solo se pueden saquear en la Noche de Saqueo (sección 7). Las criaturas sobrantes se pueden **liberar** a cambio de polvo.
 - **(v2) Favoritas:** hasta 3 criaturas con ⭐. No se liberan por error, sobreviven a la Nueva generación y la primera te acompaña flotando durante la ronda (solo estética). Así el nido también se ve en la ronda.
 - **(v2) Huevo de bienvenida:** la primera vez, además de una criatura de regalo, un huevo que nace en 2 minutos, para que el novato vea pronto el ciclo del nido.
@@ -351,12 +351,23 @@ Nada de pago cambia el huevo de la partida, la elección, la persecución ni lo 
 | **Suerte del Lobby (15 min)** | 199 | Los huevos del nido de todos los del lobby salen con el doble de suerte. Se anuncia el nombre del comprador y el HUD del lobby muestra la cuenta atrás. Es la compra estrella: agradecimiento público en un servidor lleno | Hecho |
 | Huevo de Temporada | 99 | Probabilidades públicas antes de comprar | Hecho |
 | Reintento de Cría | 25 | Repite una cría con los mismos padres | Hecho |
-| Packs de Monedas | 49 a 999 | Escalado clásico con bonus en packs grandes | Hecho |
-| **Fuegos artificiales** | 25 | Espectáculo en la plaza del lobby con tu nombre y tu criatura del hombro en grande | Propuesta |
-| **Renombrar criatura** | 25 | Nombre propio en la placa del pedestal (con el filtro de texto de Roblox) | Propuesta |
+| Packs de Monedas | 49 / 199 / 499 / 999 | 5.000 / 25.000 / 75.000 / 180.000 Monedas (v3.3). La tienda calcula el "+X % extra" con los precios reales | Hecho |
+| **Pack de inicio** | 49 | (v3.3) Una sola vez y solo los 3 primeros días: 10.000 Monedas + Huevo de Temporada + Gorro de novato (exclusivo). Donde no se permite lo aleatorio de pago, el huevo pasa a ser 5.000 Monedas más. La cuenta atrás es real | Hecho |
+| **Fuegos artificiales** | 25 | Espectáculo en la plaza del lobby con tu nombre y tu criatura del hombro gigante; si se compran varios, van en cola | Hecho (v3.3) |
+| **Renombrar criatura** | Gratis (v3.1) | Nombre propio en la placa del pedestal, con el filtro de texto de Roblox. Se podría cobrar más adelante | Hecho |
 | **Regalar** | — | Cualquier pase o producto se puede comprar para un amigo del lobby | Propuesta |
 
+### 9.2.1 La ventana de la tienda 🛒 (v3.3)
+
+- **Botón grande a la derecha** (debajo de las Monedas), dorado, que se balancea un poco y lleva una burbuja roja hasta que abres la tienda en esa sesión. Solo en el lobby.
+- **Ventana propia** estilo cartoon brillante: degradado morado y azul, borde blanco grueso, título grande y saldo de Monedas. Secciones: **Destacado** (banner grande con el pack de inicio o la Suerte del Lobby y "Lo más comprado"), **Pases**, **Monedas**, **Lobby** (Suerte, fuegos, huevo, repetir cría) y **Club**.
+- **Tarjetas** de colores con icono que flota, cinta ("MÁS POPULAR", "MEJOR VALOR", "SOLO UNA VEZ", "PARA TODOS") y botón verde con brillo y el precio que dice Roblox. Lo que ya tienes sale como "✔ ¡TUYO!". Al comprar un pase o el pack de inicio, confeti y "¡GRACIAS!".
+- **Avisos en momentos útiles** (moderado): la Incubadora Rápida si un huevo tarda más de 2 min, el Nido VIP si tienes criaturas guardadas sin producir, un pack si te faltan Monedas para la siguiente mejora y el pack de inicio al minuto de entrar. Cada aviso sale una vez por sesión, como mucho 3, con 5 min entre uno y otro, con X para cerrar y nunca antes de tu primera partida. No hay cuentas atrás falsas ni ventanas que bloqueen.
+- Lo aleatorio (Huevo de Temporada, Repetir cría) enseña sus probabilidades y desaparece donde Roblox lo restringe.
+
 ### 9.3 Tienda de la Plaza (estética, rota cada día)
+
+**(v3.2) Hecha:** pestaña Plaza del panel del nido, 6 artículos al día, 8 sombreros para la criatura al hombro y 5 temas de nido, con polvo de cáscara o con Robux (un developer product por artículo, `Config.CosmeticProducts`; guía en `docs/PUBLICAR.md`).
 
 Una tienda en la plaza del lobby con 6 artículos que cambian cada día (la rotación es real, sin temporizadores falsos). Se paga con Robux o con polvo de cáscara (los artículos de polvo dan un uso más al polvo de consolación).
 
@@ -597,6 +608,11 @@ Vienen de la segunda prueba en Studio.
 | En móvil los avisos de Roblox eran pequeños | Botón de acción grande que pulsa el aviso más cercano |
 | Sin datos para decidir ni forma de ayudar a un jugador | Analítica de economía y de partida; comandos de soporte y moderación para administradores (`!ayuda`) |
 | El salón de la fama no se podía visitar | 🏡 Visitar: te lleva a la entrada del nido de cualquier jugador del lobby |
+| Pocos motivos para volver cada día y para gastar el polvo | Regalo diario (racha de 7 días) y Tienda de la Plaza con sombreros y temas de nido |
+| Todas las criaturas de la misma especie se llamaban igual | Ponerles nombre (filtrado por Roblox), que sale en la placa |
+| La producción solo dependía de la parte más rara | Cada parte produce según su rareza y se suman; de media, igual que antes |
+| Esperar la cola en el lobby era aburrido | Torre de la plaza: parkour con cronómetro, récord del servidor y premio diario |
+| La criatura al hombro no hacía nada | Emotes: saludar, bailar, lanzar y coger, mimos |
 | Monetizar sin tocar la partida | Sección 9: todo se gasta en el lobby. Se retiran el Auto-Depósito y la Ofrenda Dorada; la Suerte del Servidor pasa a Suerte del Lobby (y se descubre que, con lugares separados, la vieja no funcionaba) |
 
 **Por qué se ve el lobby desde la partida (en Studio).** Studio no puede viajar entre lugares, así que mientras `Config.Places` tenga los IDs a 0 el juego funciona en **modo combinado**: un solo servidor construye el lobby (a 1000 studs de la arena) y la arena, y "teletransportar" es reaparecer en el otro sitio. Al publicar con dos lugares y poner sus IDs en `Config.Places`, el servidor de partida solo construye la arena y el del lobby solo el lobby (`Place.hasLobby()` y `Place.hasArena()`).

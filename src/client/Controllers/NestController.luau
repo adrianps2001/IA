@@ -7,17 +7,19 @@ local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
+local Cosmetics = require(Shared.Cosmetics)
 local Economy = require(Shared.Economy)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
 
+local StoreController = require(script.Parent.StoreController)
 local UI = require(script.Parent.Parent.UI)
 
 local player = Players.LocalPlayer
 
 local NestController = {}
 
-local TABS = { "Criaturas", "Incubadora", "Mejoras", "Decorar", "Misiones", "Tienda" }
+local TABS: { string } = { "Criaturas", "Incubadora", "Mejoras", "Decorar", "Misiones", "Plaza", "🛒 Tienda" }
 
 local panel: Frame
 local content: ScrollingFrame
@@ -53,6 +55,32 @@ local function renderCreatures()
 	if #profile.Creatures == 0 then
 		UI.label({ Size = UDim2.new(1, 0, 0, 40), Text = "Aún no tienes criaturas. ¡Gana una persecución!" }, content)
 	end
+	-- Con una sola criatura elegida: ponerle nombre (v3.1). El servidor lo pasa por el filtro.
+	if #selected == 1 then
+		for _, creature in profile.Creatures do
+			if creature.Id == selected[1] then
+				local r = row(44, 0)
+				local box = Instance.new("TextBox")
+				box.Position = UDim2.fromOffset(8, 6)
+				box.Size = UDim2.new(1, -196, 1, -12)
+				box.BackgroundColor3 = UI.Colors.Panel
+				box.TextColor3 = UI.Colors.Text
+				box.PlaceholderText = "✏️ Nombre para " .. tostring(creature.Species or creature.Name)
+				box.Text = creature.Nickname or ""
+				box.ClearTextOnFocus = false
+				box.Font = Enum.Font.GothamMedium
+				box.TextScaled = true
+				box.Parent = r
+				UI.round(box, 8)
+				UI.button({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -96, 0, 6), Size = UDim2.fromOffset(84, 32), Text = "Guardar", BackgroundColor3 = UI.Colors.Good }, r, function()
+					Remotes.event("RenameCreature"):FireServer(creature.Id, box.Text)
+				end)
+				UI.button({ AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(84, 32), Text = "Quitar", BackgroundColor3 = UI.Colors.PanelLight }, r, function()
+					Remotes.event("RenameCreature"):FireServer(creature.Id, "")
+				end)
+			end
+		end
+	end
 	for index, creature in profile.Creatures do
 		local isSelected = table.find(selected, creature.Id) ~= nil
 		local r = row(48, index)
@@ -65,7 +93,7 @@ local function renderCreatures()
 		UI.label({
 			Position = UDim2.fromOffset(40, 26),
 			Size = UDim2.new(0.55, -40, 0, 18),
-			Text = creature.RarityName .. (if creature.InNest then " · en el nido" else " · guardada") .. (if creature.Favorite then " · ⭐ favorita" else ""),
+			Text = (if creature.Nickname then tostring(creature.Species) .. " · " else "") .. creature.RarityName .. (if creature.InNest then " · en el nido" else " · guardada") .. (if creature.Favorite then " · ⭐ favorita" else ""),
 			TextColor3 = rarityColor(creature.Rarity),
 			TextXAlignment = Enum.TextXAlignment.Left,
 		}, r)
@@ -195,6 +223,105 @@ local function renderCreatures()
 	end)
 end
 
+-- Precio en Robux de un producto (lo pone el dueño en el Creator Hub; se pregunta a Roblox una
+-- vez y se guarda). nil mientras no se sabe.
+local robuxPrices: { [number]: number | false } = {}
+local function robuxPrice(productId: number): number?
+	local cached = robuxPrices[productId]
+	if cached == nil then
+		robuxPrices[productId] = false
+		task.spawn(function()
+			local ok, info = pcall(function()
+				return MarketplaceService:GetProductInfoAsync(productId, Enum.InfoType.Product)
+			end)
+			if ok and type(info) == "table" and type(info.PriceInRobux) == "number" then
+				robuxPrices[productId] = info.PriceInRobux
+				if currentTab == "Plaza" then
+					render()
+				end
+			end
+		end)
+		return nil
+	end
+	return if cached then cached else nil
+end
+
+-- Tienda de la Plaza (v3.1): estética con polvo (y, v3.2, con Robux si el artículo tiene
+-- producto en Config.CosmeticProducts). Lo de hoy, y abajo lo que ya tienes.
+local function renderPlaza()
+	local cosmetics = profile.Cosmetics or { Owned = {}, Shop = {} }
+	local owned = cosmetics.Owned or {}
+	local function equipped(item: Cosmetics.Item): boolean
+		return cosmetics[item.Kind] == item.Id
+	end
+	local function equipButton(r: Frame, item: Cosmetics.Item)
+		local on = equipped(item)
+		UI.button({
+			AnchorPoint = Vector2.new(1, 0.5),
+			Position = UDim2.new(1, -8, 0.5, 0),
+			Size = UDim2.fromOffset(120, 34),
+			Text = if on then "Quitártelo" else "Ponértelo",
+			BackgroundColor3 = if on then UI.Colors.PanelLight else UI.Colors.Good,
+		}, r, function()
+			Remotes.event("EquipCosmetic"):FireServer(item.Kind, if on then nil else item.Id)
+		end)
+	end
+	local info = row(40, 0)
+	UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -24, 1, -12), Text = string.format("🛍️ Hoy en la Plaza (cambia cada día) · tienes %s ✨", UI.formatNumber(profile.Dust or 0)), TextXAlignment = Enum.TextXAlignment.Left }, info)
+	local order = 1
+	for _, id in cosmetics.Shop or {} do
+		local item = Cosmetics.get(id)
+		if item then
+			local r = row(48, order)
+			order += 1
+			UI.label({ Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -150, 0, 24), Text = item.Icon .. " " .. item.Name, TextXAlignment = Enum.TextXAlignment.Left }, r)
+			UI.label({ Position = UDim2.fromOffset(12, 26), Size = UDim2.new(1, -150, 0, 18), Text = (if item.Kind == "Hat" then "Para tu criatura al hombro" else "Tema para tu nido"), TextColor3 = UI.Colors.Muted, TextXAlignment = Enum.TextXAlignment.Left }, r)
+			if table.find(owned, item.Id) then
+				equipButton(r, item)
+			else
+				local affordable = (profile.Dust or 0) >= item.Price
+				local productId = Config.CosmeticProducts[item.Id] or 0
+				UI.button({
+					AnchorPoint = Vector2.new(1, 0.5),
+					Position = UDim2.new(1, if productId ~= 0 then -112 else -8, 0.5, 0),
+					Size = UDim2.fromOffset(if productId ~= 0 then 100 else 120, 34),
+					Text = string.format("%s ✨", UI.formatNumber(item.Price)),
+					BackgroundColor3 = if affordable then UI.Colors.Accent else UI.Colors.Panel,
+				}, r, function()
+					Remotes.event("BuyCosmetic"):FireServer(item.Id)
+				end)
+				if productId ~= 0 then
+					-- Con Robux: Roblox enseña su ventana de compra; si paga, el servidor lo entrega.
+					local price = robuxPrice(productId)
+					UI.button({
+						AnchorPoint = Vector2.new(1, 0.5),
+						Position = UDim2.new(1, -8, 0.5, 0),
+						Size = UDim2.fromOffset(100, 34),
+						Text = if price then "R$ " .. price else "R$ …",
+						BackgroundColor3 = UI.Colors.Good,
+					}, r, function()
+						MarketplaceService:PromptProductPurchase(player, productId)
+					end)
+				end
+			end
+		end
+	end
+	if #owned > 0 then
+		local title = row(32, order)
+		order += 1
+		UI.label({ Position = UDim2.fromOffset(12, 4), Size = UDim2.new(1, -24, 1, -8), Text = "🎒 Lo tuyo", TextXAlignment = Enum.TextXAlignment.Left }, title)
+		for _, id in owned do
+			local item = Cosmetics.get(id)
+			if item then
+				local r = row(44, order)
+				order += 1
+				UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(1, -150, 1, -12), Text = item.Icon .. " " .. item.Name .. (if equipped(item) then " · puesto" else ""), TextXAlignment = Enum.TextXAlignment.Left }, r)
+				equipButton(r, item)
+			end
+		end
+	end
+end
+
 local function renderDecorations()
 	local info = row(44, 0)
 	UI.label({
@@ -235,7 +362,7 @@ local function renderIncubator()
 	local offset = serverNowOffset()
 	for index, egg in profile.Incubator do
 		local r = row(44, index)
-		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada", Chosen = "Huevo del Elegido", Welcome = "Huevo de bienvenida" }
+		local names = { Personal = "Huevo personal", Breed = "Cría", Streak = "Huevo de racha", Season = "Huevo de temporada", Chosen = "Huevo del Elegido", Welcome = "Huevo de bienvenida", Daily = "Huevo del regalo" }
 		UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(0.6, -12, 1, -12), Text = "🥚 " .. (names[egg.Kind] or egg.Kind), TextXAlignment = Enum.TextXAlignment.Left }, r)
 		local t = UI.label({ Position = UDim2.new(0.6, 0, 0, 6), Size = UDim2.new(0.4, -12, 1, -12), TextXAlignment = Enum.TextXAlignment.Right }, r)
 		timeLabels[t] = egg.ReadyAt - offset
@@ -310,59 +437,6 @@ local function renderQuests()
 	}, stats)
 end
 
-local function oddsText(range: { Min: string, Max: string }): string
-	local parts = {}
-	local chances = Rarity.chances(1, range.Min :: Rarity.RarityName, range.Max :: Rarity.RarityName)
-	for _, name in Rarity.Order do
-		local chance = chances[name]
-		if chance > 0 then
-			table.insert(parts, string.format("%s %.1f %%", Rarity.Info[name].DisplayName, chance * 100))
-		end
-	end
-	return table.concat(parts, ", ")
-end
-
--- Tienda opcional (GDD 9): nunca vende la victoria; todo lo aleatorio muestra probabilidades.
-local function renderShop()
-	local products = {
-		{ Key = "ServerLuck", Text = "🍀 Suerte del Lobby (15 min: huevos del nido de TODOS)", Product = true },
-		{ Key = "SeasonEgg", Text = "🥚 Huevo de Temporada: " .. oddsText(Config.EggRanges.Season), Product = true, Random = true },
-		{ Key = "BreedReroll", Text = "🔁 Repetir la última cría", Product = true, Random = true },
-		{ Key = "CoinsSmall", Text = "🪙 Pack pequeño de Monedas", Product = true },
-		{ Key = "EmberTrail", Text = "🔥 Estela de Brasas (estética)", Product = false },
-		{ Key = "DoubleCoins", Text = "🪙 x2 Monedas del nido", Product = false },
-		{ Key = "VipNest", Text = "👑 Nido VIP (+10 ranuras)", Product = false },
-		{ Key = "FastIncubator", Text = "⏩ Incubadora Rápida", Product = false },
-		{ Key = "ExtraBreedSlot", Text = "➕ Ranura de cría extra", Product = false },
-	}
-	-- Los objetos aleatorios de pago no se muestran donde la ley los restringe.
-	local randomRestricted = player:GetAttribute("PaidRandomRestricted") ~= false
-	for index, item in products do
-		if (item :: any).Random and randomRestricted then
-			continue
-		end
-		local id = if item.Product then Config.DevProducts[item.Key] else Config.GamePasses[item.Key]
-		local owned = not item.Product and player:GetAttribute("Pass_" .. item.Key) == true
-		local r = row(50, index)
-		UI.label({ Position = UDim2.fromOffset(12, 6), Size = UDim2.new(0.7, -12, 1, -12), Text = item.Text, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true }, r)
-		UI.button({
-			Position = UDim2.new(0.7, 0, 0, 6),
-			Size = UDim2.new(0.3, -10, 1, -12),
-			Text = if owned then "Tuyo" elseif id == 0 then "Pronto" else "Comprar",
-			BackgroundColor3 = if owned or id == 0 then UI.Colors.PanelLight else UI.Colors.Accent,
-		}, r, function()
-			if id == 0 or owned then
-				return
-			end
-			if item.Product then
-				MarketplaceService:PromptProductPurchase(player, id)
-			else
-				MarketplaceService:PromptGamePassPurchase(player, id)
-			end
-		end)
-	end
-end
-
 local renderedTab = ""
 
 render = function()
@@ -397,7 +471,7 @@ render = function()
 	elseif currentTab == "Misiones" then
 		renderQuests()
 	else
-		renderShop()
+		renderPlaza()
 	end
 end
 
@@ -448,6 +522,12 @@ function NestController.start()
 	end
 	for index, name in TABS do
 		tabButtons[name] = UI.button({ Size = UDim2.new(1 / #TABS, -4, 1, 0), Text = name, LayoutOrder = index }, tabs, function()
+			-- (v3.3) La tienda de Robux tiene su propia ventana (botón 🛒).
+			if name == "🛒 Tienda" then
+				panel.Visible = false
+				StoreController.open()
+				return
+			end
 			currentTab = name
 			table.clear(selected)
 			confirmRelease = ""

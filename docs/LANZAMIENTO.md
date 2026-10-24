@@ -70,13 +70,17 @@ Nada de esto se puede hacer desde el código: necesita tu cuenta.
 - [x] **P1 🧑‍💻 Botón de acción en móvil** (hecho, `ActionButtonController`): en pantallas táctiles sale un botón grande con el texto de lo que toca (recoger, depositar, robar, tirolina…) que pulsa el aviso más cercano. 👀 Comprueba en un móvil que no tapa el botón de saltar.
 - [ ] **P1 👀 Controles en móvil y mando.** El portador ya tiene botones en pantalla de ⚡ Esprint y 🤝 Relevo (y Shift/Q o L3/L1 en mando). Empujar es un aviso (prompt) sobre el otro jugador. Comprueba que en un móvil se pulsan bien en plena carrera; si no, los hago más grandes o los muevo.
 - [x] **P1 🧑‍💻 Menú de ajustes.** Hecho (botón ⚙️): volumen de efectos y de pasos, tamaño de la interfaz (80-130 %), ver o no las criaturas al hombro de los demás y repetir el tutorial. Se guarda en el perfil. Falta el volumen de música (cuando haya música).
-- [ ] **P1 🧑‍💻 Tienda de la Plaza** (GDD 9.3): temas de nido, pedestales, accesorios para la criatura del hombro, emotes y títulos, con rotación diaria. Es la fuente principal de ingresos sin tocar la partida, y hoy no existe.
+- [x] **P1 🧑‍💻 Tienda de la Plaza** (hecha): pestaña **Plaza** del panel del nido con 6 artículos al día (8 sombreros y 5 temas de nido), con polvo de cáscara **y con Robux** si creas un producto por artículo (ver `docs/PUBLICAR.md`). Falta: pedestales y títulos.
+- [ ] **P1 🌐 Crear los productos de Robux de la Tienda de la Plaza** y poner sus números en `Config.CosmeticProducts` (paso a paso en `docs/PUBLICAR.md`).
+- [x] **P0 🧑‍💻 Tienda 🛒 nueva** (hecha, v3.3): ventana propia con secciones, tarjetas, precios reales, pack de inicio, 4 packs de Monedas, fuegos artificiales y avisos en momentos útiles.
+- [ ] **P0 🌐 Crear los pases y productos de la tienda 🛒** (5 pases, 9 productos y la suscripción) y poner sus números en `Config` (tabla completa en `docs/PUBLICAR.md`, sección 3). Sin eso la tienda enseña "Pronto".
+- [ ] **P1 🔍 Mirar la tienda 🛒 en un móvil**: que las tarjetas se lean, que las pestañas se puedan deslizar y que el botón 🛒 no tape nada.
 - [ ] **P1 🧑‍💻 Pase de temporada** (gratis + premium, solo estético) con misiones de jugar normal.
 - [ ] **P1 🧑‍💻 Filtrado de texto** (`TextService:FilterStringAsync`) si se añade cualquier texto escrito por jugadores (renombrar criaturas, nombre del nido). Hoy no hay ninguno, pero el GDD propone "Renombrar criatura": sin filtro, Roblox lo prohíbe.
 - [x] **P1 🧑‍💻 Límites en los intercambios.** Hecho: 10 intercambios al día como mucho y las Secretas no se pueden intercambiar hasta 3 días después de conseguirlas (también si llegaron por otro intercambio). En `Config.Trade`.
 - [x] **P1 🧑‍💻 Precios redondos.** Hecho: todos los precios de Monedas (mejoras, cría, Nueva generación, decoración) se redondean a dos cifras (1.300, 4.600, 56.000…) en todos los niveles.
 - [x] **P1 🧑‍💻 Accesibilidad.** La rareza siempre va escrita (placas, panel del nido, anuncios), no solo por color, y el tamaño de la interfaz se cambia en ⚙️.
-- [ ] **P1 🧑‍💻 Algo que hacer en el lobby mientras esperas** la cola (minijuego en la plaza o circuito de parkour con tiempo).
+- [x] **P1 🧑‍💻 Algo que hacer en el lobby mientras esperas** (hecho): la **Torre de la plaza**, un parkour en espiral alrededor del portal con cronómetro, puntos de control, tu mejor marca, récord del servidor y polvo el primer recorrido del día (`Config.LobbyParkour`).
 - [x] **P1 🧑‍💻 Botones "👀 Mi nido" y "🏡 Visitar"** (hechos): la cámara va a tus gradas, y "Visitar" te lleva a la entrada del nido de cualquier jugador del lobby.
 - [x] **P1 🧑‍💻 Pistas de la persecución** (hecho): el portador ve "⚠️ ¡Un ladrón cerca!" y oye un latido más rápido cuanto más se acercan (también los zorros), y deja huellas brillantes que los demás ven de cerca y se borran en 6 s (`Config.Chase.DangerRange`, `Footprint…`).
 - [ ] **P1 🧑‍💻 Revisar el equilibrio de los huevos personales.** Un jugador muy activo abre cientos al mes y le quitan importancia a la persecución. Limitarlos y darle a la cría su propia ranura (REVISION 7).
@@ -86,10 +90,12 @@ Nada de esto se puede hacer desde el código: necesita tu cuenta.
 
 ### 2.3 Para después del lanzamiento (P2)
 
-- [ ] **P2 🧑‍💻 Renombrar criaturas, fuegos artificiales, regalos, Dos al Hombro, Vitrina Grande** (GDD 9, ideas de monetización).
+- [x] **P2 🧑‍💻 Renombrar criaturas** (hecho, gratis): elige una criatura en el panel y escribe su nombre; pasa por el filtro de texto de Roblox y sale en la placa.
+- [x] **P1 🧑‍💻 Regalo diario** (hecho): 🎁 en el lobby, racha de 7 días (polvo, Monedas y un huevo el día 7; `Config.DailyReward`).
+- [ ] **P2 🧑‍💻 Fuegos artificiales, regalos a amigos, Dos al Hombro, Vitrina Grande** (GDD 9, ideas de monetización).
 - [ ] **P2 🧑‍💻 Huevo del Admin:** evento en directo en todos los servidores (`MessagingService`).
 - [ ] **P2 🧑‍💻 Visitar nidos de otros servidores** y títulos semanales para el campeón del ranking.
-- [ ] **P2 🧑‍💻 Emotes de reacción** (con tu criatura al hombro).
+- [x] **P2 🧑‍💻 Emotes con la criatura al hombro** (hechos): 💃 Saludar, Bailar, Lanzar y coger, Mimos. Los ven todos.
 - [ ] **P2 🧑‍💻 Desbloqueo progresivo de sistemas** (cría, intercambio, Bandada…) para no abrumar a los de 9-13 años.
 - [x] **P2 🧑‍💻 Mejoras igualadas en la partida:** decidido que **no**: x2 Monedas sigue adelantando bolsa y botas (efecto pequeño).
 - [ ] **P2 🧑‍💻 Más eventos y temporadas:** criatura del mes, decoraciones de temporada, cambios en el mapa por estaciones.

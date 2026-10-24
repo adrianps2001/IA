@@ -107,6 +107,7 @@ Sounds.Defs = {
 	MatchFound = { Id = SWOOSH, Level = 0.9, Pitch = 1.4, Group = "UI" },
 	Alert = { Id = PING, Level = 0.7, Pitch = 0.9, Group = "UI" },
 	Fanfare = { Id = PING, Level = 1, Pitch = 1.25, Group = "UI" },
+	Firework = { Id = SNAP, Level = 0.8, Pitch = 0.45, Vary = 0.15, Group = "UI" }, -- (v3.3) cada estallido
 	Quest = { Id = PING, Level = 0.7, Pitch = 1.8, Group = "UI" },
 } :: { [string]: Def }
 

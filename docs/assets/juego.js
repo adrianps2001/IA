@@ -105,10 +105,11 @@
     SLOTS.forEach(function (s) { var g = GBY[genes[s]]; if (g) best = Math.max(best, tier(g.Rarity)); });
     return fromTier(best);
   }
+  // Creature.baseIncome (v3.2): la suma de lo que da cada parte según su rareza.
   function incomeOf(genes) {
-    var bonus = 0;
-    SLOTS.forEach(function (s) { var g = GBY[genes[s]]; if (g) bonus += tier(g.Rarity) - 1; });
-    return RBY[rarityOf(genes)].Income * (1 + (D.GeneBonusPerTier || 0.05) * bonus);
+    var total = 0;
+    SLOTS.forEach(function (s) { var g = GBY[genes[s]]; total += RBY[g ? g.Rarity : "Common"].PartIncome; });
+    return total;
   }
   function creatureName(genes) {
     var b = GBY[genes.Body], p = GBY[genes.Pattern], m = GBY[genes.Mutation];
@@ -724,7 +725,7 @@
       });
     });
     var leg = el("div", { class: "tally" });
-    RAR.forEach(function (r) { leg.appendChild(el("span", { style: "border-color:" + rgb(r.Color) + ";color:" + rgb(r.Color) }, r.DisplayName + " · ×" + r.Income + " Monedas/s · " + (r.Weight / 10000).toFixed(r.Weight < 1000 ? 3 : 1).replace(".", ",") + " %")); });
+    RAR.forEach(function (r) { leg.appendChild(el("span", { style: "border-color:" + rgb(r.Color) + ";color:" + rgb(r.Color) }, r.DisplayName + " · " + String(r.PartIncome).replace(".", ",") + " por parte · " + (r.Weight / 10000).toFixed(r.Weight < 1000 ? 3 : 1).replace(".", ",") + " %")); });
     info.parentNode.appendChild(leg);
   }
 
@@ -810,7 +811,7 @@
       lvl.show(); gen.show();
       var N = C.Nest, slots = Math.min(N.BaseSlots + lvl.value() * N.SlotsPerLevel, N.MaxSlots) + (vip.checked ? N.VipExtraSlots : 0);
       var list = [];
-      RAR.forEach(function (r) { for (var i = 0; i < Number(inputs[r.Name].value); i++) list.push(r.Income * (1 + (D.GeneBonusPerTier || .05) * (r.Tier - 1))); });
+      RAR.forEach(function (r) { for (var i = 0; i < Number(inputs[r.Name].value); i++) list.push((D.TypicalIncome || {})[r.Name] || r.PartIncome * 5); });
       list.sort(function (a, b) { return b - a; });
       var base = list.slice(0, slots).reduce(function (a, b) { return a + b; }, 0);
       var mult = (1 + gen.value() * C.Rebirth.MultiplierPerGeneration) * (x2.checked ? 2 : 1) * (club.checked ? 1.2 : 1);
@@ -900,14 +901,18 @@
       ["🍀", "Suerte del Lobby", "15 min de suerte ×" + get("ServerLuck.Luck") + " en los huevos del nido de todo el lobby, con tu nombre en el anuncio.", true],
       ["🎟️", "Huevo de Temporada", "Rara a Legendaria, con las probabilidades a la vista antes de comprar.", true],
       ["🔁", "Repetir cría", "Vuelve a tirar la última cría con los mismos padres.", true],
-      ["📅", "Club del Nido", "Suscripción: +20 % de Monedas y una decoración exclusiva al mes.", true],
-      ["🛍️", "Tienda de la Plaza", "Temas de nido, pedestales, accesorios para la criatura del hombro, emotes y títulos. Rota cada día.", false],
-      ["🎆", "Fuegos artificiales", "Espectáculo en la plaza con tu nombre y tu criatura.", false],
+      ["📅", "Club del Nido", "Suscripción mensual: +20 % de Monedas del nido.", true],
+      ["🛍️", "Tienda de la Plaza", "Sombreros para tu criatura al hombro y temas de nido, con polvo de cáscara. 6 artículos distintos cada día.", true],
+      ["💎", "Plaza con Robux", "Cada sombrero y tema también se puede vender con Robux (un producto por artículo).", true],
+      ["🎭", "Más estética", "Pedestales y títulos.", false],
+      ["🎆", "Fuegos artificiales", "Espectáculo en la plaza con tu nombre y tu criatura gigante en el cielo. Lo ve todo el lobby.", true],
+      ["🎁", "Pack de inicio", "Una sola vez y solo los primeros días: Monedas, un Huevo de Temporada y el Gorro de novato exclusivo.", true],
+      ["💰", "Packs de Monedas", "Cuatro packs; los grandes dan más por cada Robux y la tienda enseña cuánto extra con los precios reales.", true],
       ["🎁", "Regalos", "Comprar pases y productos para un amigo.", false],
     ].forEach(function (r) { shop.appendChild(el("div", { class: "mini-card" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + ' <span class="pill ' + (r[3] ? "ok" : "no") + '">' + (r[3] ? "en el juego" : "diseñado") + "</span></b><p>" + r[2] + "</p>")); });
     var todo = $("#todo");
     if (todo) [
-      ["🛍️", "Tienda de la Plaza y cosméticos", "Temas de nido, pedestales, accesorios del hombro, renombrar criaturas, fuegos artificiales y regalos."],
+      ["🎆", "Más cosas de la tienda", "Pedestales, títulos y regalos a amigos."],
       ["🌍", "Inglés y otros idiomas", "Todos los textos están en español; la traducción está decidida para más adelante."],
       ["🎨", "Arte definitivo", "Mapas hechos a mano, modelos de criatura de un artista, sonidos definitivos y música."],
       ["📺", "Huevo del Admin y pase de temporada", "Evento en directo y pase con recompensas estéticas."],

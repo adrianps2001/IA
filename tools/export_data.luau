@@ -65,6 +65,24 @@ for _, t in arena.Trampolines do
 	table.insert(trampolines, { t.X, t.Z, t.Y })
 end
 
+-- Producción media de una criatura de cada rareza (v3.2: suma de sus partes), para las
+-- calculadoras de la web. Generador fijo: sale siempre igual.
+local typical = {}
+do
+	local seed = 7
+	local function rng(): number
+		seed = (seed * 1103515245 + 12345) % 2147483648
+		return seed / 2147483648
+	end
+	for _, name in Rarity.Order do
+		local total, n = 0, 2000
+		for i = 1, n do
+			total += Creature.baseIncome(Creature.new("t" .. i, Genes.rollSet(rng, name), "Doc", 0))
+		end
+		typical[name] = math.floor(total / n * 100 + 0.5) / 100
+	end
+end
+
 print(Json.encode({
 	Arena = {
 		Trees = trees,
@@ -84,5 +102,5 @@ print(Json.encode({
 	BiasChance = Genes.BiasChance,
 	UpgradeCosts = upgradeCosts,
 	Quests = quests,
-	GeneBonusPerTier = Creature.GeneBonusPerTier,
+	TypicalIncome = typical,
 }))

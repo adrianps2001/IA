@@ -333,11 +333,36 @@ Config.DevProducts = {
 	BreedReroll = 0,
 	SeasonEgg = 0,
 	CoinsSmall = 0,
+	CoinsMedium = 0, -- (v3.3) escalera de 4 packs de Monedas
 	CoinsLarge = 0,
+	CoinsHuge = 0,
+	StarterPack = 0, -- (v3.3) oferta de bienvenida: una sola vez, los primeros días
+	Fireworks = 0, -- (v3.3) fuegos artificiales con tu nombre en la plaza del lobby
 } :: { [string]: number }
 
 -- Suscripción "Club del Nido" (id tipo "EXP-..." del Creator Hub; vacío = desactivada).
 Config.ClubSubscriptionId = ""
+
+-- Tienda de la Plaza con Robux (v3.2): un developer product por artículo de Cosmetics.Catalog.
+-- 0 = ese artículo solo se compra con polvo. Precios recomendados: sombreros 25-75 Robux,
+-- temas de nido 99-199 Robux (el precio se pone en el Creator Hub, no aquí; el juego lo lee
+-- de Roblox para enseñarlo). Ver docs/PUBLICAR.md → "Tienda de la Plaza con Robux".
+Config.CosmeticProducts = {
+	hat_party = 0,
+	hat_beanie = 0,
+	hat_bow = 0,
+	hat_flowers = 0,
+	hat_glasses = 0,
+	hat_top = 0,
+	hat_pirate = 0,
+	hat_crown = 0,
+	-- hat_rookie (Gorro de novato) no va aquí: es exclusivo del pack de inicio.
+	theme_snow = 0,
+	theme_beach = 0,
+	theme_candy = 0,
+	theme_volcano = 0,
+	theme_space = 0,
+} :: { [string]: number }
 
 -- Rangos de rareza de los huevos que no salen de una ronda.
 Config.EggRanges = {
@@ -346,12 +371,28 @@ Config.EggRanges = {
 	Season = { Min = "Rare", Max = "Legendary" },
 	Chosen = { Min = "Rare", Max = "Epic" }, -- premio al elegido que pierde
 	Welcome = { Min = "Common", Max = "Rare" }, -- huevo de bienvenida
+	Daily = { Min = "Rare", Max = "Epic" }, -- regalo del 7.º día seguido (v3.1)
 }
 
 -- Suerte del Lobby: durante Seconds, los huevos del nido que abra cualquiera en ese lobby tiran
 -- con Luck veces más suerte. No afecta a la criatura de la partida (GDD 9, v3.1).
 Config.ServerLuck = { Seconds = 15 * 60, Luck = 2 }
-Config.CoinPacks = { CoinsSmall = 5_000, CoinsLarge = 120_000 } :: { [string]: number }
+-- Packs de Monedas (v3.3). Precios recomendados: 49, 199, 499 y 999 Robux. La tienda calcula
+-- el "+X % extra" de cada pack con los precios reales que pongas en el Creator Hub.
+Config.CoinPacks = { CoinsSmall = 5_000, CoinsMedium = 25_000, CoinsLarge = 75_000, CoinsHuge = 180_000 } :: { [string]: number }
+
+-- Tienda (v3.3, botón 🛒). Pack de inicio: se puede comprar una vez y se ofrece los primeros
+-- OfferDays días desde que entraste por primera vez. Donde Roblox no permite cosas aleatorias
+-- de pago, el huevo del pack se cambia por EggCoins Monedas.
+Config.Store = {
+	Starter = { Coins = 10_000, EggCoins = 5_000, Hat = "hat_rookie", OfferDays = 3 },
+	-- Avisos de la tienda en momentos útiles (incubadora esperando, nido lleno…): como mucho
+	-- uno cada NudgeGap segundos y MaxNudges por sesión, nunca en la partida.
+	NudgeGap = 300,
+	MaxNudges = 3,
+	-- Fuegos artificiales: cuánto dura cada espectáculo (si se compran varios, van en cola).
+	FireworksSeconds = 14,
+}
 
 -- Lugares (GDD v3): el lobby (nidos, tienda, intercambios, emparejamiento) y las partidas
 -- son dos lugares del mismo juego. Se publica el mismo archivo en los dos y cada servidor
@@ -396,6 +437,36 @@ Config.Arena = {
 	ZiplineSpeed = 55, -- studs por segundo en la tirolina
 	EmbersOnTrees = 0.45, -- fracción de las brasas naranjas que salen en las plataformas bajas de los árboles
 	LuckyOnTrees = 0.25, -- fracción de las cajas sorpresa que aparecen en lo alto
+}
+
+-- Regalo diario (v3.1): uno al día (día UTC) desde el lobby. Si vuelves al día siguiente, la
+-- racha sube; si faltas un día, vuelve al 1. El día 7 da un huevo y la racha empieza de nuevo.
+-- Las Monedas se multiplican por (generación + 1) para que sigan valiendo algo.
+Config.DailyReward = {
+	Enabled = true,
+	Days = {
+		{ Dust = 40 },
+		{ Coins = 2_000 },
+		{ Dust = 80 },
+		{ Coins = 6_000 },
+		{ Dust = 120 },
+		{ Coins = 15_000 },
+		{ Egg = "Daily" },
+	},
+}
+
+-- Torre de la plaza (v3.2): minijuego de parkour en el lobby para la espera de la cola.
+-- Plataformas en espiral alrededor del portal; tiempo desde la salida hasta la meta pasando por
+-- los puntos de control. El primer recorrido de cada día da DailyDust de polvo.
+Config.LobbyParkour = {
+	Enabled = true,
+	Steps = 22, -- plataformas entre la salida y la meta
+	Radius = 26, -- distancia al centro de la plaza
+	AngleStep = 19, -- grados entre una plataforma y la siguiente
+	Rise = 2.4, -- studs que sube cada plataforma
+	Checkpoints = { 7, 14 }, -- plataformas que son punto de control
+	DailyDust = 30,
+	MaxSeconds = 300, -- más de esto y el recorrido se cancela
 }
 
 -- Administradores (v3.1): pueden usar los comandos de soporte y moderación del chat (!ayuda).

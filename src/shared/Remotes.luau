@@ -21,6 +21,7 @@ local EVENTS = {
 	"TradeRequested", -- alguien quiere intercambiar contigo
 	"TradeUpdated", -- estado de tu ventana de intercambio (nil = cerrada)
 	"PlaySound", -- sonido de una acción (nombre del catálogo Sounds y posición opcional)
+	"Fireworks", -- (v3.3) espectáculo de fuegos artificiales en la plaza del lobby
 	-- cliente -> servidor
 	"RequestSprint",
 	"RequestPass",
@@ -37,6 +38,11 @@ local EVENTS = {
 	"SetShoulder", -- elegir la criatura que llevas al hombro (o nil para quitarla)
 	"SetSettings", -- guardar los ajustes del botón ⚙️
 	"VisitNest", -- ir a la entrada del nido de otro jugador del lobby (UserId)
+	"ClaimDaily", -- reclamar el regalo diario
+	"RenameCreature", -- ponerle nombre a una criatura (id, texto); el servidor lo filtra
+	"BuyCosmetic", -- Tienda de la Plaza: comprar un artículo de hoy (id)
+	"EquipCosmetic", -- ponerte o quitarte algo comprado (tipo, id o nil)
+	"PlayEmote", -- emote con la criatura al hombro (id de Emotes)
 	"PartyInvite",
 	"PartyRespond",
 	"PartyLeave",

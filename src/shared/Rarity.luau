@@ -8,7 +8,10 @@ export type RarityInfo = {
 	Tier: number,
 	DisplayName: string,
 	Weight: number, -- sobre 1.000.000
-	Income: number, -- Monedas por segundo base
+	-- Monedas por segundo que da CADA parte (gen) de esta rareza (v3.2): una criatura suma las
+	-- de sus 5 partes. Calculado para que, de media, cada rareza produzca casi lo mismo que antes
+	-- (5 partes comunes = 1/s, una Épica normal ~18/s, una Secreta ~2.700/s).
+	PartIncome: number,
 	Color: { number }, -- RGB 0-255
 }
 
@@ -18,12 +21,12 @@ local ORDER: { RarityName } = { "Common", "Rare", "Epic", "Legendary", "Mythic",
 Rarity.Order = ORDER
 
 local INFO: { [RarityName]: RarityInfo } = {
-	Common = { Name = "Common", Tier = 1, DisplayName = "Común", Weight = 600_000, Income = 1, Color = { 170, 170, 170 } },
-	Rare = { Name = "Rare", Tier = 2, DisplayName = "Rara", Weight = 280_000, Income = 4, Color = { 85, 200, 95 } },
-	Epic = { Name = "Epic", Tier = 3, DisplayName = "Épica", Weight = 95_000, Income = 15, Color = { 70, 140, 255 } },
-	Legendary = { Name = "Legendary", Tier = 4, DisplayName = "Legendaria", Weight = 22_000, Income = 60, Color = { 170, 85, 255 } },
-	Mythic = { Name = "Mythic", Tier = 5, DisplayName = "Mítica", Weight = 2_980, Income = 250, Color = { 255, 150, 40 } },
-	Secret = { Name = "Secret", Tier = 6, DisplayName = "Secreta", Weight = 20, Income = 2000, Color = { 255, 60, 60 } },
+	Common = { Name = "Common", Tier = 1, DisplayName = "Común", Weight = 600_000, PartIncome = 0.2, Color = { 170, 170, 170 } },
+	Rare = { Name = "Rare", Tier = 2, DisplayName = "Rara", Weight = 280_000, PartIncome = 1.75, Color = { 85, 200, 95 } },
+	Epic = { Name = "Epic", Tier = 3, DisplayName = "Épica", Weight = 95_000, PartIncome = 11, Color = { 70, 140, 255 } },
+	Legendary = { Name = "Legendary", Tier = 4, DisplayName = "Legendaria", Weight = 22_000, PartIncome = 60, Color = { 170, 85, 255 } },
+	Mythic = { Name = "Mythic", Tier = 5, DisplayName = "Mítica", Weight = 2_980, PartIncome = 300, Color = { 255, 150, 40 } },
+	Secret = { Name = "Secret", Tier = 6, DisplayName = "Secreta", Weight = 20, PartIncome = 2700, Color = { 255, 60, 60 } },
 }
 Rarity.Info = INFO
 

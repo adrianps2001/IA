@@ -2,7 +2,9 @@
 -- Esquema de los datos guardados de cada jugador y su reparación al cargar.
 
 local Config = require("./Config")
+local Cosmetics = require("./Cosmetics")
 local Creature = require("./Creature")
+local DailyReward = require("./DailyReward")
 local Genes = require("./Genes")
 local Quests = require("./Quests")
 local Rarity = require("./Rarity")
@@ -37,11 +39,16 @@ export type Profile = {
 	Shoulder: string?, -- id de la criatura que llevas al hombro (nil = ninguna)
 	Likes: { Week: string, Given: { number } }, -- "me gusta" dados esta semana
 	Settings: Settings, -- ajustes del jugador (v3.1, botón ⚙️)
+	Daily: DailyReward.State, -- regalo diario (v3.1)
+	Cosmetics: CosmeticsState, -- Tienda de la Plaza: lo comprado y lo que llevas puesto (v3.1)
+	Parkour: { Best: number, LastRewardDay: number }, -- torre de la plaza: mejor tiempo (0 = ninguno) (v3.2)
+	Store: { FirstJoin: number, StarterBought: boolean }, -- tienda 🛒: pack de inicio (v3.3)
 }
 
 -- Ajustes (v3.1): volumen de efectos y de pasos (0 a 1), tamaño de la interfaz y si se ven
 -- las criaturas al hombro de los demás (en móviles flojos conviene quitarlas).
 export type Settings = { Effects: number, Steps: number, UIScale: number, ShowPets: boolean }
+export type CosmeticsState = { Owned: { string }, Hat: string?, Theme: string? }
 
 export type CommunityState = { Month: string, Heat: number, Claimed: boolean }
 
@@ -92,6 +99,10 @@ function PlayerData.default(now: number): Profile
 		Favorites = {},
 		Likes = { Week = "", Given = {} },
 		Settings = PlayerData.cleanSettings(nil),
+		Daily = DailyReward.newState(),
+		Cosmetics = { Owned = {} },
+		Parkour = { Best = 0, LastRewardDay = -1 },
+		Store = { FirstJoin = now, StarterBought = false },
 	}
 end
 
@@ -250,6 +261,33 @@ function PlayerData.reconcile(raw: any, now: number): Profile
 	end
 
 	profile.Settings = PlayerData.cleanSettings(raw.Settings)
+	profile.Daily = DailyReward.clean(raw.Daily)
+	if type(raw.Parkour) == "table" then
+		profile.Parkour.Best = math.max(number(raw.Parkour.Best, 0), 0)
+		profile.Parkour.LastRewardDay = math.floor(number(raw.Parkour.LastRewardDay, -1))
+	end
+	if type(raw.Store) == "table" then
+		profile.Store.FirstJoin = number(raw.Store.FirstJoin, profile.Store.FirstJoin)
+		profile.Store.StarterBought = raw.Store.StarterBought == true
+	end
+	-- Estética: solo artículos que existen, sin repetir; lo puesto, solo si es tuyo y del tipo.
+	local cosmetics = raw.Cosmetics
+	if type(cosmetics) == "table" then
+		if type(cosmetics.Owned) == "table" then
+			for _, id in cosmetics.Owned do
+				if Cosmetics.get(id) and not table.find(profile.Cosmetics.Owned, id) then
+					table.insert(profile.Cosmetics.Owned, id)
+				end
+			end
+		end
+		for _, kind in { "Hat", "Theme" } do
+			local id = cosmetics[kind]
+			local item = Cosmetics.get(id)
+			if item and item.Kind == kind and table.find(profile.Cosmetics.Owned, id) then
+				(profile.Cosmetics :: any)[kind] = id
+			end
+		end
+	end
 
 	-- Al hombro: solo si la criatura existe.
 	if type(raw.Shoulder) == "string" and PlayerData.findCreature(profile, raw.Shoulder) then

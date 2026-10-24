@@ -8,12 +8,14 @@ local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Config = require(Shared.Config)
+local Cosmetics = require(Shared.Cosmetics)
 local Creature = require(Shared.Creature)
 local Economy = require(Shared.Economy)
 local PlayerData = require(Shared.PlayerData)
 local Quests = require(Shared.Quests)
 local Rarity = require(Shared.Rarity)
 local Remotes = require(Shared.Remotes)
+local Store = require(Shared.Store)
 
 local Analytics = require(script.Parent.Parent.Util.Analytics)
 
@@ -319,7 +321,9 @@ function DataService.view(player: Player): any
 		end
 		table.insert(creatures, {
 			Id = creature.Id,
-			Name = Creature.name(creature),
+			Name = Creature.displayName(creature),
+			Species = Creature.name(creature), -- nombre de la especie (por si tiene mote)
+			Nickname = creature.Nickname,
 			Rarity = creature.Rarity,
 			RarityName = Rarity.Info[creature.Rarity].DisplayName,
 			Genes = creature.Genes,
@@ -398,6 +402,19 @@ function DataService.view(player: Player): any
 		Beauty = Economy.beauty(profile.Decorations),
 		Trades = table.move(profile.Trades, math.max(#profile.Trades - 4, 1), #profile.Trades, 1, {}),
 		Settings = profile.Settings,
+		Cosmetics = {
+			Owned = profile.Cosmetics.Owned,
+			Hat = profile.Cosmetics.Hat,
+			Theme = profile.Cosmetics.Theme,
+			Shop = (function()
+				local list = {}
+				for _, item in Cosmetics.shopToday(Quests.dayNumber(os.time())) do
+					table.insert(list, item.Id)
+				end
+				return list
+			end)(),
+		},
+		Store = { StarterEndsAt = Store.starterEndsAt(profile.Store, now()), StarterBought = profile.Store.StarterBought }, -- tienda 🛒 (v3.3)
 		Now = now(),
 	}
 end

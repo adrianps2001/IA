@@ -33,6 +33,9 @@ DRIVER = r'''
 local Mock = require("./RobloxMock")
 local Style = require("./STYLE")
 local Parts = require("./Parts")
+local Cosmetics = require("./Cosmetics")
+local CosmeticsModel = require("./CosmeticsModel")
+local hatFor = nil
 local Genes = require("./Genes")
 local Creature = require("./Creature")
 local Rarity = require("./Rarity")
@@ -68,9 +71,12 @@ local function add(body, head, pattern, aura, mutation)
 	if aura.Id == "aura_blackhole" then
 		Parts.blackHole(model, body)
 	end
+	if hatFor then
+		CosmeticsModel.buildHat(hatFor, CosmeticsModel.hatSeat(body), body.Size.X, model)
+	end
 	table.insert(samples, {
 		Group = group,
-		Name = Creature.name(creature),
+		Name = if hatFor then (Cosmetics.get(hatFor) :: any).Icon .. " " .. (Cosmetics.get(hatFor) :: any).Name else Creature.name(creature),
 		Rarity = creature.Rarity,
 		RarityName = Rarity.Info[creature.Rarity].DisplayName,
 		RarityColor = Rarity.Info[creature.Rarity].Color,
@@ -95,6 +101,15 @@ add(g("body_round"), g("head_unicorn"), g("pattern_spots"), g("aura_none"), norm
 add(g("body_chubby"), g("head_ears"), g("pattern_aurora"), g("aura_none"), normal)
 add(g("body_cloud"), g("head_halo"), g("pattern_galaxy"), g("aura_blackhole"), normal)
 add(g("body_phoenix"), g("head_crown"), g("pattern_aurora"), g("aura_none"), normal)
+-- Sombreros de la Tienda de la Plaza (v3.1) sobre criaturas comunes.
+group = "Hat"
+for i, item in Cosmetics.Catalog do
+	if item.Kind == "Hat" then
+		hatFor = item.Id
+		add(bodies[(i * 3) % 5 + 1], heads[(i * 2) % 5 + 1], patterns[1], auras[1], normal)
+	end
+end
+hatFor = nil
 print(Json.encode(samples))
 '''
 
@@ -122,6 +137,10 @@ def main():
             shutil.copy(os.path.join(shared, f"{name}.luau"), os.path.join(tmp, f"{name}.luau"))
         shutil.copy(os.path.join(ROOT, "tools", "Json.luau"), os.path.join(tmp, "Json.luau"))
         shutil.copy(os.path.join(ROOT, "tools", "RobloxMock.luau"), os.path.join(tmp, "RobloxMock.luau"))
+        shutil.copy(os.path.join(shared, "Cosmetics.luau"), os.path.join(tmp, "Cosmetics.luau"))
+        cosmetics = open(os.path.join(shared, "CosmeticsModel.luau"), encoding="utf-8").read().replace('require("./CreatureStyles/Parts")', 'require("./Parts")')
+        with open(os.path.join(tmp, "CosmeticsModel.luau"), "w", encoding="utf-8") as f:
+            f.write(transform(cosmetics))
         for name in ("Parts", style):
             with open(os.path.join(shared, "CreatureStyles", f"{name}.luau"), encoding="utf-8") as f:
                 code = transform(f.read())

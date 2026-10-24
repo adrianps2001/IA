@@ -75,6 +75,16 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 ### Lobby
 - [ ] **Tutorial** (con un perfil nuevo, o ⚙️ → Ver el tutorial otra vez): el cartel de arriba va diciendo qué hacer y la flecha de luz señala la brasa, el huevo, la rampa y al portador. "Saltar ✕" lo quita.
 - [ ] **⚙️ Ajustes:** cambiar el volumen de efectos y de pasos se nota; el tamaño de la interfaz cambia todos los paneles; "Al hombro de otros: No" oculta las criaturas de los demás (la tuya no). Al volver a entrar se mantienen.
+- [ ] **🎁 Regalo:** el botón brilla si hay regalo; al abrirlo da lo del día y se marca. Abrirlo otra vez el mismo día dice "Vuelve mañana".
+- [ ] **Nombre:** elige una sola criatura en el panel, escribe un nombre y Guardar: sale en la placa del pedestal (y en el panel, con la especie debajo). "Quitar" vuelve al nombre de la especie.
+- [ ] **🏁 Torre de la plaza:** pisa el cuadrado naranja junto al portal: sale el cronómetro. Sube por las plataformas, pisa los dos controles verdes y llega a la meta dorada: te dice el tiempo, guarda tu mejor marca, el cartel enseña el récord y la primera vez del día da 30 de polvo. Si te caes al suelo, se cancela.
+- [ ] **💃 Emotes** (con una criatura al hombro): cada uno mueve la criatura y vuelve a su sitio; otro jugador lo ve igual.
+- [ ] **Tienda 🛒:** el botón dorado de la derecha (debajo de las Monedas) se balancea y tiene la burbuja roja; abre la ventana con animación; las 5 secciones cambian; las tarjetas se ven bien en PC y en móvil (*Test → Device*). Con un número en `Config`, el botón verde enseña el precio de Roblox y abre su ventana de compra. Un pase comprado sale como "✔ ¡TUYO!" con confeti.
+- [ ] **Pack de inicio:** con `Config.DevProducts.StarterPack` puesto, sale en el banner de Destacado con "Quedan 2 d 23 h"; al comprarlo llegan las Monedas, el huevo a la incubadora y el Gorro de novato, y deja de salir.
+- [ ] **Fuegos artificiales:** al comprarlos, todos ven los cohetes sobre la plaza, el cartel con el nombre y la criatura del hombro gigante girando; si se compran dos, el segundo espera su turno.
+- [ ] **Avisos de la tienda:** después de jugar una partida, con un huevo que tarde más de 2 min y la Incubadora Rápida configurada, al rato sale el aviso abajo con "¡Ver!" y X. No vuelve a salir en la sesión.
+- [ ] **Plaza con Robux:** con un número en `Config.CosmeticProducts`, sale el botón verde R$ con el precio; en Studio la compra es de prueba y el artículo se entrega.
+- [ ] **Plaza** (pestaña del panel del nido; con F7 → +1000 polvo): comprar un sombrero se lo pone a tu criatura al hombro (y lo ven los demás); comprar un tema pinta tu nido; "Quitártelo" lo deshace. Al salir, el nido libre vuelve a su aspecto normal.
 - [ ] **👀 Mi nido** lleva la cámara a tus gradas y "↩ Volver" la devuelve. **🏡 Visitar** muestra los jugadores del lobby y te lleva a la entrada de su nido (sin que el anti-trampas te devuelva).
 - [ ] **Móvil** (Studio: Prueba → Dispositivo → un teléfono): junto a una brasa, el huevo o el poste de una tirolina sale el botón grande naranja con su texto, y pulsarlo hace la acción.
 - [ ] **Comandos de soporte** (en Studio funcionan para todos): escribe `!ayuda` en el chat; prueba `!ver Player1`, `!dar monedas Player1 500` y `!dar criatura Player1 Secret`.

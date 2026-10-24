@@ -38,7 +38,7 @@ local function describe(profile: PlayerData.Profile, ids: { string }): ({ any },
 			table.insert(creatures, creature)
 			table.insert(list, {
 				Id = creature.Id,
-				Name = Creature.name(creature),
+				Name = Creature.displayName(creature),
 				Rarity = creature.Rarity,
 				RarityName = Rarity.Info[creature.Rarity].DisplayName,
 				Income = Creature.baseIncome(creature),

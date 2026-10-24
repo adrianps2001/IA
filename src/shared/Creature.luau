@@ -11,12 +11,10 @@ export type Creature = {
 	Origin: string, -- "Hatch" | "Breed" | "PersonalEgg" | "Copy" | "Season"
 	Born: number,
 	Received: number?, -- cuándo llegó por intercambio (v3.1: las Secretas no se reintercambian enseguida)
+	Nickname: string?, -- nombre que le puso su dueño (v3.1, ya pasado por el filtro de texto de Roblox)
 }
 
 local Creature = {}
-
--- Cada gen por encima de Común suma un 5 % por nivel a la producción.
-Creature.GeneBonusPerTier = 0.05
 
 function Creature.new(id: string, genes: Genes.GeneSet, origin: string, born: number): Creature
 	return {
@@ -49,16 +47,46 @@ function Creature.name(creature: Creature): string
 	return table.concat(parts, " ")
 end
 
--- Monedas por segundo sin multiplicadores del jugador.
+-- Nombre que se enseña: el que le puso su dueño o, si no tiene, el de su especie.
+function Creature.displayName(creature: Creature): string
+	local nick = creature.Nickname
+	if nick and nick ~= "" then
+		return nick
+	end
+	return Creature.name(creature)
+end
+
+Creature.NicknameMax = 20
+
+-- Limpia un nombre escrito por el jugador: sin espacios de más ni saltos de línea, y como mucho
+-- NicknameMax letras. "" quita el nombre. nil si no es texto. (El filtro de Roblox va después,
+-- en el servidor: esto solo pone orden.)
+function Creature.cleanNickname(text: any): string?
+	if type(text) ~= "string" then
+		return nil
+	end
+	local clean = string.gsub(text, "[%c]", " ")
+	clean = string.gsub(clean, "%s+", " ")
+	clean = string.match(clean, "^%s*(.-)%s*$") or ""
+	if (utf8.len(clean) or 0) > Creature.NicknameMax then
+		local cut = utf8.offset(clean, Creature.NicknameMax + 1)
+		clean = if cut then string.sub(clean, 1, cut - 1) else clean
+	end
+	return clean
+end
+
+-- Monedas por segundo sin multiplicadores del jugador (v3.2): la suma de lo que da cada una de
+-- sus 5 partes según la rareza de esa parte (Rarity.Info[...].PartIncome). Antes salía solo de
+-- la rareza más alta; ahora una Épica con el resto de partes raras produce más que una Épica
+-- con todo lo demás común.
 function Creature.baseIncome(creature: Creature): number
-	local bonusTiers = 0
+	local total = 0
 	for _, slot in Genes.Slots do
 		local gene = Genes.get((creature.Genes :: any)[slot])
-		if gene then
-			bonusTiers += Rarity.tier(gene.Rarity) - 1
-		end
+		local rarity: Rarity.RarityName = if gene then gene.Rarity else "Common"
+		total += Rarity.Info[rarity].PartIncome
 	end
-	return Rarity.Info[creature.Rarity].Income * (1 + Creature.GeneBonusPerTier * bonusTiers)
+	return total
 end
 
 -- Ordena por producción descendente; las primeras `slots` son las que están en el nido.
