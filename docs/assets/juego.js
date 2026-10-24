@@ -903,7 +903,8 @@
       ["🔁", "Repetir cría", "Vuelve a tirar la última cría con los mismos padres.", true],
       ["📅", "Club del Nido", "Suscripción: +20 % de Monedas y una decoración exclusiva al mes.", true],
       ["🛍️", "Tienda de la Plaza", "Sombreros para tu criatura al hombro y temas de nido, con polvo de cáscara. 6 artículos distintos cada día.", true],
-      ["🎭", "Más estética", "Pedestales, emotes, títulos y la Tienda de la Plaza con Robux.", false],
+      ["💎", "Plaza con Robux", "Cada sombrero y tema también se puede vender con Robux (un producto por artículo).", true],
+      ["🎭", "Más estética", "Pedestales y títulos.", false],
       ["🎆", "Fuegos artificiales", "Espectáculo en la plaza con tu nombre y tu criatura.", false],
       ["🎁", "Regalos", "Comprar pases y productos para un amigo.", false],
     ].forEach(function (r) { shop.appendChild(el("div", { class: "mini-card" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + ' <span class="pill ' + (r[3] ? "ok" : "no") + '">' + (r[3] ? "en el juego" : "diseñado") + "</span></b><p>" + r[2] + "</p>")); });

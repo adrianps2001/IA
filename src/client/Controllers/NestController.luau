@@ -222,7 +222,31 @@ local function renderCreatures()
 	end)
 end
 
--- Tienda de la Plaza (v3.1): estética con polvo. Lo de hoy, y abajo lo que ya tienes.
+-- Precio en Robux de un producto (lo pone el dueño en el Creator Hub; se pregunta a Roblox una
+-- vez y se guarda). nil mientras no se sabe.
+local robuxPrices: { [number]: number | false } = {}
+local function robuxPrice(productId: number): number?
+	local cached = robuxPrices[productId]
+	if cached == nil then
+		robuxPrices[productId] = false
+		task.spawn(function()
+			local ok, info = pcall(function()
+				return MarketplaceService:GetProductInfoAsync(productId, Enum.InfoType.Product)
+			end)
+			if ok and type(info) == "table" and type(info.PriceInRobux) == "number" then
+				robuxPrices[productId] = info.PriceInRobux
+				if currentTab == "Plaza" then
+					render()
+				end
+			end
+		end)
+		return nil
+	end
+	return if cached then cached else nil
+end
+
+-- Tienda de la Plaza (v3.1): estética con polvo (y, v3.2, con Robux si el artículo tiene
+-- producto en Config.CosmeticProducts). Lo de hoy, y abajo lo que ya tienes.
 local function renderPlaza()
 	local cosmetics = profile.Cosmetics or { Owned = {}, Shop = {} }
 	local owned = cosmetics.Owned or {}
@@ -255,15 +279,29 @@ local function renderPlaza()
 				equipButton(r, item)
 			else
 				local affordable = (profile.Dust or 0) >= item.Price
+				local productId = Config.CosmeticProducts[item.Id] or 0
 				UI.button({
 					AnchorPoint = Vector2.new(1, 0.5),
-					Position = UDim2.new(1, -8, 0.5, 0),
-					Size = UDim2.fromOffset(120, 34),
+					Position = UDim2.new(1, if productId ~= 0 then -112 else -8, 0.5, 0),
+					Size = UDim2.fromOffset(if productId ~= 0 then 100 else 120, 34),
 					Text = string.format("%s ✨", UI.formatNumber(item.Price)),
 					BackgroundColor3 = if affordable then UI.Colors.Accent else UI.Colors.Panel,
 				}, r, function()
 					Remotes.event("BuyCosmetic"):FireServer(item.Id)
 				end)
+				if productId ~= 0 then
+					-- Con Robux: Roblox enseña su ventana de compra; si paga, el servidor lo entrega.
+					local price = robuxPrice(productId)
+					UI.button({
+						AnchorPoint = Vector2.new(1, 0.5),
+						Position = UDim2.new(1, -8, 0.5, 0),
+						Size = UDim2.fromOffset(100, 34),
+						Text = if price then "R$ " .. price else "R$ …",
+						BackgroundColor3 = UI.Colors.Good,
+					}, r, function()
+						MarketplaceService:PromptProductPurchase(player, productId)
+					end)
+				end
 			end
 		end
 	end

@@ -358,7 +358,7 @@ Nada de pago cambia el huevo de la partida, la elección, la persecución ni lo 
 
 ### 9.3 Tienda de la Plaza (estética, rota cada día)
 
-**(v3.1) Hecha la primera versión:** pestaña Plaza del panel del nido, 6 artículos al día, 8 sombreros para la criatura al hombro y 5 temas de nido, con polvo de cáscara. Falta venderlos también con Robux.
+**(v3.2) Hecha:** pestaña Plaza del panel del nido, 6 artículos al día, 8 sombreros para la criatura al hombro y 5 temas de nido, con polvo de cáscara o con Robux (un developer product por artículo, `Config.CosmeticProducts`; guía en `docs/PUBLICAR.md`).
 
 Una tienda en la plaza del lobby con 6 artículos que cambian cada día (la rotación es real, sin temporizadores falsos). Se paga con Robux o con polvo de cáscara (los artículos de polvo dan un uso más al polvo de consolación).
 
@@ -602,6 +602,8 @@ Vienen de la segunda prueba en Studio.
 | Pocos motivos para volver cada día y para gastar el polvo | Regalo diario (racha de 7 días) y Tienda de la Plaza con sombreros y temas de nido |
 | Todas las criaturas de la misma especie se llamaban igual | Ponerles nombre (filtrado por Roblox), que sale en la placa |
 | La producción solo dependía de la parte más rara | Cada parte produce según su rareza y se suman; de media, igual que antes |
+| Esperar la cola en el lobby era aburrido | Torre de la plaza: parkour con cronómetro, récord del servidor y premio diario |
+| La criatura al hombro no hacía nada | Emotes: saludar, bailar, lanzar y coger, mimos |
 | Monetizar sin tocar la partida | Sección 9: todo se gasta en el lobby. Se retiran el Auto-Depósito y la Ofrenda Dorada; la Suerte del Servidor pasa a Suerte del Lobby (y se descubre que, con lugares separados, la vieja no funcionaba) |
 
 **Por qué se ve el lobby desde la partida (en Studio).** Studio no puede viajar entre lugares, así que mientras `Config.Places` tenga los IDs a 0 el juego funciona en **modo combinado**: un solo servidor construye el lobby (a 1000 studs de la arena) y la arena, y "teletransportar" es reaparecer en el otro sitio. Al publicar con dos lugares y poner sus IDs en `Config.Places`, el servidor de partida solo construye la arena y el del lobby solo el lobby (`Place.hasLobby()` y `Place.hasArena()`).

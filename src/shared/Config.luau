@@ -339,6 +339,26 @@ Config.DevProducts = {
 -- Suscripción "Club del Nido" (id tipo "EXP-..." del Creator Hub; vacío = desactivada).
 Config.ClubSubscriptionId = ""
 
+-- Tienda de la Plaza con Robux (v3.2): un developer product por artículo de Cosmetics.Catalog.
+-- 0 = ese artículo solo se compra con polvo. Precios recomendados: sombreros 25-75 Robux,
+-- temas de nido 99-199 Robux (el precio se pone en el Creator Hub, no aquí; el juego lo lee
+-- de Roblox para enseñarlo). Ver docs/PUBLICAR.md → "Tienda de la Plaza con Robux".
+Config.CosmeticProducts = {
+	hat_party = 0,
+	hat_beanie = 0,
+	hat_bow = 0,
+	hat_flowers = 0,
+	hat_glasses = 0,
+	hat_top = 0,
+	hat_pirate = 0,
+	hat_crown = 0,
+	theme_snow = 0,
+	theme_beach = 0,
+	theme_candy = 0,
+	theme_volcano = 0,
+	theme_space = 0,
+} :: { [string]: number }
+
 -- Rangos de rareza de los huevos que no salen de una ronda.
 Config.EggRanges = {
 	Personal = { Min = "Common", Max = "Epic" },
@@ -413,6 +433,20 @@ Config.DailyReward = {
 		{ Coins = 15_000 },
 		{ Egg = "Daily" },
 	},
+}
+
+-- Torre de la plaza (v3.2): minijuego de parkour en el lobby para la espera de la cola.
+-- Plataformas en espiral alrededor del portal; tiempo desde la salida hasta la meta pasando por
+-- los puntos de control. El primer recorrido de cada día da DailyDust de polvo.
+Config.LobbyParkour = {
+	Enabled = true,
+	Steps = 22, -- plataformas entre la salida y la meta
+	Radius = 26, -- distancia al centro de la plaza
+	AngleStep = 19, -- grados entre una plataforma y la siguiente
+	Rise = 2.4, -- studs que sube cada plataforma
+	Checkpoints = { 7, 14 }, -- plataformas que son punto de control
+	DailyDust = 30,
+	MaxSeconds = 300, -- más de esto y el recorrido se cancela
 }
 
 -- Administradores (v3.1): pueden usar los comandos de soporte y moderación del chat (!ayuda).

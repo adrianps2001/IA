@@ -41,6 +41,7 @@ local EVENTS = {
 	"RenameCreature", -- ponerle nombre a una criatura (id, texto); el servidor lo filtra
 	"BuyCosmetic", -- Tienda de la Plaza: comprar un artículo de hoy (id)
 	"EquipCosmetic", -- ponerte o quitarte algo comprado (tipo, id o nil)
+	"PlayEmote", -- emote con la criatura al hombro (id de Emotes)
 	"PartyInvite",
 	"PartyRespond",
 	"PartyLeave",

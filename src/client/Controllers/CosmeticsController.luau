@@ -14,11 +14,17 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local CosmeticsModel = require(Shared.CosmeticsModel)
 local Creature = require(Shared.Creature)
 local CreatureModel = require(Shared.CreatureModel)
+local Emotes = require(Shared.Emotes)
 local Genes = require(Shared.Genes)
+
+local SoundController = require(script.Parent.SoundController)
 
 local CosmeticsController = {}
 
-type Companion = { Model: Model, Source: string, Foot: number, Hat: string? }
+type Companion = { Model: Model, Source: string, Foot: number, Hat: string?, Scale: number? }
+
+-- Emote en curso de cada jugador (atributo PetEmote = "id:hora del servidor").
+local emotes: { [Player]: { Id: string, Start: number } } = {}
 
 -- Tamaño de la criatura en el hombro y dónde se sienta respecto al HumanoidRootPart
 -- (el hombro de un R15 está ~1.5 studs por encima del centro del torso).
@@ -137,6 +143,17 @@ local function watch(player: Player)
 	player:GetAttributeChangedSignal("PetHat"):Connect(function()
 		refreshHat(player)
 	end)
+	player:GetAttributeChangedSignal("PetEmote"):Connect(function()
+		local value = player:GetAttribute("PetEmote")
+		local id, start = if type(value) == "string" then string.match(value, "^(%w+):([%d%.]+)$") else nil, nil
+		if id and start and Emotes.get(id) then
+			emotes[player] = { Id = id, Start = tonumber(start) :: number }
+			local root = rootOf(player)
+			if root then
+				SoundController.play(if id == "toss" then "Boing" else "Click", root)
+			end
+		end
+	end)
 	player:GetAttributeChangedSignal("Pass_EmberTrail"):Connect(function()
 		refreshTrail(player)
 	end)
@@ -173,6 +190,7 @@ function CosmeticsController.start()
 	-- La criatura va pegada al hombro (sin retardo) y respira un poco para parecer viva.
 	RunService.RenderStepped:Connect(function()
 		local breathe = math.sin(os.clock() * 2.5) * 0.04
+		local now = workspace:GetServerTimeNow()
 		for player, companion in companions do
 			local root = rootOf(player)
 			local visible = showOthers or player == Players.LocalPlayer
@@ -181,6 +199,22 @@ function CosmeticsController.start()
 			end
 			if root and visible then
 				local seat = root.CFrame * CFrame.new(SHOULDER_OFFSET.X, SHOULDER_OFFSET.Y + breathe, SHOULDER_OFFSET.Z)
+				-- Emote (v3.2): se suma a la posición del hombro mientras dura.
+				local active = emotes[player]
+				local pose = if active then Emotes.pose(active.Id, now - active.Start) else nil
+				if active and pose and pose.Scale == 1 and pose.Y == 0 and pose.Spin == 0 and pose.Tilt == 0 and pose.X == 0 and now - active.Start > 0.1 then
+					emotes[player] = nil
+				end
+				if pose then
+					seat = seat * CFrame.new(pose.X, pose.Y, pose.Z) * CFrame.Angles(pose.Tilt, pose.Spin, 0)
+					if companion.Scale ~= pose.Scale then
+						companion.Scale = pose.Scale
+						companion.Model:ScaleTo(pose.Scale)
+					end
+				elseif companion.Scale and companion.Scale ~= 1 then
+					companion.Scale = 1
+					companion.Model:ScaleTo(1)
+				end
 				companion.Model:PivotTo(seat * CFrame.new(0, companion.Foot, 0))
 			end
 		end

@@ -63,6 +63,13 @@ function MonetizationService.registerProduct(name: string, handler: ProductHandl
 	end
 end
 
+-- Igual, pero con el número del producto (para listas de productos, como la Tienda de la Plaza).
+function MonetizationService.registerProductId(id: number, handler: ProductHandler)
+	if id ~= 0 then
+		handlers[id] = handler
+	end
+end
+
 function MonetizationService.prompt(player: Player, name: string)
 	local id = (Config.DevProducts :: any)[name]
 	if type(id) == "number" and id ~= 0 then

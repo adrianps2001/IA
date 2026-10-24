@@ -12,6 +12,7 @@ local services = {
 	require(script.Services.MatchService),
 	require(script.Services.NestService),
 	require(script.Services.ShopService),
+	require(script.Services.ParkourService),
 	require(script.Services.CommunityService),
 	require(script.Services.LootService),
 	require(script.Services.TradeService),

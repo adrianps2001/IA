@@ -77,6 +77,9 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 - [ ] **⚙️ Ajustes:** cambiar el volumen de efectos y de pasos se nota; el tamaño de la interfaz cambia todos los paneles; "Al hombro de otros: No" oculta las criaturas de los demás (la tuya no). Al volver a entrar se mantienen.
 - [ ] **🎁 Regalo:** el botón brilla si hay regalo; al abrirlo da lo del día y se marca. Abrirlo otra vez el mismo día dice "Vuelve mañana".
 - [ ] **Nombre:** elige una sola criatura en el panel, escribe un nombre y Guardar: sale en la placa del pedestal (y en el panel, con la especie debajo). "Quitar" vuelve al nombre de la especie.
+- [ ] **🏁 Torre de la plaza:** pisa el cuadrado naranja junto al portal: sale el cronómetro. Sube por las plataformas, pisa los dos controles verdes y llega a la meta dorada: te dice el tiempo, guarda tu mejor marca, el cartel enseña el récord y la primera vez del día da 30 de polvo. Si te caes al suelo, se cancela.
+- [ ] **💃 Emotes** (con una criatura al hombro): cada uno mueve la criatura y vuelve a su sitio; otro jugador lo ve igual.
+- [ ] **Plaza con Robux:** con un número en `Config.CosmeticProducts`, sale el botón verde R$ con el precio; en Studio la compra es de prueba y el artículo se entrega.
 - [ ] **Plaza** (pestaña del panel del nido; con F7 → +1000 polvo): comprar un sombrero se lo pone a tu criatura al hombro (y lo ven los demás); comprar un tema pinta tu nido; "Quitártelo" lo deshace. Al salir, el nido libre vuelve a su aspecto normal.
 - [ ] **👀 Mi nido** lleva la cámara a tus gradas y "↩ Volver" la devuelve. **🏡 Visitar** muestra los jugadores del lobby y te lleva a la entrada de su nido (sin que el anti-trampas te devuelva).
 - [ ] **Móvil** (Studio: Prueba → Dispositivo → un teléfono): junto a una brasa, el huevo o el poste de una tirolina sale el botón grande naranja con su texto, y pulsarlo hace la acción.

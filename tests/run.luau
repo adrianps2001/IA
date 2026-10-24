@@ -9,11 +9,13 @@ local Cosmetics = require("../src/shared/Cosmetics")
 local Creature = require("../src/shared/Creature")
 local DailyReward = require("../src/shared/DailyReward")
 local Decorations = require("../src/shared/Decorations")
+local Emotes = require("../src/shared/Emotes")
 local Economy = require("../src/shared/Economy")
 local Election = require("../src/shared/Election")
 local Events = require("../src/shared/Events")
 local Genes = require("../src/shared/Genes")
 local Leaderboard = require("../src/shared/Leaderboard")
+local LobbyParkour = require("../src/shared/LobbyParkour")
 local MapLayout = require("../src/shared/MapLayout")
 local MovementRules = require("../src/shared/MovementRules")
 local RateLimiter = require("../src/shared/RateLimiter")
@@ -1051,6 +1053,50 @@ test("Tienda de la Plaza: rotación diaria, siempre con sombrero y tema, y datos
 	expect(#profile.Cosmetics.Owned == 2, "solo artículos que existen, sin repetir")
 	expect(profile.Cosmetics.Hat == nil, "no te puedes poner lo que no tienes")
 	expect(profile.Cosmetics.Theme == "theme_snow")
+end)
+
+test("Tienda de la Plaza con Robux: cada artículo tiene su hueco de producto", function()
+	for _, item in Cosmetics.Catalog do
+		expect(Config.CosmeticProducts[item.Id] ~= nil, item.Id .. " no está en Config.CosmeticProducts")
+	end
+	for id in Config.CosmeticProducts do
+		expect(Cosmetics.get(id) ~= nil, id .. " no existe en el catálogo")
+	end
+end)
+
+test("emotes: empiezan y acaban en el hombro, sin saltos", function()
+	for _, emote in Emotes.List do
+		for _, t in { 0, emote.Duration, emote.Duration + 1, -1 } do
+			local p = Emotes.pose(emote.Id, t)
+			expect(math.abs(p.X) + math.abs(p.Y) + math.abs(p.Z) + math.abs(p.Tilt) < 1e-6 and math.abs(p.Scale - 1) < 1e-6, emote.Id .. " no empieza/acaba en reposo")
+		end
+		-- Sin saltos: entre dos instantes muy seguidos la posición casi no cambia.
+		local last = Emotes.pose(emote.Id, 0)
+		for k = 1, 200 do
+			local p = Emotes.pose(emote.Id, emote.Duration * k / 200)
+			expect(math.abs(p.Y - last.Y) < 0.5 and math.abs(p.X - last.X) < 0.5 and math.abs(p.Z - last.Z) < 0.5, emote.Id .. " da un salto")
+			last = p
+		end
+	end
+	expect(Emotes.get("dance") ~= nil and Emotes.get("nada") == nil)
+end)
+
+test("torre de la plaza: todos los saltos se pueden hacer y no choca con la plaza", function()
+	local list = LobbyParkour.platforms()
+	expect(list[1].Kind == "Start" and list[#list].Kind == "Finish")
+	for i = 2, #list do
+		local a, b = list[i - 1], list[i]
+		local center = math.sqrt((a.Position.X - b.Position.X) ^ 2 + (a.Position.Z - b.Position.Z) ^ 2)
+		-- Peor caso: medio lado corto de cada plataforma.
+		local gap = center - math.min(a.Size.X, a.Size.Z) / 2 - math.min(b.Size.X, b.Size.Z) / 2
+		local rise = (b.Position.Y + b.Size.Y / 2) - (a.Position.Y + a.Size.Y / 2)
+		expect(gap <= 6.5, string.format("hueco de %.1f studs antes de la plataforma %d", gap, b.Index))
+		expect(rise <= 3.2, string.format("subida de %.1f studs en la plataforma %d", rise, b.Index))
+		-- Lejos del portal (radio ~10) y de la estatua y el cartel (radio 32 o más).
+		local r = math.sqrt(b.Position.X ^ 2 + b.Position.Z ^ 2)
+		expect(r > 14 and r + math.max(b.Size.X, b.Size.Z) / 2 < 32, "plataforma " .. b.Index .. " choca con algo de la plaza")
+	end
+	expect(LobbyParkour.minSeconds() > 3)
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))
