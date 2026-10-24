@@ -75,7 +75,9 @@ Marca cada punto en una prueba con 4 jugadores (tú + 3 bots), o tú solo con lo
 ### Lobby
 - [ ] **Tutorial** (con un perfil nuevo, o ⚙️ → Ver el tutorial otra vez): el cartel de arriba va diciendo qué hacer y la flecha de luz señala la brasa, el huevo, la rampa y al portador. "Saltar ✕" lo quita.
 - [ ] **⚙️ Ajustes:** cambiar el volumen de efectos y de pasos se nota; el tamaño de la interfaz cambia todos los paneles; "Al hombro de otros: No" oculta las criaturas de los demás (la tuya no). Al volver a entrar se mantienen.
-- [ ] **👀 Mi nido** lleva la cámara a tus gradas y "↩ Volver" la devuelve.
+- [ ] **👀 Mi nido** lleva la cámara a tus gradas y "↩ Volver" la devuelve. **🏡 Visitar** muestra los jugadores del lobby y te lleva a la entrada de su nido (sin que el anti-trampas te devuelva).
+- [ ] **Móvil** (Studio: Prueba → Dispositivo → un teléfono): junto a una brasa, el huevo o el poste de una tirolina sale el botón grande naranja con su texto, y pulsarlo hace la acción.
+- [ ] **Comandos de soporte** (en Studio funcionan para todos): escribe `!ayuda` en el chat; prueba `!ver Player1`, `!dar monedas Player1 500` y `!dar criatura Player1 Secret`.
 - [ ] Galería de criaturas: abre un Huevo de Temporada o usa F7 hasta ver una Secreta (o mira `docs/criaturas.html`): Fénix, Unicornio, Aurora y Agujero Negro se ven bien.
 - [ ] Apareces en **tu nido del lobby**, en la entrada, mirando a tus criaturas. El cartel del arco dice "Nido de …".
 - [ ] Los nidos no se tocan entre sí: entre las vallas de dos nidos vecinos queda un hueco (antes se solapaban por los laterales).

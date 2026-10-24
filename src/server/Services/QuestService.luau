@@ -21,7 +21,7 @@ function QuestService.progress(player: Player, kind: Quests.QuestKind, amount: n
 	local completed = Quests.progress(profile.Quests, kind, amount or 1)
 	if completed > 0 then
 		local reward = completed * Config.Quests.RewardDust
-		DataService.addDust(player, reward)
+		DataService.addDust(player, reward, "Gameplay:Quest")
 		AnnouncementService.player(player, string.format("¡Misión completada! +%d Polvo de cáscara", reward), "quest")
 	end
 	DataService.markChanged(player)

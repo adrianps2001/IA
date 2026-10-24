@@ -176,6 +176,7 @@ Implementado:
 - La criatura sale del huevo en el centro del claro durante la eclosión (GDD v3.1).
 - Sonidos con volumen equilibrado por grupos y botón para probarlos todos (F7).
 - Anti-trampas: el servidor comprueba el movimiento (tirolinas, setas…) y limita cuántas veces por segundo se puede llamar a cada remoto (`Config.AntiCheat`).
+- Botón de acción en móvil, analítica de economía y de partida, comandos de soporte y moderación (`!ayuda`, solo administradores) y 🏡 Visitar nidos.
 - Tutorial de la primera partida, pistas de la persecución (aviso de ladrón cerca y huellas), ajustes ⚙️ guardados en el perfil y botón 👀 Mi nido.
 - Intercambios con tope diario y Secretas bloqueadas sus 3 primeros días; precios redondos; lobby decorado por código (terreno, bosque, flores, farolillos, bancos).
 - Tratos y traiciones, con títulos Leal/Traidor.

@@ -1,6 +1,7 @@
 --!strict
 -- Pruebas de la lógica pura (sin Roblox). Ejecutar con: luau tests/run.luau
 
+local AdminCommands = require("../src/shared/AdminCommands")
 local ArenaLayout = require("../src/shared/ArenaLayout")
 local ChaseRules = require("../src/shared/ChaseRules")
 local Config = require("../src/shared/Config")
@@ -958,6 +959,19 @@ test("límites de intercambio: tope diario y Secretas bloqueadas unos días", fu
 	end
 	table.insert(records, { At = now - 2 * day })
 	expect(Trade.tradesToday(records, now) == Config.Trade.MaxPerDay, "los de hace 2 días no cuentan")
+end)
+
+test("comandos de administrador: se leen bien y solo para administradores", function()
+	local c = AdminCommands.parse("  !dar monedas Ana 5000 ")
+	expect(c ~= nil and c.Name == "dar" and c.Args[1] == "monedas" and c.Args[3] == "5000")
+	local b = AdminCommands.parse("/ban Leo 24 dice palabrotas")
+	expect(b ~= nil and b.Name == "ban" and AdminCommands.rest(b.Args, 3) == "dice palabrotas")
+	expect(AdminCommands.parse("hola a todos") == nil, "el chat normal no es un comando")
+	expect(AdminCommands.parse("/e dance") == nil, "los comandos de Roblox no son nuestros")
+	expect(AdminCommands.parse("!") == nil)
+	expect(AdminCommands.isAdmin(123, 123), "el dueño siempre")
+	expect(not AdminCommands.isAdmin(456, 123), "los demás, solo si están en Config.Admins")
+	expect(not AdminCommands.isAdmin(0, 0), "un grupo como dueño no hace admin a nadie")
 end)
 
 print(string.format("%d pruebas correctas, %d fallidas", passed, failed))

@@ -908,8 +908,7 @@
     var todo = $("#todo");
     if (todo) [
       ["🛍️", "Tienda de la Plaza y cosméticos", "Temas de nido, pedestales, accesorios del hombro, renombrar criaturas, fuegos artificiales y regalos."],
-      ["🎓", "Tutorial", "Una primera partida guiada (rampas, tirolina, robar)."],
-      ["⚖️", "Emparejamiento por nivel", "Novatos con novatos: con la persecución actual, los que persiguen poco ganan bastante menos."],
+      ["🌍", "Inglés y otros idiomas", "Todos los textos están en español; la traducción está decidida para más adelante."],
       ["🎨", "Arte definitivo", "Mapas hechos a mano, modelos de criatura de un artista, sonidos definitivos y música."],
       ["📺", "Huevo del Admin y pase de temporada", "Evento en directo y pase con recompensas estéticas."],
     ].forEach(function (r) { todo.appendChild(el("div", { class: "mini-card todo" }, '<div class="em">' + r[0] + "</div><b>" + r[1] + "</b><p>" + r[2] + "</p>")); });

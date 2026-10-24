@@ -67,7 +67,7 @@ Nada de esto se puede hacer desde el código: necesita tu cuenta.
 ### 2.2 Muy importante (P1)
 
 - [ ] ~~**P1 🧑‍💻 Emparejamiento por nivel.**~~ Decidido: **no** por ahora (todos mezclados). Si la beta confirma que los novatos ganan muy poco, se reconsidera. Con la persecución actual, los que persiguen poco ganan muchas menos criaturas (en el simulador, un novato pasa de 0,34 a 0,10 victorias por hora). Que los novatos jueguen sus primeras partidas entre ellos.
-- [ ] **P1 🧑‍💻 Botón de acción en móvil.** En móvil hay que pulsar los avisos (prompts) pequeños para recoger, depositar, robar o usar la tirolina. Un botón grande que haga "lo que toca" según dónde estés.
+- [x] **P1 🧑‍💻 Botón de acción en móvil** (hecho, `ActionButtonController`): en pantallas táctiles sale un botón grande con el texto de lo que toca (recoger, depositar, robar, tirolina…) que pulsa el aviso más cercano. 👀 Comprueba en un móvil que no tapa el botón de saltar.
 - [ ] **P1 👀 Controles en móvil y mando.** El portador ya tiene botones en pantalla de ⚡ Esprint y 🤝 Relevo (y Shift/Q o L3/L1 en mando). Empujar es un aviso (prompt) sobre el otro jugador. Comprueba que en un móvil se pulsan bien en plena carrera; si no, los hago más grandes o los muevo.
 - [x] **P1 🧑‍💻 Menú de ajustes.** Hecho (botón ⚙️): volumen de efectos y de pasos, tamaño de la interfaz (80-130 %), ver o no las criaturas al hombro de los demás y repetir el tutorial. Se guarda en el perfil. Falta el volumen de música (cuando haya música).
 - [ ] **P1 🧑‍💻 Tienda de la Plaza** (GDD 9.3): temas de nido, pedestales, accesorios para la criatura del hombro, emotes y títulos, con rotación diaria. Es la fuente principal de ingresos sin tocar la partida, y hoy no existe.
@@ -77,11 +77,11 @@ Nada de esto se puede hacer desde el código: necesita tu cuenta.
 - [x] **P1 🧑‍💻 Precios redondos.** Hecho: todos los precios de Monedas (mejoras, cría, Nueva generación, decoración) se redondean a dos cifras (1.300, 4.600, 56.000…) en todos los niveles.
 - [x] **P1 🧑‍💻 Accesibilidad.** La rareza siempre va escrita (placas, panel del nido, anuncios), no solo por color, y el tamaño de la interfaz se cambia en ⚙️.
 - [ ] **P1 🧑‍💻 Algo que hacer en el lobby mientras esperas** la cola (minijuego en la plaza o circuito de parkour con tiempo).
-- [x] **P1 🧑‍💻 Botón "👀 Mi nido"** (hecho): en el lobby lleva la cámara a tus gradas. Falta "Ir al nido de…" desde el ranking.
+- [x] **P1 🧑‍💻 Botones "👀 Mi nido" y "🏡 Visitar"** (hechos): la cámara va a tus gradas, y "Visitar" te lleva a la entrada del nido de cualquier jugador del lobby.
 - [x] **P1 🧑‍💻 Pistas de la persecución** (hecho): el portador ve "⚠️ ¡Un ladrón cerca!" y oye un latido más rápido cuanto más se acercan (también los zorros), y deja huellas brillantes que los demás ven de cerca y se borran en 6 s (`Config.Chase.DangerRange`, `Footprint…`).
 - [ ] **P1 🧑‍💻 Revisar el equilibrio de los huevos personales.** Un jugador muy activo abre cientos al mes y le quitan importancia a la persecución. Limitarlos y darle a la cría su propia ranura (REVISION 7).
 - [ ] **P1 🧑‍💻 Inflación de rarezas:** demasiadas Épicas. La garantía de la barra solo para la primera criatura de la ronda (REVISION 8).
-- [ ] **P1 🧑‍💻 Más analítica.** Hoy solo se registra el embudo del novato (`AnalyticsService`). Hacen falta también eventos de economía (Monedas y polvo que entran y salen), de partida (duración, robos, quién gana) y de tienda (qué se ve y qué se compra) para tomar decisiones con datos.
+- [x] **P1 🧑‍💻 Más analítica** (hecha): eventos de economía de Monedas y polvo con su motivo (mejoras, cría, huevos, decoración, Nueva generación, nido, misiones, packs…), agrupados cada minuto para no pasar los límites de Roblox, y eventos de partida (`RoundResult`, `CreatureWon`, `Steal`). Se ven en el Creator Hub → Analytics.
 - [ ] **P1 🧑‍💻 Mensajes de error amables** si falla el teletransporte o el DataStore (ahora hay reintentos, pero el jugador debería ver qué pasa y poder volver a intentarlo).
 
 ### 2.3 Para después del lanzamiento (P2)
@@ -165,8 +165,8 @@ Usa la lista de comprobación de `docs/PRUEBAS.md`, sección por sección. Lo m�
 ## 7. Después del lanzamiento (operación)
 
 - [ ] **P1 👀 Revisar a diario la primera semana:** errores en la consola del servidor (Creator Hub → Analytics → Errors), compras fallidas, quejas.
-- [ ] **P1 🧑‍💻 Herramienta de soporte:** poder mirar y corregir el perfil de un jugador (por ejemplo, devolverle una criatura perdida) sin tocar el DataStore a mano.
-- [ ] **P1 🧑‍💻 Moderación:** poder expulsar o banear a tramposos (la `BanAPI` de Roblox) y registrar movimientos raros.
+- [x] **P1 🧑‍💻 Herramienta de soporte** (hecha, `AdminService`): comandos de chat solo para administradores (`Config.Admins` y el dueño): `!ver <jugador>`, `!dar monedas|polvo <jugador> <n>`, `!dar criatura <jugador> <rareza>`, `!anuncio <texto>`, `!ayuda`.
+- [x] **P1 🧑‍💻 Moderación** (hecha): `!echar <jugador> <motivo>`, `!ban <jugador> <horas> <motivo>` (BanAPI de Roblox, para todos los lugares; 0 horas = para siempre) y `!desban <UserId>`. Todo queda en la consola del servidor. 👀 Pon los UserId de tu equipo en `Config.Admins`.
 - [ ] **P2 👀 Pruebas A/B de precios** y del equilibrio con la analítica.
 
 ---

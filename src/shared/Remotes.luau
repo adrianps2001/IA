@@ -36,6 +36,7 @@ local EVENTS = {
 	"ToggleFavorite", -- marcar o desmarcar una criatura con ⭐
 	"SetShoulder", -- elegir la criatura que llevas al hombro (o nil para quitarla)
 	"SetSettings", -- guardar los ajustes del botón ⚙️
+	"VisitNest", -- ir a la entrada del nido de otro jugador del lobby (UserId)
 	"PartyInvite",
 	"PartyRespond",
 	"PartyLeave",

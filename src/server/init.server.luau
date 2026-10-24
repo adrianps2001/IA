@@ -21,6 +21,7 @@ local services = {
 	require(script.Services.ForestService),
 	require(script.Services.RoundService),
 	require(script.Services.MatchmakingService),
+	require(script.Services.AdminService), -- comandos de soporte (solo administradores)
 	require(script.Services.DebugService), -- solo responde en Studio
 }
 

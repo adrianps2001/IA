@@ -2,7 +2,8 @@
 -- Ajustes del jugador (v3.1): botón ⚙️ con el volumen de efectos y de pasos, el tamaño de la
 -- interfaz, ver o no las criaturas al hombro de los demás y repetir el tutorial. Se guardan en
 -- el perfil (remoto SetSettings; el servidor los limpia con PlayerData.cleanSettings).
--- En el lobby, además, "👀 Mi nido" lleva la cámara a tus gradas para ver tus criaturas.
+-- En el lobby, además, "👀 Mi nido" lleva la cámara a tus gradas para ver tus criaturas y
+-- "🏡 Visitar" te lleva a la entrada del nido de otro jugador (lo mueve el servidor).
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -133,8 +134,52 @@ function SettingsController.start()
 			stopViewing = viewNest()
 		end
 	end)
+	-- Visitar nidos: lista de los jugadores del lobby con nido.
+	local visitPanel = UI.frame({ Position = UDim2.fromOffset(130, 114), Size = UDim2.fromOffset(240, 300), Visible = false }, gui)
+	UI.round(visitPanel, 14)
+	UI.padding(visitPanel, 8)
+	local visitList = Instance.new("ScrollingFrame")
+	visitList.Size = UDim2.fromScale(1, 1)
+	visitList.BackgroundTransparency = 1
+	visitList.ScrollBarThickness = 6
+	visitList.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	visitList.CanvasSize = UDim2.new()
+	visitList.Parent = visitPanel
+	UI.list(visitList, 4)
+	local function renderVisits()
+		UI.clear(visitList)
+		UI.label({ Size = UDim2.new(1, -8, 0, 26), Text = "🏡 Visitar un nido", LayoutOrder = 0 }, visitList)
+		local order = 1
+		for _, other in Players:GetPlayers() do
+			if other:GetAttribute("LobbyNestIndex") ~= nil and other:GetAttribute("InMatch") ~= true then
+				order += 1
+				UI.button({
+					Size = UDim2.new(1, -8, 0, 34),
+					Text = if other == player then "Mi nido" else other.DisplayName,
+					LayoutOrder = if other == player then 1 else order,
+					BackgroundColor3 = if other == player then UI.Colors.Good else UI.Colors.PanelLight,
+				}, visitList, function()
+					Remotes.event("VisitNest"):FireServer(other.UserId)
+					visitPanel.Visible = false
+				end)
+			end
+		end
+	end
+	local visitButton = UI.button({ Position = UDim2.fromOffset(12, 160), Size = UDim2.fromOffset(110, 40), Text = "🏡 Visitar", BackgroundColor3 = UI.Colors.Panel }, gui, function()
+		visitPanel.Visible = not visitPanel.Visible
+		if visitPanel.Visible then
+			renderVisits()
+		end
+	end)
+	visitPanel.Position = UDim2.fromOffset(130, 160)
+
 	local function updateNestButton()
-		nestButton.Visible = player:GetAttribute("InMatch") ~= true and player:GetAttribute("LobbyNestIndex") ~= nil
+		local inLobby = player:GetAttribute("InMatch") ~= true and player:GetAttribute("LobbyNestIndex") ~= nil
+		nestButton.Visible = inLobby
+		visitButton.Visible = inLobby
+		if not inLobby then
+			visitPanel.Visible = false
+		end
 	end
 	player:GetAttributeChangedSignal("InMatch"):Connect(updateNestButton)
 	player:GetAttributeChangedSignal("LobbyNestIndex"):Connect(updateNestButton)

@@ -278,7 +278,7 @@ local function awardResults(players: { Player }, results: { ChaseService.Outcome
 			AnnouncementService.player(player, "El huevo te eligió: te deja un Huevo del Elegido en la incubadora.", "rare")
 		end
 		local dust = math.floor(reward.Dust * PartyService.dustMultiplier(player))
-		DataService.addDust(player, dust)
+		DataService.addDust(player, dust, "Gameplay:RoundReward")
 		if #reward.Won == 0 and dust > 0 then
 			AnnouncementService.player(player, string.format("+%d Polvo de cáscara de consuelo", dust))
 		elseif #reward.Won == 0 then
@@ -286,6 +286,12 @@ local function awardResults(players: { Player }, results: { ChaseService.Outcome
 		end
 		DataService.addStat(player, "RoundsPlayed", 1)
 		QuestService.progress(player, "PlayRounds", 1)
+		-- Analítica: cómo le fue la ronda a cada uno (ganó, perdió siendo el elegido, consuelo).
+		local outcome = if #reward.Won > 0 then "Won" elseif reward.ChosenEgg then "ChosenLost" elseif dust > 0 then "Consolation" else "Idle"
+		AnalyticsHelper.event(player, "RoundResult", #reward.Won, { Outcome = outcome, Players = tostring(#participants) })
+		for _, index in reward.Won do
+			AnalyticsHelper.event(player, "CreatureWon", 1, { Rarity = Genes.rarityOf(results[index].Genes) })
+		end
 	end
 end
 

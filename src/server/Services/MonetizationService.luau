@@ -109,7 +109,7 @@ function MonetizationService.init()
 	-- Paquetes de Monedas: se gestionan aquí porque no dependen de otro sistema.
 	for name, amount in Config.CoinPacks do
 		MonetizationService.registerProduct(name, function(player)
-			DataService.addCoins(player, amount)
+			DataService.addCoins(player, amount, "IAP:" .. name)
 			return true
 		end)
 	end

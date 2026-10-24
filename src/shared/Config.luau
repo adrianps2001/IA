@@ -398,6 +398,11 @@ Config.Arena = {
 	LuckyOnTrees = 0.25, -- fracción de las cajas sorpresa que aparecen en lo alto
 }
 
+-- Administradores (v3.1): pueden usar los comandos de soporte y moderación del chat (!ayuda).
+-- El dueño de la experiencia (si es una cuenta, no un grupo) lo es siempre. Añade aquí los
+-- UserId de tu equipo de soporte.
+Config.Admins = {} :: { number }
+
 -- Anti-trampas (v3.1). Los límites son generosos a propósito: es mejor dejar pasar un
 -- tramposo leve que castigar a alguien con mala conexión.
 Config.AntiCheat = {
